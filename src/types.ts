@@ -1,0 +1,13 @@
+export type Point = { x: number; y: number };
+export type RoomKind = 'living' | 'bedroom' | 'bathroom' | 'hall';
+export type FloorFinish = 'oak' | 'ash' | 'walnut' | 'stone' | 'terrazzo' | 'concrete';
+export type Room = { id: string; name: string; kind: RoomKind; x: number; y: number; w: number; d: number; floor: FloorFinish };
+export type Wall = { id: string; a: Point; b: Point; thickness: number; outer?: boolean };
+export type Opening = { id: string; wallId: string; kind: 'door' | 'window'; offset: number; width: number; height: number; sill: number };
+export type FurnitureKind = 'sofa' | 'bed' | 'single-bed' | 'table' | 'chair' | 'wardrobe' | 'desk' | 'kitchen' | 'island' | 'sink' | 'fridge' | 'toilet' | 'shower' | 'plant' | 'lamp' | 'rug' | 'model';
+export type Furniture = { id: string; kind: FurnitureKind; name: string; x: number; y: number; w: number; d: number; h: number; rotation: number; color: string; modelData?: string };
+export type Palette = { walls: string; accent: string; wood: string; textile: string; metal: string };
+export type Project = { version: 1; id: string; name: string; width: number; depth: number; wallHeight: number; rooms: Room[]; walls: Wall[]; openings: Opening[]; furniture: Furniture[]; palette: Palette };
+export type Selection = { type: 'furniture' | 'wall' | 'room' | 'opening'; id: string } | null;
+export type Tool = 'select' | 'wall' | 'door' | 'window' | 'room';
+export type Mode = '2d' | '3d' | 'split';
