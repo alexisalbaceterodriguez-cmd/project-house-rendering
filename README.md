@@ -2,7 +2,7 @@
 
 Editor web de viviendas con plano 2D y visualizador 3D sincronizados, construido con **React + TypeScript + Zustand + Three.js / React Three Fiber**.
 
-**[Abrir la aplicación](https://alexisalbaceterodriguez-cmd.github.io/project-house-rendering/)** · [Plan de fases](./ROADMAP.md)
+**[Abrir la aplicación](https://alexisalbaceterodriguez-cmd.github.io/project-house-rendering/)** · [Plan de fases](./ROADMAP.md) · [Memoria de continuidad](./PROJECT_MEMORY.md)
 
 > Prototipo de interiorismo conceptual. Las superficies se calculan a partir de los ejes de los tabiques, **no** son superficies útiles certificadas ni validan licencias, habitabilidad, normativa o construcción.
 

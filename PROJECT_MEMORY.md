@@ -2,7 +2,17 @@
 
 > **Fuente de verdad para próximas conversaciones y agentes de desarrollo.** Leer este documento antes de cambiar código. Actualizarlo tras cada entrega. Complementar siempre con el estado REAL de `main`, las pruebas y los workflows. No dar por realizada una tarea solo porque figura en el plan.
 
-**Última auditoría:** 2026-11-07 (Europe/Madrid).  **Rama principal:** `main`.  **Commit auditado:** `91e1b170c758c71604a162428dc6adb56dba8b73`.  **Estado:** MVP funcional conceptual; F0 parcialmente consolidada; siguiente bloque prioritario F1 + F2: geometría coherente y edición visual de muros.
+**Última auditoría:** 2026-11-07 (Europe/Madrid). **Rama:** `main`. **Última entrega validada:** `bb7e488bbcd60735110d35e789d70f95871b2f85` (15 tests y build CI correctos; Pages desplegado). **Estado:** F0/F1/F2 con incrementos funcionales, pendientes estabilización y E2E. El resumen histórico de secciones posteriores describe el MVP anterior.
+
+## 0. Incremento más reciente: dimensiones y paredes (2026-11-07)
+
+**Base GitHub:** `bb7e488`. **CI Test and build:** success ([ejecución](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42420478499)). **GitHub Pages:** success ([ejecución](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42420478579)). Pruebas en navegador manual: **no realizadas**.
+
+- **F0 parcial:** validación estructural profunda de JSON (`src/lib/validation.ts`), GLB guardados en IndexedDB con export/import JSON portable (`src/lib/assets.ts`) y 9 tests nuevos (15 totales). Falta lockfile, E2E, cuotas/recuperación de modelos y pruebas visuales.
+- **F1 parcial:** `src/lib/topology.ts` extrae las caras cerradas de paredes, cruces y T, genera polígonos de estancia, recalcula superficies desde ejes de tabiques, mantiene metadatos por solapamiento y actualiza suelos de 2D/3D. No hay aún nodos compartidos persistentes ni áreas útiles ajustadas por espesor. Topología degenerada y colisiones complejas pendientes.
+- **F2 parcial:** botón **Dimensiones** con escala proporcional o conservación de posiciones, botón **Nuevo** para planta en blanco, asas de extremos y arrastre de paredes interiores, longitud visible, edición numérica y avisos geométricos. Las paredes exteriores se redimensionan desde el inspector; no se arrastran. Histórico de arrastre con checkpoint de una operación.
+- **Compatibilidad:** `Project.version=1` y `standalone.html` antiguo. Migración especial del diseño demo anterior con hueco abierto entre salón y distribuidor. JSON de proyectos previos debe probarse más extensamente.
+- **Siguiente acción recomendada:** abordar [F0 E2E y lockfile](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/1) y [F1 nodos compartidos y geometría compleja](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/2); después [F2 precisión de interacción](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/3), [F3 cocina/baño](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/4) y [F4-F5 renders/versiones](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/5).
 
 ## 1. Identidad y objetivo
 
@@ -37,7 +47,7 @@ Vivienda rectangular de **60 m² = 10 × 6 m**, 3 dormitorios, 2 baños, cocina 
 
 Requiere Node.js 20.19+ o 22.12+ y npm. Ejecutar `npm install`, `npm run dev`, `npm run test`, `npm run build`. La aplicación React reside en la raíz del repositorio. No hay lockfile npm en el commit auditado; conviene incorporarlo para builds reproducibles.
 
-## 3. Estado observado y confirmado el 2026-11-07
+## 3. Estado histórico del MVP antes de la nueva entrega (2026-11-07)
 
 ### Implementado en código
 
@@ -75,22 +85,22 @@ Los estados son **PENDIENTE**, **EN CURSO** y **HECHO**, y se actualizan al veri
 - [ ] Mejorar tests geométricos y validación JSON; cubrir historial y persistencia.
 - [ ] Definir invariantes métricas, esquema versionado y estrategia de migración; evitar pérdidas de proyectos previos.
 
-### F1. Geometría arquitectónica consistente | PENDIENTE (prioridad inmediata)
+### F1. Geometría arquitectónica consistente | EN CURSO
 
-- [ ] Crear motor de operaciones geométricas puro y testeable separado de la UI.
+- [x] Crear motor de operaciones geométricas puro y testeable separado de la UI.
 - [ ] Unificar o asociar vértices coincidentes (nodos/conectividad); mover una unión compartida sin desconectar paredes vecinas.
 - [ ] Operaciones robustas de crear, dividir, unir, acortar, alargar, desplazar y borrar muros; detectar cruces y segmentos degenerados.
-- [ ] Representar contorno exterior y habitaciones como polígonos/áreas derivados de la geometría, o definir una transición segura desde los rectángulos existentes.
+- [x] Representar los recintos cerrados como polígonos derivados de muros; todavía faltan geometrías complejas y superficie útil.
 - [ ] Validar longitud, paralelismo/ortogonalidad cuando proceda, recintos cerrados, grosor y huecos; preservación o reasignación de puertas/ventanas al editar.
 - [ ] Tests de invariantes y pruebas de ida/vuelta del mismo diseño entre 2D, 3D y JSON.
 
-### F2. Editor preciso de dimensiones y paredes | PENDIENTE (siguiente entrega visible)
+### F2. Editor preciso de dimensiones y paredes | EN CURSO
 
 - [x] Configuración numérica básica de ancho, largo y altura y extremos de muros (ya existe, pero es limitada).
-- [ ] **Arrastrar extremos y segmentos** de muros directamente en el plano 2D; indicadores de selección visibles, ajuste a rejilla, alineación y acotación temporal.
-- [ ] Poder crear o cambiar el tamaño de la vivienda con dimensiones exactas; modos explícitos de ajuste del perímetro (escalado proporcional frente a mover un lado/anclar un extremo), sin deformar muebles arbitrariamente.
+- [x] Arrastrar extremos y segmentos de muros en 2D; asas y longitud visible, con ajuste de rejilla básico. Mejorar alineación y acotación temporal.
+- [x] Crear plano en blanco y redimensionar con escalado proporcional o conservación de posiciones. Falta anclaje por lado.
 - [ ] Edición numérica de cotas y longitudes/ángulos y controles de grosor; mostrar medidas de muros y superficies netas.
-- [ ] Gestión de gestos con **un solo paso de deshacer por arrastre** y previsualización sin ensuciar historial.
+- [x] Gestión de arrastres de muros y muebles con un checkpoint inicial y cambios sin multiplicar pasos de historial.
 - [ ] Mantener puertas/ventanas sobre su muro y proteger límites mínimos mientras se arrastra.
 - [ ] Selección/edición intuitiva con ratón y táctil (si el dispositivo lo soporta), zoom/pan y atajos fiables.
 
@@ -156,6 +166,6 @@ Los estados son **PENDIENTE**, **EN CURSO** y **HECHO**, y se actualizan al veri
 
 | Fecha | Base | Resultado y verificación | Próximo paso |
 |---|---|---|---|
-| 2026-11-07 | `91e1b17` | Auditoría del MVP: React 2D/3D, edición numérica de dimensiones y muros, GLB/JSON, CI verde, Pages manual con ejecución verde. No se ha implementado arrastre de paredes ni recintos topológicos. | F1A: operaciones geométricas/vertices conectados y tests; F2A: handles de arrastre SVG y edición de perímetro. |
+| 2026-11-07 | `bb7e488` | F0/F1/F2 base entregada: topología de recintos, editor gráfico de tabiques, redimensionado, modelos en IndexedDB; 15 tests y compilación CI verdes, Pages desplegado. | F0 E2E y lockfile; F1 nodos compartidos. |\n| 2026-11-07 | `91e1b17` | Auditoría del MVP: React 2D/3D, edición numérica de dimensiones y muros, GLB/JSON, CI verde, Pages manual con ejecución verde. No se ha implementado arrastre de paredes ni recintos topológicos. | F1A: operaciones geométricas/vertices conectados y tests; F2A: handles de arrastre SVG y edición de perímetro. |
 
 **Regla de actualización:** mantener esta tabla con entradas recientes y actualizar `Última auditoría`, commit, estados y siguiente acción. La versión más reciente de `main` prevalece sobre estas observaciones fechadas.
