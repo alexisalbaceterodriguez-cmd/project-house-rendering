@@ -1,103 +1,83 @@
 # Project House Rendering | Atelier 60
 
-**Continuidad del proyecto:** antes de continuar el desarrollo, consultar [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) para objetivo, estado real, fases, backlog, siguiente tarea y bitácora; [`AGENTS.md`](AGENTS.md) recoge las instrucciones que deben seguir nuevos agentes o sesiones de desarrollo. Ambos documentos deben mantenerse al día después de cada entrega.
+Editor web de viviendas con plano 2D y visualizador 3D sincronizados, construido con **React + TypeScript + Zustand + Three.js / React Three Fiber**.
 
-Editor web 2D + 3D para diseñar viviendas, distribución y acabados. Este repositorio contiene el código fuente de la aplicación **Atelier 60**.
+**[Abrir la aplicación](https://alexisalbaceterodriguez-cmd.github.io/project-house-rendering/)** · [Plan de fases](./ROADMAP.md)
 
-Aplicación web editable para diseñar distribuciones y visualizar viviendas en 2D y 3D. El proyecto de demostración es un **rectángulo de 10 × 6 metros (60 m²)**, con tres dormitorios, dos baños, cocina abierta y estilo nórdico. Es una **propuesta conceptual**, no un plano técnico ni una obra ejecutable. Las dimensiones 15 × 12 m serían 180 m², no 60 m².
+> Prototipo de interiorismo conceptual. Las superficies se calculan a partir de los ejes de los tabiques, **no** son superficies útiles certificadas ni validan licencias, habitabilidad, normativa o construcción.
 
-## Inicio rápido
+## Funciones
 
-Requisitos: Node.js **20.19+ o 22.12+** y npm.
+- Crear una **planta en blanco** o cargar el ejemplo nórdico de 60 m², 3 dormitorios y 2 baños.
+- Cambiar **ancho, fondo y altura** de la vivienda. Elegir entre escalar toda la distribución o conservar las coordenadas interiores.
+- Dibujar tabiques con clic en los extremos; mover un tabique seleccionado arrastrando su trazo, o arrastrar sus **asas circulares** para editar cada extremo.
+- Editar coordenadas y espesor de los tabiques desde el inspector. Las paredes exteriores se ajustan desde el panel de dimensiones.
+- Detectar recintos cerrados en el grafo de paredes, con T y cruces. Actualizar geometría y superficie de las habitaciones del plano 2D y la escena 3D.
+- Colocar puertas y ventanas, editar sus dimensiones y detectar ciertos problemas geométricos.
+- Insertar muebles paramétricos, cambiar tamaño, posición, color, materiales, suelos y estilo general.
+- Importar modelos `.glb` de hasta 12 MB. Se guardan en **IndexedDB**, en vez de inflar el historial o `localStorage`.
+- Guardar el diseño en el navegador y exportar/importar un **JSON portable** que incluye los GLB.
+- Deshacer/rehacer, exportar captura PNG de la vista 3D y plano SVG.
+
+## Uso
+
+En un equipo con Node.js 22.12+ y npm:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abre la URL local que muestre Vite (normalmente http://localhost:5173).
+Abre la dirección local mostrada por Vite, normalmente `http://localhost:5173`.
 
-Para producción:
-
-```bash
-npm run build
-npm run preview
-```
-
-## Funciones incluidas
-
-- **Editor SVG 2D:** arrastrar muebles, seleccionar muros y estancias, dibujar muros y rectángulos, añadir puertas y ventanas en muros.
-- **Escena 3D en WebGL:** cámara orbital y cenital, sombras, vista de corte de muros, huecos reales de puertas y ventanas, mobiliario paramétrico.
-- **Catálogo de objetos:** sofá, mesas, sillas, camas, armarios, cocina lineal, isla, electrodomésticos, sanitarios, plantas e iluminación.
-- **Modelos GLB locales:** importación de ficheros autónomos hasta 6 MB, colocación y escalado conceptual. Para guardar el diseño con modelos, exporta su JSON (incluye sus datos incrustados).
-- **Personalización:** cinco materiales de pavimento y un acabado adicional, paletas nórdica, japandi, mediterránea e industrial, colores y tamaños individuales.
-- **Historial:** deshacer y rehacer hasta 40 pasos. Guardado local automático, importación y exportación JSON, PNG desde la escena y SVG del plano.
-- **Sin backend ni cuenta:** todos los datos quedan en el navegador. No se envían diseños a servidores.
-
-## Uso rápido
-
-1. Usa **Plano 2D** o **Mixto** para editar la distribución. Haz clic en un mueble y arrástralo.
-2. Con **Tabique**, selecciona dos puntos. Con **Puerta** o **Ventana**, haz clic sobre una línea de muro.
-3. Usa **Estancia** para añadir una habitación rectangular. Edita acabados por estancia en el panel de propiedades.
-4. En **Objetos**, añade muebles y cambia sus dimensiones, posición, giro y color.
-5. Pulsa **Imagen** para guardar un PNG de la escena; **Exportar** guarda un JSON recuperable desde **Abrir**.
-
-## Arquitectura
-
-```
-src/
-  App.tsx                 Interfaz, propiedades, catálogo y importación/exportación
-  components/
-    Plan2D.tsx            Planta SVG editable con eventos de puntero
-    Scene3D.tsx           Geometría paramétrica Three.js + R3F
-  data/
-    catalog.ts            Modelos y catálogo de acabados
-    defaultProject.ts     Demostración 10 × 6 m
-  lib/geometry.ts         Proyecciones, segmentos de muro y huecos
-  store.ts                Estado Zustand, historial y validación
-  types.ts                Esquema del proyecto
-  __tests__/              Pruebas de geometría y proyecto
-```
-
-## Límites conocidos (importantes)
-
-1. **No es CAD/BIM.** Las superficies de estancia son rectangulares y no se calculan por intersección de tabiques. Editar una habitación no desplaza automáticamente los muros.
-2. **No hay cálculo estructural, de normativa, instalaciones ni colisiones**. La precisión es conceptual; debe verificarse antes de una reforma.
-3. El motor 3D es **en tiempo real**, no un trazador de rayos fotorrealista. Usa geometrías simplificadas en el catálogo; para ver modelos comerciales reales se necesitan archivos GLB con sus licencias.
-4. Los modelos GLB se guardan como datos incrustados en el JSON. El almacenamiento automático de navegador puede agotarse con modelos grandes: exporta JSON con frecuencia.
-5. Los suelos se simulan con colores y líneas; no se incorporan texturas PBR comerciales por defecto.
-6. Las habitaciones del ejemplo son deliberadamente compactas: en 60 m² con 3 dormitorios y 2 baños hay compromisos significativos de ergonomía. Comprueba dimensiones mínimas aplicables con un profesional.
-
-## Próxima fase sugerida
-
-- Editor de vértices y paredes con cotas acotadas y snap inteligente.
-- Cálculo automático de polígonos de habitación, conectividad y detección de colisiones.
-- Biblioteca de modelos GLB con gestión de activos y licencias, IndexedDB para assets grandes.
-- Texturas PBR con HDRI, modo paseo, luces configurables y renderizado offline de alta calidad.
-- Exportaciones DXF/IFC/GLTF si se requiere interoperabilidad técnica.
-
-## Calidad y automatización
+Para verificar y compilar:
 
 ```bash
 npm run test
 npm run build
 ```
 
-GitHub Actions ejecuta las pruebas y la compilación mediante `.github/workflows/ci.yml`. El despliegue en GitHub Pages está preparado en `.github/workflows/pages.yml`, pero se ejecuta **manualmente** para evitar errores hasta que Pages esté activado. Para publicar: entra en `Settings → Pages`, selecciona **GitHub Actions** como origen de despliegue y, después, ejecuta `Actions → Deploy to GitHub Pages → Run workflow`. No requiere tokens adicionales.
+Para ver la compilación localmente, ejecuta `npm run preview`.
 
-La instalación de dependencias de npm y el build completos no pudieron verificarse en el entorno de creación debido al acceso al registro. Los workflows comprobarán ambos procesos en GitHub Actions.
+## Editar medidas y muros
 
-## Estructura del repositorio
+1. Haz clic en **Dimensiones** para abrir el panel de ancho y fondo. Escribe las medidas, selecciona **Escalar** o **Mantener** y confirma.
+2. Selecciona **Tabique** y haz clic en dos puntos para dibujar uno nuevo. Es posible partir de paredes existentes.
+3. En la herramienta **Seleccionar**, haz clic en el trazo de una pared interior y arrástralo; arrastra las asas verdes para cambiar cada extremo.
+4. Las habitaciones se calculan automáticamente cuando los muros cierran un polígono. Puedes cambiar el nombre, tipo y suelo seleccionando la estancia.
+5. Si una operación crea un hueco abierto en el perímetro, la estancia deja de contabilizarse como recinto cerrado. La geometría sigue siendo editable.
+6. Exporta regularmente el JSON. No dependas exclusivamente del guardado local para una reforma real.
 
-La aplicación React/Vite vive en la **raíz del repositorio**. `standalone.html` es un prototipo anterior autónomo que funciona sin npm; no es la versión avanzada.
+## Organización
 
+```text
+src/
+  App.tsx                      Interfaz y propiedades (pendiente de modularizar)
+  components/Plan2D.tsx        Editor SVG y arrastre de muebles/paredes
+  components/Scene3D.tsx       Renderizado de muros, suelos poligonales y GLB
+  data/                        Plantillas, mobiliario y acabados
+  lib/topology.ts              Grafo de tabiques, recintos, áreas y transformaciones
+  lib/validation.ts            Validación estructural del proyecto importado
+  lib/assets.ts                Persistencia de modelos GLB en IndexedDB
+  lib/geometry.ts              Primitivas geométricas y huecos de pared
+  store.ts                     Estado e historial con Zustand
+  __tests__/                   Tests de geometría y validación
+.github/workflows/             Tests, compilación y despliegue de GitHub Pages
+ROADMAP.md                     Fases, pendientes y criterios de aceptación
+standalone.html                Prototipo antiguo autónomo, no actualizado
+```
 
-Tecnologías: React 19, TypeScript, Vite 7, Zustand 5, Three.js, React Three Fiber 9, Drei 10.
+## Límites conocidos
 
-## Licencia
+- El motor obtiene recintos por caras de segmentos, no tiene un grafo de vértices compartidos editable a nivel CAD. Los casos complejos de muros colineales, anillos o huecos interiores requieren más validación.
+- El cálculo no descuenta espesores de paredes ni garantiza anchuras de paso mínimas.
+- El arrastre de paredes exteriores se bloquea intencionadamente; se modifican desde **Dimensiones**.
+- Los GLB guardados en IndexedDB solo existen en el navegador actual. El JSON exportado es el método para transportarlos entre equipos.
+- No hay renderizados PBR fotorrealistas, catálogos comerciales, BIM, DXF ni importación de planos de obra.
+- El prototipo independiente `standalone.html` es una versión anterior que no incluye el nuevo motor geométrico.
 
-Código de demostración creado para la planificación personal de interiores. Los modelos externos que se importen siguen sus respectivas licencias.
+## Calidad y publicación
 
-## Versión inmediata sin npm
+GitHub Actions ejecuta tests con Vitest y compila Vite al actualizar `main`. GitHub Pages se publica automáticamente tras superar los pasos del workflow de despliegue. El repositorio usa `npm install` hasta que se incorpore y verifique un lockfile.
 
-`standalone.html` contiene un **prototipo anterior independiente**, ejecutable con doble clic en Chrome/Edge. Su 3D es ilustrativo y no usa WebGL, GLB ni los componentes React de esta versión. Sirve para experimentar mientras se instalan las dependencias de la aplicación completa. Los archivos JSON de ambas versiones no son intercambiables.
+Licencia: pendiente de definir. No se redistribuyen modelos comerciales externos.

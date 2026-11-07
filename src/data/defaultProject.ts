@@ -19,8 +19,7 @@ export const demoProject: Project = {
     {id:'e',a:{x:10,y:0},b:{x:10,y:6},thickness:.18,outer:true},
     {id:'s',a:{x:0,y:6},b:{x:10,y:6},thickness:.18,outer:true},
     {id:'w',a:{x:0,y:0},b:{x:0,y:6},thickness:.18,outer:true},
-    {id:'living-top',a:{x:4,y:0},b:{x:4,y:3},thickness:.11},
-    {id:'living-bottom',a:{x:4,y:4},b:{x:4,y:6},thickness:.11},
+    {id:'living-top',a:{x:4,y:0},b:{x:4,y:6},thickness:.11},
     {id:'bed-top',a:{x:6.8,y:0},b:{x:6.8,y:3},thickness:.11},
     {id:'bed-bottom',a:{x:6.8,y:4},b:{x:6.8,y:6},thickness:.11},
     {id:'bath-divider',a:{x:8.4,y:4},b:{x:8.4,y:6},thickness:.11},
@@ -29,6 +28,7 @@ export const demoProject: Project = {
   ],
   openings: [
     {id:'entry',wallId:'s',kind:'door',offset:.25,width:.85,height:2.15,sill:0},
+    {id:'living-entry',wallId:'living-top',kind:'door',offset:.59,width:.85,height:2.1,sill:0},
     {id:'door-bed2',wallId:'hall-top',kind:'door',offset:.25,width:.8,height:2.1,sill:0},
     {id:'door-master',wallId:'hall-top',kind:'door',offset:.72,width:.8,height:2.1,sill:0},
     {id:'door-bed3',wallId:'hall-bottom',kind:'door',offset:.22,width:.76,height:2.1,sill:0},
@@ -59,3 +59,19 @@ export const demoProject: Project = {
     furniture('plant-1','plant','Ficus',.6,.6,.5,.5,1.2,0,'#5f8261'),
   ],
 };
+
+/** A new empty plan with an editable outer envelope. */
+export function blankProject(width=10,depth=6):Project {
+  const p:Project={
+    version:1,id:`blank-${Date.now()}`,name:'Nuevo proyecto',width,depth,wallHeight:2.55,
+    palette:{...styles['Nórdico']},
+    rooms:[{id:'room-1',name:'Espacio principal',kind:'living',x:0,y:0,w:width,d:depth,floor:'oak'}],
+    walls:[
+      {id:'north',a:{x:0,y:0},b:{x:width,y:0},thickness:.18,outer:true},
+      {id:'east',a:{x:width,y:0},b:{x:width,y:depth},thickness:.18,outer:true},
+      {id:'south',a:{x:width,y:depth},b:{x:0,y:depth},thickness:.18,outer:true},
+      {id:'west',a:{x:0,y:depth},b:{x:0,y:0},thickness:.18,outer:true}
+    ],openings:[],furniture:[]
+  };
+  return p;
+}

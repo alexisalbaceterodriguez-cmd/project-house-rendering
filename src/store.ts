@@ -1,29 +1,33 @@
 import { create } from 'zustand';
 import type { Project, Selection, Tool, Mode } from './types';
+import { isProject } from './lib/validation';
 import { demoProject } from './data/defaultProject';
+import { reconcileRooms } from './lib/topology';
 const KEY = 'atelier-60-project-v1';
+export {isProject} from './lib/validation';
 export const readProject = (): Project => {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const data: unknown = JSON.parse(raw);
-      if (isProject(data)) return data;
+      if (isProject(data)) {
+        // One-time compatibility fix for the earlier public demo: its salon wall
+        // had an open 1 m gap, so no closed room could be inferred.
+        if(data.id==='atelier-60-demo'){
+          const old=data.walls.find(w=>w.id==='living-top');
+          if(old&&Math.abs(old.b.y-3)<.01&&data.walls.some(w=>w.id==='living-bottom')){
+            old.b.y=6;
+            data.walls=data.walls.filter(w=>w.id!=='living-bottom');
+            data.openings.push({id:'living-entry',wallId:'living-top',kind:'door',offset:.59,width:.85,height:2.1,sill:0});
+            reconcileRooms(data);
+          }
+        }
+        return data;
+      }
     }
   } catch { /* private browsing or invalid file: start with template */ }
-  return structuredClone(demoProject);
+  const fresh=structuredClone(demoProject);reconcileRooms(fresh);return fresh;
 };
-export function isProject(data: unknown): data is Project {
-  if (!data || typeof data !== 'object') return false;
-  const p = data as Record<string, unknown>;
-  if (p.version !== 1 || typeof p.name !== 'string' || typeof p.width !== 'number' || typeof p.depth !== 'number' ||
-      !Number.isFinite(p.width) || !Number.isFinite(p.depth) || p.width < 2 || p.width > 100 || p.depth < 2 || p.depth > 100 ||
-      typeof p.wallHeight !== 'number' || p.wallHeight < 1.8 || p.wallHeight > 6 ||
-      !Array.isArray(p.rooms) || !Array.isArray(p.walls) || !Array.isArray(p.openings) || !Array.isArray(p.furniture) ||
-      !p.palette || typeof p.palette !== 'object') return false;
-  return p.rooms.every((r: Record<string, unknown>) => typeof r?.id === 'string' && typeof r?.x === 'number' && typeof r?.w === 'number') &&
-    p.walls.every((w: Record<string, unknown>) => typeof w?.id === 'string' && !!w?.a && !!w?.b) &&
-    p.furniture.every((f: Record<string, unknown>) => typeof f?.id === 'string' && typeof f?.x === 'number' && typeof f?.kind === 'string');
-}
 type Store = {
   project: Project; selection: Selection; tool: Tool; mode: Mode; wallsVisible: boolean; cutaway: boolean;
   history: Project[]; redoStack: Project[];
@@ -48,7 +52,7 @@ export const useEditor = create<Store>((set, get) => ({
   undo: () => set(s => s.history.length ? ({ project: s.history[s.history.length - 1], history: s.history.slice(0, -1), redoStack: [s.project, ...s.redoStack].slice(0, 40), selection: null }) : s),
   redo: () => set(s => s.redoStack.length ? ({ project: s.redoStack[0], history: [...s.history, s.project].slice(-40), redoStack: s.redoStack.slice(1), selection: null }) : s),
   load: project => set({ project, history: [], redoStack: [], selection: null, tool: 'select' }),
-  reset: () => set({ project: structuredClone(demoProject), history: [], redoStack: [], selection: null, tool: 'select' }),
+  reset: () => {const fresh=structuredClone(demoProject);reconcileRooms(fresh);set({ project: fresh, history: [], redoStack: [], selection: null, tool: 'select' });},
 }));
 export function saveLocal(project: Project): boolean {
   try { localStorage.setItem(KEY, JSON.stringify(project)); return true; } catch { return false; }

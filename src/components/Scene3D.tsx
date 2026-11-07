@@ -1,9 +1,11 @@
-import { Suspense, useEffect, useMemo, type MutableRefObject } from 'react';
+import { Suspense, useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { floors } from '../data/catalog';
 import { clamp, wallLength, wallParts } from '../lib/geometry';
+import { roomVertices } from '../lib/topology';
+import { getModelAsset } from '../lib/assets';
 import { useEditor } from '../store';
 import type { Furniture, Opening, Project, Wall } from '../types';
 
@@ -12,15 +14,21 @@ function Box({position=[0,0,0],size,color,material='matte',opacity=1}:{position?
     <boxGeometry args={size}/><meshStandardMaterial color={color} roughness={material==='metal'?.28:material==='glass'?.08:.8} metalness={material==='metal'?.7:0} transparent={opacity<1||material==='glass'} opacity={material==='glass'?.38:opacity} depthWrite={material!=='glass'} />
   </mesh>;
 }
-function FloorSurface({project,room}:{project:Project;room:Project['rooms'][number]}){
+function FloorSurface({room}:{room:Project['rooms'][number]}){
   const finish=floors[room.floor]??floors.oak;
-  const isWood=['oak','ash','walnut'].includes(room.floor);
-  const slats=useMemo(()=>Array.from({length:Math.floor(room.w/.32)},(_,i)=>i*.32),[room.w]);
-  return <group>
-    <Box position={[room.x+room.w/2,.004,room.y+room.d/2]} size={[room.w,.025,room.d]} color={finish.color}/>
-    {isWood&&slats.map((d,i)=><mesh key={i} rotation={[-Math.PI/2,0,0]} position={[room.x+d,.018,room.y+room.d/2]}><planeGeometry args={[.008,room.d]}/><meshStandardMaterial color={finish.detail} transparent opacity={.28}/></mesh>)}
-    {!isWood&&<mesh rotation={[-Math.PI/2,0,0]} position={[room.x+room.w/2,.02,room.y+room.d/2]}><planeGeometry args={[room.w-.08,room.d-.08]}/><meshStandardMaterial color={finish.color} roughness={.8}/></mesh>}
-  </group>;
+  const shape=useMemo(()=>{
+    const points=roomVertices(room);
+    const result=new THREE.Shape();
+    if(!points.length)return result;
+    result.moveTo(points[0].x,-points[0].y);
+    for(const p of points.slice(1))result.lineTo(p.x,-p.y);
+    result.closePath();
+    return result;
+  },[room]);
+  return <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[0,.021,0]}>
+    <shapeGeometry args={[shape]}/>
+    <meshStandardMaterial color={finish.color} side={THREE.DoubleSide} roughness={.8}/>
+  </mesh>;
 }
 function WallModel({wall,project,cutaway,selected}:{wall:Wall;project:Project;cutaway:boolean;selected:boolean}){
   const len=wallLength(wall);
@@ -56,6 +64,19 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
   return <group scale={[item.w/Math.max(size.x,.001),item.h/Math.max(size.y,.001),item.d/Math.max(size.z,.001)]}>
     <primitive object={clone} position={[-center.x, -center.y+size.y/2, -center.z]}/>
   </group>;
+}
+function ModelShape({item}:{item:Furniture}){
+  const [url,setUrl]=useState<string|null>(item.modelData??null);
+  useEffect(()=>{
+    if(item.modelData){setUrl(item.modelData);return;}
+    if(!item.assetId){setUrl(null);return;}
+    let active=true;let objectURL:string|undefined;
+    getModelAsset(item.assetId).then(blob=>{
+      if(blob&&active){objectURL=URL.createObjectURL(blob);setUrl(objectURL);}
+    }).catch(()=>{if(active)setUrl(null);});
+    return ()=>{active=false;if(objectURL)URL.revokeObjectURL(objectURL);};
+  },[item.assetId,item.modelData]);
+  return url?<Suspense fallback={<Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#ddd5c5"/>}><ImportedModel url={url} item={item}/></Suspense>:<Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#c3cbbe"/>;
 }
 function Bed({item}:{item:Furniture}){
   return <><Box position={[0,.20,0]} size={[item.w,.35,item.d]} color="#c0a489"/>
@@ -94,7 +115,7 @@ function FurnitureShape({item,project}:{item:Furniture;project:Project}){
     case 'plant':return <><mesh castShadow position={[0,.24,0]}><cylinderGeometry args={[w*.27,w*.2,.48,12]}/><meshStandardMaterial color="#b7a185"/></mesh>{[[0,.75,0],[.12,.98,.12],[-.13,.95,-.08],[0,1.2,.02]].map((p,i)=><mesh key={i} position={p as [number,number,number]}><sphereGeometry args={[.23,9,7]}/><meshStandardMaterial color={i%2?'#4f8060':'#6d9875'}/></mesh>)}</>;
     case 'lamp':return <><mesh castShadow position={[0,.04,0]}><cylinderGeometry args={[.16,.16,.08,24]}/><meshStandardMaterial color="#7b7871"/></mesh><Box position={[0,h/2,0]} size={[.027,h,.027]} color="#797875" material="metal"/><mesh position={[0,h-.12,0]}><coneGeometry args={[.27,.34,24,1,true]}/><meshStandardMaterial color="#eae0cd" side={THREE.DoubleSide}/></mesh><pointLight position={[0,h-.15,0]} intensity={.13} color="#fff2d3" distance={2}/></>;
     case 'rug':return <Box position={[0,.014,0]} size={[w,.028,d]} color={item.color}/>;
-    case 'model':return item.modelData?<Suspense fallback={<Box position={[0,h/2,0]} size={[w,h,d]} color="#ddd5c5"/>}><ImportedModel url={item.modelData} item={item}/></Suspense>:null;
+    case 'model':return <ModelShape item={item}/>;
   }
 }
 function ObjectModel({item,project,selected,onSelect}:{item:Furniture;project:Project;selected:boolean;onSelect:()=>void}){
@@ -124,7 +145,7 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       <CameraRig project={project} top={topView}/>
       <OrbitControls makeDefault target={[project.width/2,.05,project.depth/2]} enableDamping dampingFactor={.08} minDistance={2} maxDistance={50} maxPolarAngle={Math.PI*.495}/>
       <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[project.width/2,-.1,project.depth/2]}><planeGeometry args={[project.width+50,project.depth+50]}/><meshStandardMaterial color="#ebeae5" roughness={1}/></mesh>
-      {project.rooms.map(room=><FloorSurface key={room.id} project={project} room={room}/>)}
+      {project.rooms.map(room=><FloorSurface key={room.id} room={room}/>)}
       <Box position={[project.width/2,-.065,project.depth/2]} size={[project.width,.10,project.depth]} color="#d4c7b5"/>
       {wallsVisible&&project.walls.map(w=><WallModel key={w.id} wall={w} project={project} cutaway={cutaway} selected={selection?.type==='wall'&&selection.id===w.id}/>)}
       {project.furniture.map(item=><ObjectModel key={item.id} item={item} project={project} selected={selection?.type==='furniture'&&selection.id===item.id} onSelect={()=>setSelection({type:'furniture',id:item.id})}/>)}

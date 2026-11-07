@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
-# Pages requires an initial one-time setup in Settings > Pages > GitHub Actions.
-# Run this workflow manually after enabling Pages.
+# Automatic deployment on main after the initial GitHub Pages setup.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
