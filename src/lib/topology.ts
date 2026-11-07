@@ -29,7 +29,7 @@ export function pointInPolygon(pt:Point,poly:Point[]):boolean {
   }
   return inside;
 }
-export const roomVertices=(room:Room):Point[]=>room.vertices?.length>=3?room.vertices:[{x:room.x,y:room.y},{x:room.x+room.w,y:room.y},{x:room.x+room.w,y:room.y+room.d},{x:room.x,y:room.y+room.d}];
+export const roomVertices=(room:Room):Point[]=>room.vertices && room.vertices.length>=3?room.vertices:[{x:room.x,y:room.y},{x:room.x+room.w,y:room.y},{x:room.x+room.w,y:room.y+room.d},{x:room.x,y:room.y+room.d}];
 export const roomArea=(room:Room)=>polygonArea(roomVertices(room));
 
 /** Endpoints and all proper line intersections are split into a half-edge graph. */

@@ -12,7 +12,8 @@ const furnitureKinds:Set<FurnitureKind>=new Set(['sofa','bed','single-bed','tabl
 export function isProject(a:unknown):a is Project{
   if(!object(a)||a.version!==1||!str(a.id)||!str(a.name)||!num(a.width,2,100)||!num(a.depth,2,100)||!num(a.wallHeight,1.8,6))return false;
   if(!Array.isArray(a.rooms)||a.rooms.length>200||!Array.isArray(a.walls)||a.walls.length>500||!Array.isArray(a.openings)||a.openings.length>500||!Array.isArray(a.furniture)||a.furniture.length>1000)return false;
-  if(!object(a.palette)||!['walls','accent','wood','textile','metal'].every(key=>color(a.palette[key])))return false;
+  const palette=a.palette;
+  if(!object(palette)||!['walls','accent','wood','textile','metal'].every(key=>color(palette[key])))return false;
   if(!a.rooms.every((r:unknown)=>object(r)&&str(r.id)&&str(r.name)&&kinds.has(r.kind as RoomKind)&&finishes.has(r.floor as FloorFinish)&&num(r.x,-100,200)&&num(r.y,-100,200)&&num(r.w,.01,200)&&num(r.d,.01,200)&&(r.vertices===undefined||(Array.isArray(r.vertices)&&r.vertices.length>=3&&r.vertices.length<=500&&r.vertices.every(coord)))))return false;
   if(!a.walls.every((w:unknown)=>object(w)&&str(w.id)&&coord(w.a)&&coord(w.b)&&num(w.thickness,.04,1)&&(w.outer===undefined||typeof w.outer==='boolean')))return false;
   if(!a.openings.every((o:unknown)=>object(o)&&str(o.id)&&str(o.wallId)&&['door','window'].includes(o.kind as string)&&num(o.offset,0,1)&&num(o.width,.1,8)&&num(o.height,.1,6)&&num(o.sill,0,6)))return false;
