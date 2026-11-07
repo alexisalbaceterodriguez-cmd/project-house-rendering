@@ -1,7 +1,7 @@
 export type Point = { x: number; y: number };
 export type RoomKind = 'living' | 'bedroom' | 'bathroom' | 'hall';
 export type FloorFinish = 'oak' | 'ash' | 'walnut' | 'stone' | 'terrazzo' | 'concrete';
-export type Room = { id: string; name: string; kind: RoomKind; x: number; y: number; w: number; d: number; floor: FloorFinish; vertices?: Point[] };
+export type Room = { id: string; name: string; kind: RoomKind; x: number; y: number; w: number; d: number; floor: FloorFinish; vertices?: Point[]; holes?: Point[][] };
 export type Wall = { id: string; a: Point; b: Point; thickness: number; outer?: boolean };
 export type Opening = { id: string; wallId: string; kind: 'door' | 'window'; offset: number; width: number; height: number; sill: number };
 export type FurnitureKind = 'sofa' | 'bed' | 'single-bed' | 'table' | 'chair' | 'wardrobe' | 'desk' | 'kitchen' | 'island' | 'sink' | 'fridge' | 'toilet' | 'shower' | 'plant' | 'lamp' | 'rug' | 'model';

@@ -23,6 +23,13 @@ function FloorSurface({room}:{room:Project['rooms'][number]}){
     result.moveTo(points[0].x,-points[0].y);
     for(const p of points.slice(1))result.lineTo(p.x,-p.y);
     result.closePath();
+    for(const hole of room.holes??[]){
+      const path=new THREE.Path();
+      path.moveTo(hole[0].x,-hole[0].y);
+      for(const p of hole.slice(1))path.lineTo(p.x,-p.y);
+      path.closePath();
+      result.holes.push(path);
+    }
     return result;
   },[room]);
   return <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[0,.021,0]}>

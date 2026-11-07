@@ -65,11 +65,3 @@
 4. Pulsar **Dimensiones**, pasar de 10 × 6 a 12 × 8 y comparar modos «Escalar» y «Mantener» con Deshacer.
 5. Añadir un mueble y un GLB, exportar JSON, recargar, abrir JSON y comprobar que el modelo no desaparece.
 6. Comprobar en un proyecto incompleto que se muestran advertencias en lugar de afirmar que es un plano técnico válido.
-
-## Seguimiento en GitHub
-
-- [Issue #1: estabilidad, E2E y lockfile](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/1)
-- [Issue #2: topología y colisiones](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/2)
-- [Issue #3: editor preciso](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/3)
-- [Issue #4: cocinas y baños](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/4)
-- [Issue #5: render realista y versiones](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/5)

@@ -1,7 +1,7 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { floors } from '../data/catalog';
 import { clamp, distance, makeId, snap, wallProjection } from '../lib/geometry';
-import { polygonCentroid, projectWarnings, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
+import { roomLabelPoint, projectWarnings, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
 import { useEditor } from '../store';
 import type { Furniture, Point } from '../types';
 
@@ -112,6 +112,10 @@ export default function Plan2D() {
   };
   const onDragEnd=()=>{drag.current=null;};
   const warnings=projectWarnings(project);
+  const roomPath=(room:typeof project.rooms[number])=>{
+    const ring=(points:Point[])=>`M ${points.map(p=>`${p.x} ${p.y}`).join(' L ')} Z`;
+    return [ring(roomVertices(room)),...(room.holes??[]).map(ring)].join(' ');
+  };
   const spanX=project.width/zoom, spanY=project.depth/zoom;
   const x0=(project.width-spanX)/2,y0=(project.depth-spanY)/2;
   return <div className="plan-wrap">
@@ -120,9 +124,9 @@ export default function Plan2D() {
       <defs><pattern id="floor-grid" width=".5" height=".5" patternUnits="userSpaceOnUse"><path d="M .5 0 L 0 0 0 .5" fill="none" stroke="#c8c4bd" strokeWidth=".013"/></pattern></defs>
       <rect data-floor="true" x="0" y="0" width={project.width} height={project.depth} fill="#f8f7f4"/>
       {project.rooms.map(room=><g key={room.id} onPointerDown={e=>{if(tool==='select'){e.stopPropagation();setSelection({type:'room',id:room.id});}}}>
-        <polygon data-floor="true" points={roomVertices(room).map(v=>`${v.x},${v.y}`).join(' ')} fill={floors[room.floor]?.color ?? '#e0d2bd'} opacity=".56"/>
-        <text x={polygonCentroid(roomVertices(room)).x} y={polygonCentroid(roomVertices(room)).y} className="room-title" fontSize=".2" textAnchor="middle" opacity=".52">{room.name} ({roomArea(room).toFixed(1)}m²)</text>
-        {selection?.type==='room' && selection.id===room.id && <polygon points={roomVertices(room).map(v=>`${v.x},${v.y}`).join(' ')} fill="none" stroke="#3a705b" strokeDasharray=".09 .07" strokeWidth=".045" pointerEvents="none"/>}
+        <path data-floor="true" d={roomPath(room)} fillRule="evenodd" fill={floors[room.floor]?.color ?? '#e0d2bd'} opacity=".56"/>
+        <text x={roomLabelPoint(room).x} y={roomLabelPoint(room).y} className="room-title" fontSize=".2" textAnchor="middle" opacity=".52">{room.name} ({roomArea(room).toFixed(1)}m²)</text>
+        {selection?.type==='room' && selection.id===room.id && <path d={roomPath(room)} fill="none" stroke="#3a705b" strokeDasharray=".09 .07" strokeWidth=".045" pointerEvents="none"/>}
       </g>)}
       <rect data-floor="true" x="0" y="0" width={project.width} height={project.depth} fill="url(#floor-grid)" pointerEvents="none"/>
       {project.walls.map(w=><g key={w.id}>

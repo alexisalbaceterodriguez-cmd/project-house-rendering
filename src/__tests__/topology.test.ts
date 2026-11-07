@@ -70,3 +70,17 @@ describe('Seguridad al abrir proyectos',()=>{
     expect(isProject(p)).toBe(false);
   });
 });
+
+describe('Recintos interiores desconectados',()=>{
+  it('descuenta habitaciones cerradas dentro de otra superficie sin duplicarla',async()=>{
+    const { blankProject }=await import('../data/defaultProject');
+    const p=blankProject();
+    const segments=[[[2,2],[4,2]],[[4,2],[4,4]],[[4,4],[2,4]],[[2,4],[2,2]]];
+    for(const [i,[a,b]] of segments.entries())p.walls.push({id:`inner-${i}`,a:{x:a[0],y:a[1]},b:{x:b[0],y:b[1]},thickness:.1});
+    reconcileRooms(p);
+    expect(p.rooms).toHaveLength(2);
+    expect(p.rooms.reduce((sum,r)=>sum+roomArea(r),0)).toBeCloseTo(60);
+    expect(p.rooms.find(r=>r.id==='room-1')?.name).toBe('Espacio principal');
+    expect(p.rooms.find(r=>r.id==='room-1')?.holes).toHaveLength(1);
+  });
+});

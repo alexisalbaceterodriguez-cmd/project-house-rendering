@@ -30,7 +30,17 @@ export function pointInPolygon(pt:Point,poly:Point[]):boolean {
   return inside;
 }
 export const roomVertices=(room:Room):Point[]=>room.vertices && room.vertices.length>=3?room.vertices:[{x:room.x,y:room.y},{x:room.x+room.w,y:room.y},{x:room.x+room.w,y:room.y+room.d},{x:room.x,y:room.y+room.d}];
-export const roomArea=(room:Room)=>polygonArea(roomVertices(room));
+export const roomArea=(room:Room)=>Math.max(0,polygonArea(roomVertices(room))-(room.holes??[]).reduce((acc,h)=>acc+polygonArea(h),0));
+/** Place a room label in the habitable region, not inside a nested void. */
+export function roomLabelPoint(room:Room):Point {
+  const poly=roomVertices(room),centroid=polygonCentroid(poly);
+  if(!(room.holes??[]).some(h=>pointInPolygon(centroid,h)))return centroid;
+  for(const anchor of poly){
+    const p={x:anchor.x*.88+centroid.x*.12,y:anchor.y*.88+centroid.y*.12};
+    if(pointInPolygon(p,poly)&&!(room.holes??[]).some(h=>pointInPolygon(p,h)))return p;
+  }
+  return poly[0];
+}
 
 /** Endpoints and all proper line intersections are split into a half-edge graph. */
 export function enclosedFaces(walls:Wall[],width:number,depth:number):Point[][] {
@@ -129,15 +139,34 @@ export function overlapRectangle(pts:Point[],r:{x:number;y:number;w:number;d:num
  */
 export function reconcileRooms(p:Project):void {
   const faces=enclosedFaces(p.walls,p.width,p.depth);
+  // Disconnected nested rings are legitimate rooms. Their parent floor must
+  // contain a void, otherwise both floors and areas would double count.
+  const holes=faces.map((_,i)=>{
+    const area=polygonArea(faces[i]);
+    return faces.filter((candidate,j)=>{
+      if(j===i||polygonArea(candidate)>=area-.01)return false;
+      const childCentroid=polygonCentroid(candidate);
+      if(!pointInPolygon(childCentroid,faces[i]))return false;
+      const ancestorArea=Math.min(...faces.filter((other,k)=>k!==j&&polygonArea(other)>polygonArea(candidate)+.01&&pointInPolygon(childCentroid,other)).map(polygonArea));
+      return Math.abs(ancestorArea-area)<.01;
+    });
+  });
   const previous=p.rooms;
-  const matched=new Set<string>();
+  // Global matching prevents a newly enclosed inner room from stealing the
+  // identity of a larger existing room just because it is visited first.
+  const candidates=faces.flatMap((poly,faceIndex)=>previous.map(room=>({faceIndex,room,score:overlapRectangle(poly,room)})))
+    .sort((a,b)=>b.score-a.score);
+  const assignments=new Map<number,Room>();const matched=new Set<string>();
+  for(const candidate of candidates){
+    if(candidate.score<=.05)break;
+    if(assignments.has(candidate.faceIndex)||matched.has(candidate.room.id))continue;
+    assignments.set(candidate.faceIndex,candidate.room);matched.add(candidate.room.id);
+  }
   const result:Room[]=[];
-  for(const poly of faces){
-    const matches=previous.filter(r=>!matched.has(r.id)).map(r=>({room:r,score:overlapRectangle(poly,r)})).sort((a,b)=>b.score-a.score);
-    const original=matches[0]?.score>.05?matches[0].room:undefined;
-    if(original)matched.add(original.id);
+  for(const [faceIndex,poly] of faces.entries()){
+    const original=assignments.get(faceIndex);
     const xs=poly.map(v=>v.x),ys=poly.map(v=>v.y);const x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,d=Math.max(...ys)-y;
-    result.push({id:original?.id??makeId(),name:original?.name??`Estancia ${result.length+1}`,kind:original?.kind??'bedroom',floor:original?.floor??'oak',x,y,w,d,vertices:poly});
+    result.push({id:original?.id??makeId(),name:original?.name??`Estancia ${result.length+1}`,kind:original?.kind??'bedroom',floor:original?.floor??'oak',x,y,w,d,vertices:poly,holes:holes[faceIndex]});
   }
   p.rooms=result;
 }
@@ -149,7 +178,7 @@ export function resizeProject(p:Project,width:number,depth:number,mode:'scale'|'
   const sx=width/p.width,sy=depth/p.depth;
   if(mode==='scale'){
     p.walls.forEach(w=>{w.a.x*=sx;w.b.x*=sx;w.a.y*=sy;w.b.y*=sy;});
-    p.rooms.forEach(r=>{r.x*=sx;r.y*=sy;r.w*=sx;r.d*=sy;r.vertices?.forEach(v=>{v.x*=sx;v.y*=sy;});});
+    p.rooms.forEach(r=>{r.x*=sx;r.y*=sy;r.w*=sx;r.d*=sy;r.vertices?.forEach(v=>{v.x*=sx;v.y*=sy;});r.holes?.forEach(h=>h.forEach(v=>{v.x*=sx;v.y*=sy;}));});
     p.furniture.forEach(f=>{f.x*=sx;f.y*=sy;});
   }else{
     // Keep interior geometry fixed; reposition only the exterior perimeter.
