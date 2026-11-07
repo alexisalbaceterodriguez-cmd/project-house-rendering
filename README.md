@@ -1,5 +1,7 @@
 # Project House Rendering | Atelier 60
 
+**Continuidad del proyecto:** antes de continuar el desarrollo, consultar [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) para objetivo, estado real, fases, backlog, siguiente tarea y bitácora; [`AGENTS.md`](AGENTS.md) recoge las instrucciones que deben seguir nuevos agentes o sesiones de desarrollo. Ambos documentos deben mantenerse al día después de cada entrega.
+
 Editor web 2D + 3D para diseñar viviendas, distribución y acabados. Este repositorio contiene el código fuente de la aplicación **Atelier 60**.
 
 Aplicación web editable para diseñar distribuciones y visualizar viviendas en 2D y 3D. El proyecto de demostración es un **rectángulo de 10 × 6 metros (60 m²)**, con tres dormitorios, dos baños, cocina abierta y estilo nórdico. Es una **propuesta conceptual**, no un plano técnico ni una obra ejecutable. Las dimensiones 15 × 12 m serían 180 m², no 60 m².
