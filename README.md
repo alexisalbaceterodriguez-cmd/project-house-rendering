@@ -81,7 +81,7 @@ npm run test
 npm run build
 ```
 
-GitHub Actions ejecuta las pruebas y la compilación mediante `.github/workflows/ci.yml`. Además, `.github/workflows/pages.yml` publica la aplicación desde `main` en GitHub Pages. **Para activar Pages**, entra en `Settings → Pages` y selecciona **GitHub Actions** como origen de despliegue. Si todavía no está configurado, el despliegue automático puede fallar sin que eso implique que la app no funcione.
+GitHub Actions ejecuta las pruebas y la compilación mediante `.github/workflows/ci.yml`. El despliegue en GitHub Pages está preparado en `.github/workflows/pages.yml`, pero se ejecuta **manualmente** para evitar errores hasta que Pages esté activado. Para publicar: entra en `Settings → Pages`, selecciona **GitHub Actions** como origen de despliegue y, después, ejecuta `Actions → Deploy to GitHub Pages → Run workflow`. No requiere tokens adicionales.
 
 La instalación de dependencias de npm y el build completos no pudieron verificarse en el entorno de creación debido al acceso al registro. Los workflows comprobarán ambos procesos en GitHub Actions.
 
