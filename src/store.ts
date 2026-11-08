@@ -58,7 +58,9 @@ export const useEditor = create<Store>((set, get) => ({
   },
   undo: () => set(s => s.history.length ? ({ project: s.history[s.history.length - 1], history: s.history.slice(0, -1), redoStack: [s.project, ...s.redoStack].slice(0, 40), selection: null }) : s),
   redo: () => set(s => s.redoStack.length ? ({ project: s.redoStack[0], history: [...s.history, s.project].slice(-40), redoStack: s.redoStack.slice(1), selection: null }) : s),
-  load: project => set({ project, history: [], redoStack: [], selection: null, tool: 'select' }),
+  // Imported objects must not retain a mutable reference into the editor state.
+  // A caller changing its parsed JSON later must not silently alter the plan.
+  load: project => set({ project: structuredClone(project), history: [], redoStack: [], selection: null, tool: 'select' }),
   reset: () => {const fresh=structuredClone(demoProject);reconcileRooms(fresh);set({ project: fresh, history: [], redoStack: [], selection: null, tool: 'select' });},
 }));
 export function saveLocal(project: Project): boolean {
