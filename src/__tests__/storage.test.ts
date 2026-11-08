@@ -75,6 +75,35 @@ describe('F0: almacenamiento y recuperación del editor', () => {
       'atelier-60-project-v1-backup', JSON.stringify(demoProject));
   });
 
+  it('lee el proyecto principal aunque falle el acceso al respaldo', async () => {
+    const project = structuredClone(demoProject);
+    project.name = 'Principal intacto';
+    const storage = storageMock(JSON.stringify(project));
+    const originalGet = storage.getItem.getMockImplementation()!;
+    storage.getItem.mockImplementation((key: string) => {
+      if (key === 'atelier-60-project-v1-backup') throw new Error('SecurityError');
+      return originalGet(key);
+    });
+    vi.stubGlobal('localStorage', storage);
+    const { readProject } = await import('../store');
+    expect(readProject().name).toBe('Principal intacto');
+  });
+
+  it('recupera el respaldo cuando leer el principal lanza una excepción', async () => {
+    const project = structuredClone(demoProject);
+    project.name = 'Respaldo accesible';
+    const storage = storageMock();
+    const originalGet = storage.getItem.getMockImplementation()!;
+    storage.getItem.mockImplementation((key: string) => {
+      if (key === 'atelier-60-project-v1') throw new Error('SecurityError');
+      if (key === 'atelier-60-project-v1-backup') return JSON.stringify(project);
+      return originalGet(key);
+    });
+    vi.stubGlobal('localStorage', storage);
+    const { readProject } = await import('../store');
+    expect(readProject().name).toBe('Respaldo accesible');
+  });
+
   it('guarda y restaura una edición, conservando deshacer y rehacer', async () => {
     const storage = storageMock();
     vi.stubGlobal('localStorage', storage);
