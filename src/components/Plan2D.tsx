@@ -3,7 +3,7 @@ import { floors } from '../data/catalog';
 import { clamp, distance, makeId, snap, wallProjection } from '../lib/geometry';
 import { roomLabelPoint, projectWarnings, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
 import { useEditor } from '../store';
-import type { Furniture, Point } from '../types';
+import type { Furniture, Point, Wall } from '../types';
 
 function iconFor(item: Furniture) {
   if (item.kind === 'bed' || item.kind === 'single-bed') return <><rect x={-item.w*.45} y={-item.d*.44} width={item.w*.9} height={item.d*.88} rx=".09" fill="#f3efe7" stroke="#beb6aa" strokeWidth=".024"/><rect x={-item.w*.38} y={-item.d*.39} width={item.w*.76} height={Math.min(.43,item.d*.25)} rx=".06" fill="#d1c2b2"/></>;
@@ -12,6 +12,27 @@ function iconFor(item: Furniture) {
   if (item.kind === 'toilet') return <><rect x={-item.w*.4} y={-item.d*.43} width={item.w*.8} height={item.d*.28} rx=".03" fill="#e8e5df"/><ellipse cy={item.d*.09} rx={item.w*.3} ry={item.d*.28} fill="#f9f9f7" stroke="#bec6c3" strokeWidth=".025"/></>;
   if (item.kind === 'shower') return <><rect x={-item.w*.45} y={-item.d*.45} width={item.w*.9} height={item.d*.9} fill="#d7e0df" stroke="#8da7aa" strokeWidth=".02"/><circle r=".07" fill="#889ca0"/></>;
   return <><rect x={-item.w*.46} y={-item.d*.44} width={item.w*.92} height={item.d*.88} rx=".035" fill={item.color} stroke="#9b9186" strokeWidth=".025"/>{item.kind==='table' || item.kind==='desk' || item.kind==='kitchen' || item.kind==='island' ? <line x1={-item.w*.37} y1="0" x2={item.w*.37} y2="0" stroke="#ffffff" strokeOpacity=".45" strokeWidth=".018"/>: null}</>;
+}
+/** Magnetic joints when drawing walls: prefer an existing vertex, then a wall axis.
+ * Reuse the exact coordinates so T junctions remain connected in the room graph. */
+function snapToWallJoint(point: Point, walls: Wall[]): Point {
+  const tolerance = .22;
+  let nearest: Point | null = null;
+  let best = tolerance;
+  for (const wall of walls) {
+    for (const endpoint of [wall.a, wall.b]) {
+      const d = distance(point, endpoint);
+      if (d < best) { best = d; nearest = endpoint; }
+    }
+  }
+  if (nearest) return { ...nearest };
+  best = tolerance;
+  for (const wall of walls) {
+    const projected = wallProjection(wall, point).point;
+    const d = distance(point, projected);
+    if (d < best) { best = d; nearest = projected; }
+  }
+  return nearest ? { ...nearest } : point;
 }
 export default function Plan2D() {
   const { project, tool, selection, setSelection, setTool, change, checkpoint } = useEditor();
@@ -29,13 +50,16 @@ export default function Plan2D() {
   };
   const onBackground = (e: PointerEvent<SVGSVGElement>) => {
     if (e.target !== svg.current && (e.target as Element).getAttribute('data-floor') !== 'true') return;
-    const p = pt(e);
+    const p = tool === 'wall' ? snapToWallJoint(pt(e), project.walls) : pt(e);
     if (tool === 'wall') {
       if (!startWall) setStartWall(p);
       else {
         const endpoint = { ...p };
-        if (Math.abs(endpoint.x - startWall.x) < .35) endpoint.x = startWall.x;
-        if (Math.abs(endpoint.y - startWall.y) < .35) endpoint.y = startWall.y;
+        const magneticJoint = project.walls.some(w => distance(endpoint,w.a)<.001 || distance(endpoint,w.b)<.001 || distance(endpoint,wallProjection(w,endpoint).point)<.001);
+        if (!magneticJoint) {
+          if (Math.abs(endpoint.x - startWall.x) < .35) endpoint.x = startWall.x;
+          if (Math.abs(endpoint.y - startWall.y) < .35) endpoint.y = startWall.y;
+        }
         if (distance(startWall, endpoint) > .3) change(project => {project.walls.push({id:makeId(),a:startWall,b:endpoint,thickness:.12});reconcileRooms(project);});
         setStartWall(null);
       }
@@ -87,7 +111,7 @@ export default function Plan2D() {
     svg.current?.setPointerCapture(e.pointerId);
   };
   const onMove=(e:PointerEvent<SVGSVGElement>)=>{
-    const p=pt(e);setPointer(p);
+    const p=pt(e);setPointer(tool==='wall' ? snapToWallJoint(p,project.walls) : p);
     if(drag.current){
       if(drag.current.type==='furniture'){
         const {id,dx,dy}=drag.current;
@@ -151,6 +175,6 @@ export default function Plan2D() {
       {startWall&&pointer&&<line x1={startWall.x} y1={startWall.y} x2={pointer.x} y2={pointer.y} stroke="#267658" strokeDasharray=".14 .09" strokeWidth=".055"/>}
       <g className="dimension"><line x1="0" y1="-.3" x2={project.width} y2="-.3" stroke="#888980" strokeWidth=".018"/><text x={project.width/2} y="-.38" textAnchor="middle" fontSize=".18">{project.width.toFixed(2)} m</text><line x1="-.3" y1="0" x2="-.3" y2={project.depth} stroke="#888980" strokeWidth=".018"/><text x="-.38" y={project.depth/2} textAnchor="middle" transform={`rotate(-90 -.38 ${project.depth/2})`} fontSize=".18">{project.depth.toFixed(2)} m</text></g>
     </svg>
-    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona un muro para arrastrarlo o modificar sus extremos' }</span><div className="zoom-tools"><button title="Alejar" onClick={()=>setZoom(z=>Math.max(1,z-.2))}>−</button><span>{Math.round(zoom*100)}%</span><button title="Acercar" onClick={()=>setZoom(z=>Math.min(2.6,z+.2))}>+</button></div></div>
+    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona un muro para arrastrarlo o modificar sus extremos' }</span><div className="zoom-tools"><button title="Alejar" onClick={()=>setZoom(z=>Math.max(1,z-.2))}>−</button><span>{Math.round(zoom*100)}%</span><button title="Acercar" onClick={()=>setZoom(z=>Math.min(2.6,z+.2))}>+</button></div></div>
   </div>;
 }
