@@ -60,7 +60,35 @@ export default function Plan2D() {
           if (Math.abs(endpoint.x - startWall.x) < .35) endpoint.x = startWall.x;
           if (Math.abs(endpoint.y - startWall.y) < .35) endpoint.y = startWall.y;
         }
-        if (distance(startWall, endpoint) > .3) change(project => {project.walls.push({id:makeId(),a:startWall,b:endpoint,thickness:.12});reconcileRooms(project);});
+        if (distance(startWall, endpoint) > .3) change(project => {
+          // Make a snapped T junction an actual pair of editable wall segments.
+          // Keep opening centres at the same world position on either segment.
+          const connectAt = (joint: Point) => {
+            const existing = [...project.walls];
+            for (const wall of existing) {
+              if (wall.outer || distance(joint, wall.a) < .001 || distance(joint, wall.b) < .001) continue;
+              const projection = wallProjection(wall, joint);
+              const length = distance(wall.a, wall.b);
+              const cut = projection.offset * length;
+              if (distance(projection.point, joint) > .001 || cut < .35 || length - cut < .35) continue;
+              const openings = project.openings.filter(o => o.wallId === wall.id);
+              if (openings.some(o => Math.abs(o.offset * length - cut) < o.width / 2 + .05)) continue;
+              const secondId = makeId();
+              const oldEnd = { ...wall.b };
+              wall.b = { ...joint };
+              project.walls.push({ ...wall, id: secondId, a: { ...joint }, b: oldEnd });
+              for (const opening of openings) {
+                const centre = opening.offset * length;
+                if (centre < cut) opening.offset = centre / cut;
+                else { opening.wallId = secondId; opening.offset = (centre - cut) / (length - cut); }
+              }
+            }
+          };
+          connectAt(startWall);
+          if (distance(startWall, endpoint) > .001) connectAt(endpoint);
+          project.walls.push({id:makeId(),a:startWall,b:endpoint,thickness:.12});
+          reconcileRooms(project);
+        });
         setStartWall(null);
       }
     } else if (tool === 'room') {
