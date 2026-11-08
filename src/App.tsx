@@ -196,6 +196,15 @@ export default function App(){
     if(!file.name.toLowerCase().endsWith('.glb')){alert('Solo se admiten archivos .glb autónomos.');return;}
     if(file.size>12*1024*1024){alert('Modelo demasiado grande. Máximo 12 MB.');return;}
     try{
+      // Reject non-GLB files before persisting an unusable asset or editing the plan.
+      const header=new DataView(await file.slice(0,12).arrayBuffer());
+      if(file.size<20||header.getUint32(0,true)!==0x46546c67||header.getUint32(4,true)!==2||header.getUint32(8,true)!==file.size){
+        throw Error('El archivo no es un GLB 2.0 válido.');
+      }
+      const chunk=new DataView(await file.slice(12,20).arrayBuffer());
+      if(chunk.getUint32(4,true)!==0x4e4f534a||chunk.getUint32(0,true)>file.size-20){
+        throw Error('El modelo GLB no contiene un bloque JSON válido.');
+      }
       const assetId=makeId();await putModelAsset(assetId,file);
       const id=makeId();change(p=>p.furniture.push({id,kind:'model',name:file.name.replace(/\.glb$/i,''),x:p.width/2,y:p.depth/2,w:1,d:1,h:1,rotation:0,color:'#e2e2df',assetId}));
       setSelection({type:'furniture',id});alert('Modelo guardado en IndexedDB e importado al proyecto.');
