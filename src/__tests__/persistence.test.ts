@@ -1,9 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { demoProject } from '../data/defaultProject';
+import { blankProject, demoProject } from '../data/defaultProject';
 import { isProject } from '../lib/validation';
 import { reconcileRooms, resizeProject, roomArea } from '../lib/topology';
 
 describe('F0: portabilidad y validación del proyecto', () => {
+  it('acepta redimensionar un plano nuevo desde el editor', () => {
+    const project = blankProject();
+    project.name = 'Vivienda E2E';
+    expect(isProject(project)).toBe(true);
+    resizeProject(project, 12, 7);
+    expect(project.width).toBe(12);
+    expect(project.depth).toBe(7);
+    expect(isProject(project)).toBe(true);
+    expect(project.rooms.reduce((total, room) => total + roomArea(room), 0)).toBeCloseTo(84);
+  });
+
   it('conserva la geometría y los metadatos al exportar e importar JSON', () => {
     const original = structuredClone(demoProject);
     reconcileRooms(original);
