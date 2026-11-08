@@ -25,3 +25,11 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 4. Probar guardado local, assets GLB y recuperación ante cuotas de almacenamiento; diseñar migraciones versionadas.
 
 **Regla de continuidad:** consultar este archivo, commits y issues al iniciar cada sesión; no repetir tareas completadas, no declarar terminada una fase sin cumplir sus criterios y dejar main estable.
+
+## Revisión de continuidad — 2026-11-08 01:37 (Europe/Madrid)
+
+- Inspeccionados `main`, commits recientes, `package.json`, workflow `.github/workflows/ci.yml`, `src/store.ts`, validación, topología y los issues #1–#5. No se han observado nuevos commits ajenos posteriores al registro anterior en el momento de la consulta. La búsqueda de PR no permitió identificar inequívocamente PR abiertos (la búsqueda devolvió issues), por lo que **no se afirma** que no existan.
+- **Nuevo commit `0a1618e8e215695d0270baeb3a2cc9288a1ce538`**: `src/__tests__/storage.test.ts` añade cuatro pruebas automatizadas de restauración local, JSON corrupto, fallo de cuota y flujo editar/guardar/deshacer/rehacer.
+- **Verificación pendiente**: pruebas añadidas pero no ejecutadas. Intento de `git clone` desde el entorno de ejecución falló con `Could not resolve host: github.com`. GitHub API sí permite leer/escribir; no se debe presentar CI como superado.
+- F0 continúa abierta. La próxima ejecución debe priorizar obtener checkout y npm operativos, ejecutar estas pruebas, generar el lockfile real (no sintetizarlo), pasar a `npm ci` y comenzar Playwright. Si GitHub Actions indica fallos, corregirlos antes de añadir más funciones.
+- No se ha detectado evidencia de edición simultánea; tampoco hay garantía técnica de detectar una conversación activa. No se simuló una espera.
