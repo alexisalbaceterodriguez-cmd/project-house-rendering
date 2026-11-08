@@ -1,21 +1,31 @@
-# Instrucciones de continuidad | House Rendering
+# Instrucciones de los agentes | House Rendering / Atelier 60
 
-Este repositorio desarrolla la aplicación de diseño residencial **Atelier 60**. Antes de tocar código lee **`PROJECT_MEMORY.md`** (objetivo, arquitectura, estado verificado, roadmap, limitaciones, backlog y protocolo de actualización) y `README.md`. No interpretar el nombre «60» como límite dimensional.
+Este repositorio desarrolla **Atelier 60**, un editor web de viviendas en 2D y 3D con React/TypeScript/Vite/Zustand/Three.js. El ejemplo inicial de 10 × 6 m no restringe el tamaño de proyectos nuevos.
 
-## Procedimiento en CADA sesión
+## Leer antes de actuar (orden obligatorio)
 
-1. Comprobar la rama y el commit actuales, últimos cambios y workflows, issues y PR.
-2. Abrir `PROJECT_MEMORY.md`, identificar **siguiente tarea pendiente verificada**, comprobarla en código y no dar por implementadas funciones solo planificadas.
-3. Prioridad actual: **F1 geometría coherente** + **F2 edición visual de dimensiones y muros**; el MVP ya permite cambiar medidas externas y extremos por formularios, pero no arrastrar paredes ni sincronizar nodos compartidos.
-4. Conservar una sola fuente de geometría compartida entre SVG 2D, Three.js 3D y el formato JSON. Probar los casos límite y la compatibilidad de proyectos ya guardados.
-5. Antes de terminar, ejecutar `npm run test` y `npm run build` o explicar por qué no se pudieron ejecutar. No confundir éxito de GitHub Actions con prueba manual de navegador.
-6. Actualizar **`PROJECT_MEMORY.md`** con fecha, commit/PR, tareas realmente completadas, fallos, nueva prioridad y criterios de aceptación para la siguiente sesión. Si el trabajo queda parcialmente hecho, registrarlo como tal.
+1. **`AUTOMATION_RUNBOOK.md`**: procedimiento operativo, diagnóstico de CI, salidas alternativas si falla el entorno y prioridades actualizadas. Aplicar en cada sesión.
+2. **`PROJECT_STATUS.md`**, primero la cabecera actualizada y la revisión más reciente, para conocer última tarea terminada y siguiente paso exacto.
+3. **`PROJECT_MEMORY.md`** para arquitectura, objetivos y decisiones históricas. Sus descripciones antiguas no prevalecen sobre el estado actual.
+4. Código real en `main`, `README.md`, commits, issues #1–#5, PR y GitHub Actions. El código y las ejecuciones reales prevalecen sobre los documentos.
 
-## Referencia inicial
+## Reglas esenciales
 
-- `src/types.ts` modelo y versión; `src/lib/geometry.ts` operaciones geométricas; `src/store.ts` estado/historial.
-- `src/components/Plan2D.tsx` editor SVG; `src/components/Scene3D.tsx` modelo 3D.
-- `src/App.tsx` UI, inspector y redimensionado; `src/data/defaultProject.ts` ejemplo 10 × 6 m.
-- `standalone.html` es un prototipo distinto; no es la app React ni tiene JSON intercambiable.
+- **No bloquearse por el DNS de la terminal del agente.** GitHub Actions funciona y permite ejecutar tests y compilar. Cuando `git clone` / npm local fallen, continuar mediante GitHub API y consultar los runs del SHA actual en `/actions/runs` con sus jobs. Los estados combinados vacíos no sustituyen ese control.
+- **No repetir trabajo resuelto:** `package-lock.json` v3 ya está publicado; CI usa `npm ci` con Node 22; tests y build pasaron en GitHub Actions el 08/11/2026. El workflow de bootstrap temporal ya fue eliminado.
+- Los tests de Vitest + build **NO equivalen a E2E**. La tarea inmediata de F0 es añadir Playwright en GitHub Actions y cubrir operaciones de edición y guardado/importación.
+- En cada sesión escoger **una unidad concreta**, implementar código y tests, comprobar CI del commit cuando sea posible, subsanar fallos reales, registrar la siguiente tarea y seguir en el ciclo siguiente. No conformarse con diagnosticar o planificar.
+- Mantener coherencia de geometría en plano SVG, 3D y JSON; preservar datos anteriores y undo/redo. No declarar cerradas fases sin cumplir los criterios de los issues.
+- Evitar conflictos: comprobar HEAD y SHA de los archivos antes de escribir, usar rama/PR si procede y no forzar pushes ni sobrescribir trabajo paralelo. No fingir espera ni acciones completadas.
+- Al terminar, actualizar `PROJECT_STATUS.md` con **SHA, run ID y conclusión de CI**, cambios comprobados, pendientes y siguiente tarea **exacta**. Informar brevemente. Si no hay herramienta operativa, registrar el fallo específico y trabajar en algo independiente verificable.
 
-**Objetivo del próximo incremento:** editar interactivamente extremos/muros, ver cotas y 3D sincronizados y poder deshacer/reimportar el resultado. Después, topología de habitaciones y mejoras de realismo conforme al roadmap.
+## Referencias de código
+
+- `src/types.ts`, `src/store.ts`, `src/lib/validation.ts`: modelo, estado/historial, persistencia y validación.
+- `src/lib/geometry.ts`, `src/lib/topology.ts`: geometría, recintos e intersecciones.
+- `src/components/Plan2D.tsx`, `src/components/Scene3D.tsx`: edición 2D y render 3D sincronizado.
+- `src/App.tsx`: herramientas, dimensiones, paneles, importación/exportación.
+- `src/__tests__/`: tests existentes; `.github/workflows/ci.yml`: CI.
+- `standalone.html`: prototipo legacy; no usar su JSON como si fuese compatible con el proyecto React.
+
+**Orden actual de fases:** F0 (E2E y persistencia) → F1 (topología avanzada) → F2 (ergonomía y precisión) → F3 (catálogo modular) → F4/F5 (renders y gestión). F1 y F2 tienen ya avances parciales: nunca volver a describirlas como totalmente ausentes sin comprobar código.
