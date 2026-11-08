@@ -6,7 +6,7 @@ import { catalog, floors, styles } from './data/catalog';
 import { blankProject } from './data/defaultProject';
 import { clamp, download, fileSafe, makeId, wallLength } from './lib/geometry';
 import { projectWarnings, reconcileRooms, resizeProject, roomArea, updateWallGeometry } from './lib/topology';
-import { blobToDataURL, dataURLToBlob, getModelAsset, putModelAsset } from './lib/assets';
+import { blobToDataURL, dataURLToBlob, deleteModelAsset, getModelAsset, putModelAsset } from './lib/assets';
 import { isProject, saveLocal, useEditor } from './store';
 import type { FloorFinish, Furniture, Mode, Palette, Project, RoomKind, Selection, Tool } from './types';
 
@@ -179,16 +179,24 @@ export default function App(){
   };
   const importJSON=async(e:ChangeEvent<HTMLInputElement>)=>{
     const file=e.target.files?.[0];if(!file)return;
+    const createdAssets:string[]=[];
     try{
       if(file.size>64*1024*1024)throw Error('El archivo supera 64 MB.');
       const content:unknown=JSON.parse(await file.text());
       if(!isProject(content))throw Error('El archivo no contiene un proyecto compatible.');
       const copy=structuredClone(content);
       for(const f of copy.furniture){
-        if(f.kind==='model'&&f.modelData){const id=makeId();await putModelAsset(id,dataURLToBlob(f.modelData));f.assetId=id;delete f.modelData;}
+        if(f.kind==='model'&&f.modelData){
+          const id=makeId();await putModelAsset(id,dataURLToBlob(f.modelData));
+          createdAssets.push(id);f.assetId=id;delete f.modelData;
+        }
       }
       reconcileRooms(copy);load(copy);alert('Proyecto cargado correctamente.');
-    }catch(err){alert(err instanceof Error?err.message:'El archivo no es válido.');}
+    }catch(err){
+      // A failed import must not leak assets from earlier successful writes.
+      await Promise.allSettled(createdAssets.map(id=>deleteModelAsset(id)));
+      alert(err instanceof Error?err.message:'El archivo no es válido.');
+    }
     e.target.value='';
   };
   const importGLB=async(e:ChangeEvent<HTMLInputElement>)=>{
