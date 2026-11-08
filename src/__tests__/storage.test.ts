@@ -75,6 +75,33 @@ describe('F0: almacenamiento y recuperación del editor', () => {
       'atelier-60-project-v1-backup', JSON.stringify(demoProject));
   });
 
+  it('mantiene la revisión anterior en el respaldo tras una segunda edición', async () => {
+    const storage = storageMock();
+    vi.stubGlobal('localStorage', storage);
+    const { saveLocal, readProject } = await import('../store');
+    const first = structuredClone(demoProject);
+    first.name = 'Versión anterior';
+    const second = structuredClone(first);
+    second.name = 'Versión actual';
+    expect(saveLocal(first)).toBe(true);
+    expect(saveLocal(second)).toBe(true);
+    expect(readProject().name).toBe('Versión actual');
+    expect(JSON.parse(storage.getItem('atelier-60-project-v1-backup')!)).toEqual(first);
+  });
+
+  it('no sustituye un respaldo válido por un principal corrupto', async () => {
+    const storage = storageMock('{broken');
+    const backup = structuredClone(demoProject);
+    backup.name = 'Copia protegida';
+    storage.setItem('atelier-60-project-v1-backup', JSON.stringify(backup));
+    vi.stubGlobal('localStorage', storage);
+    const { saveLocal } = await import('../store');
+    const next = structuredClone(demoProject);
+    next.name = 'Proyecto nuevo';
+    expect(saveLocal(next)).toBe(true);
+    expect(JSON.parse(storage.getItem('atelier-60-project-v1-backup')!)).toEqual(backup);
+  });
+
   it('lee el proyecto principal aunque falle el acceso al respaldo', async () => {
     const project = structuredClone(demoProject);
     project.name = 'Principal intacto';
