@@ -86,7 +86,34 @@ export default function Plan2D() {
           };
           connectAt(startWall);
           if (distance(startWall, endpoint) > .001) connectAt(endpoint);
-          project.walls.push({id:makeId(),a:startWall,b:endpoint,thickness:.12});
+          // Split both axes at proper crossings so each new segment has editable joints.
+          // Reject cuts near ends and across existing doors/windows.
+          const dx = endpoint.x - startWall.x, dy = endpoint.y - startWall.y;
+          const cross = (ax: number, ay: number, bx: number, by: number) => ax * by - ay * bx;
+          const crossings: Array<{t:number; point:Point}> = [];
+          for (const wall of [...project.walls]) {
+            if (wall.outer) continue;
+            const wx = wall.b.x - wall.a.x, wy = wall.b.y - wall.a.y;
+            const denominator = cross(dx,dy,wx,wy);
+            if (Math.abs(denominator) < 1e-8) continue;
+            const rx = wall.a.x - startWall.x, ry = wall.a.y - startWall.y;
+            const t = cross(rx,ry,wx,wy) / denominator;
+            const u = cross(rx,ry,dx,dy) / denominator;
+            const newLength = distance(startWall,endpoint);
+            const existingLength = distance(wall.a,wall.b);
+            if (t * newLength < .35 || (1-t)*newLength < .35 ||
+                u * existingLength < .35 || (1-u)*existingLength < .35) continue;
+            if (project.openings.some(o => o.wallId === wall.id &&
+                Math.abs(o.offset * existingLength - u * existingLength) < o.width/2 + .05)) continue;
+            crossings.push({t,point:{x:startWall.x+t*dx,y:startWall.y+t*dy}});
+          }
+          crossings.sort((a,b)=>a.t-b.t);
+          const joints = [startWall,...crossings.map(c=>c.point),endpoint];
+          for (const crossing of crossings) connectAt(crossing.point);
+          for (let i=1;i<joints.length;i++) {
+            if (distance(joints[i-1],joints[i]) >= .35)
+              project.walls.push({id:makeId(),a:{...joints[i-1]},b:{...joints[i]},thickness:.12});
+          }
           reconcileRooms(project);
         });
         setStartWall(null);
