@@ -209,16 +209,19 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
   if(linked){
     const direction=sub(oldB,oldA);
     const denominator=Math.max(EPS,dot(direction,direction));
-    const translation=distance(sub(a,oldA),sub(b,oldB))<.001;
     for(const other of p.walls){
       if(other.id===id||other.outer)continue;
       const endpoints=([other.a,other.b] as const).map(v=>{
-        const fraction=dot(sub(v,oldA),direction)/denominator;
-        const projected={x:oldA.x+fraction*direction.x,y:oldA.y+fraction*direction.y};
-        if(translation&&fraction>EPS&&fraction<1-EPS&&distance(v,projected)<.001)
-          return constrain({x:v.x+a.x-oldA.x,y:v.y+a.y-oldA.y});
         if(distance(v,oldA)<.001)return {...a};
         if(distance(v,oldB)<.001)return {...b};
+        // A T-junction is an endpoint resting inside another wall's axis.
+        // Interpolate its position on the edited axis, including when only
+        // one handle moves or the wall rotates. Translation is a special case.
+        // This preserves the joint rather than leaving a gap in the plan.
+        const fraction=dot(sub(v,oldA),direction)/denominator;
+        const projected={x:oldA.x+fraction*direction.x,y:oldA.y+fraction*direction.y};
+        if(fraction>EPS&&fraction<1-EPS&&distance(v,projected)<.001)
+          return constrain({x:a.x+(b.x-a.x)*fraction,y:a.y+(b.y-a.y)*fraction});
         return {...v};
       });
       if(distance(endpoints[0],other.a)>.0001||distance(endpoints[1],other.b)>.0001)
