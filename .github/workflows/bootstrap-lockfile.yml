@@ -1,0 +1,60 @@
+name: Bootstrap npm lockfile
+
+on:
+  push:
+    paths:
+      - '.github/workflows/bootstrap-lockfile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bootstrap-lockfile-main
+  cancel-in-progress: false
+
+jobs:
+  generate-lockfile:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Generate authentic npm lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Verify reproducible install
+        run: npm ci --no-audit --no-fund
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Save lockfile as fallback artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-package-lock
+          path: package-lock.json
+          retention-days: 7
+
+      - name: Commit lockfile to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "package-lock.json is already up to date"
+            exit 0
+          fi
+          git commit -m "build: add reproducible npm lockfile"
+          git push origin HEAD:main
