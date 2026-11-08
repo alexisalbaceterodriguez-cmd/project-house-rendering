@@ -65,10 +65,31 @@ export function saveLocal(project: Project): boolean {
   if (!isProject(project)) return false;
   try {
     const serialized = JSON.stringify(project);
+    // Preserve the last known-good primary before replacing it. Mirroring the
+    // new value into both keys on every save offers no protection against a
+    // logically damaged (but structurally valid) edit or an interrupted write.
+    let previous: string | null = null;
+    try { previous = localStorage.getItem(KEY); } catch { /* primary may still be writable */ }
+    let backedUpPrevious = false;
+    if (previous && previous !== serialized) {
+      try {
+        if (isProject(JSON.parse(previous))) {
+          localStorage.setItem(BACKUP_KEY, previous);
+          backedUpPrevious = true;
+        }
+      } catch { /* invalid previous data must never replace a good backup */ }
+    }
     localStorage.setItem(KEY, serialized);
-    // Backup is best effort: a quota error must not mark a successful primary
-    // write as failed. Never back up invalid project data.
-    try { localStorage.setItem(BACKUP_KEY, serialized); } catch { /* optional recovery copy */ }
+    // On the first save, seed a recovery copy. Subsequent saves retain the
+    // prior valid revision, unless the backup write failed.
+    if (!backedUpPrevious) {
+      try {
+        const backup = localStorage.getItem(BACKUP_KEY);
+        if (!backup || !isProject(JSON.parse(backup))) {
+          localStorage.setItem(BACKUP_KEY, serialized);
+        }
+      } catch { /* optional recovery copy */ }
+    }
     return true;
   } catch { return false; }
 }
