@@ -217,4 +217,18 @@ describe('F0: almacenamiento y recuperación del editor', () => {
     expect(useEditor.getState().history).toHaveLength(0);
   });
 
+  it('rechaza una edición estructuralmente inválida sin alterar el historial', async () => {
+    vi.stubGlobal('localStorage', storageMock());
+    const { useEditor } = await import('../store');
+    useEditor.getState().load(structuredClone(demoProject));
+    const before = useEditor.getState();
+    useEditor.getState().change(p => { p.walls[0].thickness = -1; });
+    expect(useEditor.getState().project).toEqual(before.project);
+    expect(useEditor.getState().history).toEqual(before.history);
+    expect(useEditor.getState().redoStack).toEqual(before.redoStack);
+    useEditor.getState().change(p => { p.name = 'Edición posterior válida'; });
+    expect(useEditor.getState().project.name).toBe('Edición posterior válida');
+    expect(useEditor.getState().history).toHaveLength(1);
+  });
+
 });
