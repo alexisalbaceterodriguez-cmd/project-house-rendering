@@ -297,3 +297,49 @@ test('rechaza un GLB corrupto sin añadir muebles ni guardar activos', async ({ 
   const exported = JSON.parse((await readFile(await (await downloadPromise).path())).toString('utf8')) as { furniture: unknown[] };
   expect(exported.furniture).toHaveLength(0);
 });
+
+
+test('avisa de cuota de IndexedDB sin alterar el plano ni añadir un modelo', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plano 2D' }).click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Nuevo' }).click();
+  await expect(page.locator('.plan-wall')).toHaveCount(4);
+
+  // Force a real IndexedDB transaction failure without filling the runner disk.
+  await page.evaluate(() => {
+    const original = IDBObjectStore.prototype.put;
+    (window as Window & { restoreModelPut?: () => void }).restoreModelPut = () => {
+      IDBObjectStore.prototype.put = original;
+    };
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === 'models') throw new DOMException('Disk full', 'QuotaExceededError');
+      return original.apply(this, args);
+    };
+  });
+
+  try {
+    const json = Buffer.from(JSON.stringify({ asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [] }] }));
+    const padded = Buffer.concat([json, Buffer.alloc((4 - json.length % 4) % 4, 0x20)]);
+    const glb = Buffer.alloc(20 + padded.length);
+    glb.writeUInt32LE(0x46546c67, 0);
+    glb.writeUInt32LE(2, 4);
+    glb.writeUInt32LE(glb.length, 8);
+    glb.writeUInt32LE(padded.length, 12);
+    glb.writeUInt32LE(0x4e4f534a, 16);
+    padded.copy(glb, 20);
+    await page.locator('input[type="file"][accept*=".glb"]').setInputFiles({
+      name: 'cuota.glb', mimeType: 'model/gltf-binary', buffer: glb,
+    });
+    await expect(page.getByText(/Almacenamiento de modelos 3D lleno/)).toBeVisible();
+    await expect(page.locator('.plan-wall')).toHaveCount(4);
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Exportar' }).click();
+    const download = await downloadPromise;
+    const project = JSON.parse((await readFile(await download.path())).toString('utf8')) as { furniture: unknown[]; walls: unknown[] };
+    expect(project.furniture).toHaveLength(0);
+    expect(project.walls).toHaveLength(4);
+  } finally {
+    await page.evaluate(() => (window as Window & { restoreModelPut?: () => void }).restoreModelPut?.());
+  }
+});
