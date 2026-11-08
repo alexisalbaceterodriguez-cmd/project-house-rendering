@@ -1,6 +1,8 @@
 # Memoria del proyecto | House Rendering / Atelier 60
 
-> **Fuente de verdad para próximas conversaciones y agentes de desarrollo.** Leer este documento antes de cambiar código. Actualizarlo tras cada entrega. Complementar siempre con el estado REAL de `main`, las pruebas y los workflows. No dar por realizada una tarea solo porque figura en el plan.
+> **ACTUALIZACIÓN OPERATIVA 2026-11-08:** leer primero [AUTOMATION_RUNBOOK.md](AUTOMATION_RUNBOOK.md), [AGENTS.md](AGENTS.md) y [PROJECT_STATUS.md](PROJECT_STATUS.md). Esta memoria contiene apartados históricos que dicen que faltan lockfile, drag de muros o tests; esos apartados están desactualizados. **Ya existe `package-lock.json` v3, CI usa `npm ci` con Node 22, y el workflow Test and build está verde en los commits  `a2fa4db` y `e6ed0b7`.** Esto NO significa que haya E2E. Próxima tarea F0: Playwright en GitHub Actions. Si la terminal del agente no tiene DNS, consultar `actions/runs` y sus jobs mediante GitHub; no repetir el bloqueo. Las decisiones y prioridades actuales deben contrastarse siempre con el código de main y el estado persistente.
+
+> **Contexto y decisiones históricas (contrastarlas con main).** Leer este documento antes de cambiar código. Actualizarlo tras cada entrega. Complementar siempre con el estado REAL de `main`, las pruebas y los workflows. No dar por realizada una tarea solo porque figura en el plan.
 
 **Última auditoría:** 2026-11-07 (Europe/Madrid). **Rama:** `main`. **Última entrega validada:** `bb7e488bbcd60735110d35e789d70f95871b2f85` (15 tests y build CI correctos; Pages desplegado). **Estado:** F0/F1/F2 con incrementos funcionales, pendientes estabilización y E2E. El resumen histórico de secciones posteriores describe el MVP anterior.
 
