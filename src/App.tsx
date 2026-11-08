@@ -77,7 +77,7 @@ function DimensionForm(){
   const [resizeMode,setResizeMode]=useState<'scale'|'keep'>('scale');
   useEffect(()=>{setWidth(project.width.toFixed(2));setDepth(project.depth.toFixed(2));},[project.width,project.depth]);
   const w=Number(width),d=Number(depth),valid=width!==''&&depth!==''&&Number.isFinite(w)&&Number.isFinite(d)&&w>=2&&w<=100&&d>=2&&d<=100;
-  return <form className="properties-body dimension-form" onSubmit={e=>{e.preventDefault();if(valid)change(p=>resizeProject(p,w,d,resizeMode));}}>
+  return <form noValidate className="properties-body dimension-form" onSubmit={e=>{e.preventDefault();if(valid)change(p=>resizeProject(p,w,d,resizeMode));}}>
     <p className="small-help">Cambia ancho y fondo en metros. Confirma los cambios para actualizar la distribución 2D y 3D.</p>
     <div className="field-grid"><label className="field"><span>Ancho (m)</span><input aria-label="Ancho de la vivienda" type="number" step="0.1" min="2" max="100" value={width} onChange={e=>setWidth(e.target.value)}/></label><label className="field"><span>Fondo (m)</span><input aria-label="Fondo de la vivienda" type="number" step="0.1" min="2" max="100" value={depth} onChange={e=>setDepth(e.target.value)}/></label></div>
     <div className="area-preview">Superficie prevista <strong>{valid?(w*d).toFixed(1):'—'} m²</strong></div>
@@ -85,7 +85,7 @@ function DimensionForm(){
     <p className="footnote">Al escalar, se mueven paredes y centros de muebles pero sus tamaños físicos se mantienen. Si mantienes posiciones, puede haber objetos fuera del nuevo límite.</p>
     <button className="primary-btn resize-submit" type="submit" disabled={!valid||(w===project.width&&d===project.depth)}>Actualizar la planta</button>
     {projectWarnings(project).length>0&&<div className="geometry-warnings" role="status"><strong>Revisar geometría ({projectWarnings(project).length})</strong><ul>{projectWarnings(project).slice(0,8).map((m,i)=><li key={i}>{m}</li>)}</ul></div>}
-    <div className="section-label">ALTURA DE LOS MUROS</div><Field label="Altura" value={project.wallHeight} min={2} max={4} onChange={n=>change(p=>{p.wallHeight=n;})}/>
+    <div className="section-label">ALTURA DE LOS MUROS</div><Field label="Altura" value={project.wallHeight} min={2} max={4} step={.01} onChange={n=>change(p=>{p.wallHeight=n;})}/>
   </form>;
 }
 function PropertyPanel(){
