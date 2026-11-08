@@ -43,6 +43,38 @@ describe('F0: almacenamiento y recuperación del editor', () => {
     expect(saveLocal(structuredClone(demoProject))).toBe(false);
   });
 
+  it('recupera un proyecto válido desde el respaldo si el principal está corrupto', async () => {
+    const project = structuredClone(demoProject);
+    project.name = 'Rescatado del respaldo';
+    const storage = storageMock('{broken');
+    const backup = JSON.stringify(project);
+    const originalGet = storage.getItem;
+    storage.getItem.mockImplementation((key: string) =>
+      key === 'atelier-60-project-v1-backup' ? backup : originalGet.getMockImplementation()!(key));
+    vi.stubGlobal('localStorage', storage);
+    const { readProject } = await import('../store');
+    expect(readProject().name).toBe('Rescatado del respaldo');
+  });
+
+  it('rechaza guardar un proyecto inválido sin tocar el almacenamiento', async () => {
+    const storage = storageMock();
+    vi.stubGlobal('localStorage', storage);
+    const { saveLocal } = await import('../store');
+    const project = structuredClone(demoProject);
+    project.walls[0].thickness = -1;
+    expect(saveLocal(project)).toBe(false);
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('guarda una copia de recuperación junto al proyecto principal', async () => {
+    const storage = storageMock();
+    vi.stubGlobal('localStorage', storage);
+    const { saveLocal } = await import('../store');
+    expect(saveLocal(structuredClone(demoProject))).toBe(true);
+    expect(storage.setItem).toHaveBeenCalledWith(
+      'atelier-60-project-v1-backup', JSON.stringify(demoProject));
+  });
+
   it('guarda y restaura una edición, conservando deshacer y rehacer', async () => {
     const storage = storageMock();
     vi.stubGlobal('localStorage', storage);
