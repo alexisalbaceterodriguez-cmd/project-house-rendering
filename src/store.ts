@@ -60,7 +60,12 @@ export const useEditor = create<Store>((set, get) => ({
   redo: () => set(s => s.redoStack.length ? ({ project: s.redoStack[0], history: [...s.history, s.project].slice(-40), redoStack: s.redoStack.slice(1), selection: null }) : s),
   // Imported objects must not retain a mutable reference into the editor state.
   // A caller changing its parsed JSON later must not silently alter the plan.
-  load: project => set({ project: structuredClone(project), history: [], redoStack: [], selection: null, tool: 'select' }),
+  load: project => {
+    // TypeScript types do not validate imported JSON at runtime. Never replace
+    // a working project with malformed data passed by another caller.
+    if (!isProject(project)) return;
+    set({ project: structuredClone(project), history: [], redoStack: [], selection: null, tool: 'select' });
+  },
   reset: () => {const fresh=structuredClone(demoProject);reconcileRooms(fresh);set({ project: fresh, history: [], redoStack: [], selection: null, tool: 'select' });},
 }));
 export function saveLocal(project: Project): boolean {
