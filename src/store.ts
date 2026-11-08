@@ -4,12 +4,16 @@ import { isProject } from './lib/validation';
 import { demoProject } from './data/defaultProject';
 import { reconcileRooms } from './lib/topology';
 const KEY = 'atelier-60-project-v1';
+const BACKUP_KEY = `${KEY}-backup`;
 export {isProject} from './lib/validation';
 export const readProject = (): Project => {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const data: unknown = JSON.parse(raw);
+    // Prefer the primary save, but recover from a previously verified backup
+    // when a browser extension, interrupted write or manual edit corrupts it.
+    for (const raw of [localStorage.getItem(KEY), localStorage.getItem(BACKUP_KEY)]) {
+      if (!raw) continue;
+      let data: unknown;
+      try { data = JSON.parse(raw); } catch { continue; }
       if (isProject(data)) {
         // One-time compatibility fix for the earlier public demo: its salon wall
         // had an open 1 m gap, so no closed room could be inferred.
@@ -55,5 +59,13 @@ export const useEditor = create<Store>((set, get) => ({
   reset: () => {const fresh=structuredClone(demoProject);reconcileRooms(fresh);set({ project: fresh, history: [], redoStack: [], selection: null, tool: 'select' });},
 }));
 export function saveLocal(project: Project): boolean {
-  try { localStorage.setItem(KEY, JSON.stringify(project)); return true; } catch { return false; }
+  if (!isProject(project)) return false;
+  try {
+    const serialized = JSON.stringify(project);
+    localStorage.setItem(KEY, serialized);
+    // Backup is best effort: a quota error must not mark a successful primary
+    // write as failed. Never back up invalid project data.
+    try { localStorage.setItem(BACKUP_KEY, serialized); } catch { /* optional recovery copy */ }
+    return true;
+  } catch { return false; }
 }
