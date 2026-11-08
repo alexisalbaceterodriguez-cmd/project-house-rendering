@@ -74,3 +74,11 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - **Commit `fba1eb8`**: prueba de regresión de aislamiento de la importación en `src/__tests__/storage.test.ts`. La prueba comprueba nombre, geometría e historial tras mutar el objeto original.
 - **Verificación pendiente**: `git ls-remote` falla por DNS (`Could not resolve host: github.com`). No hay checkout instalable ni acceso npm confirmado; Vitest, compilación, lint y E2E no ejecutados. Estados y workflow runs del commit consultado devuelven listas vacías, lo que no demuestra CI verde.
 - **Siguiente tarea exacta**: obtener un runner con checkout y acceso npm, ejecutar las pruebas existentes y la nueva, generar `package-lock.json` auténtico y pasar CI a `npm ci`. Añadir Playwright después. F0 y los otros cuatro issues siguen abiertos.
+
+## Revisión de continuidad — 2026-11-08 07:40 (Europe/Madrid)
+
+- Inspeccionados los últimos commits de main, los cinco issues abiertos (#1–#5), `PROJECT_STATUS.md`, `package.json`, `.github/workflows/ci.yml`, `src/store.ts`, `src/lib/validation.ts`, `src/types.ts`, `src/App.tsx` y las pruebas de almacenamiento. No se identificó un trabajo concurrente por commits posteriores al último avance registrado; no hay detección fiable de conversación activa.
+- Commit `6356fcc`: `useEditor.load` ahora valida con `isProject` antes de reemplazar el estado. La anotación TypeScript `Project` no impide que un JSON inválido llegue en ejecución; se conserva el proyecto activo y su historial cuando falla la validación.
+- Commit `fda8c38`: prueba de regresión para una importación con abertura huérfana; comprueba que no se destruyen ni el proyecto activo ni las pilas de deshacer/rehacer.
+- **Sin validación de ejecución**: `git ls-remote` falla por DNS (`Could not resolve host: github.com`). No hay checkout local ni dependencias instaladas; no se han ejecutado Vitest, build, lint ni E2E. El workflow sigue usando `npm install` y falta un lockfile real.
+- **Siguiente tarea exacta**: habilitar un runner con checkout y acceso npm, ejecutar pruebas y compilación, corregir fallos, generar `package-lock.json` auténtico y pasar CI a `npm ci`. Añadir Playwright E2E tras la validación. Mantener los cinco issues abiertos hasta cumplir criterios de aceptación.
