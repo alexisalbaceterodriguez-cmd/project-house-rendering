@@ -185,6 +185,13 @@ export default function App(){
       const content:unknown=JSON.parse(await file.text());
       if(!isProject(content))throw Error('El archivo no contiene un proyecto compatible.');
       const copy=structuredClone(content);
+      // Non-portable JSON may contain references to browser-local models.
+      // Refuse missing references before replacing a working project.
+      for(const f of copy.furniture){
+        if(f.kind==='model'&&f.assetId&&!f.modelData&&!await getModelAsset(f.assetId)){
+          throw Error(`Falta el modelo «${f.name}» en este navegador. Importa un JSON portable con los modelos incluidos.`);
+        }
+      }
       for(const f of copy.furniture){
         if(f.kind==='model'&&f.modelData){
           const id=makeId();await putModelAsset(id,dataURLToBlob(f.modelData));
