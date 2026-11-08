@@ -396,3 +396,33 @@ test('revierte activos escritos si falla el segundo GLB de una importación JSON
   const after = JSON.parse((await readFile(await (await afterDownload).path())).toString('utf8'));
   expect(after.furniture).toHaveLength(0);
 });
+
+
+test('rechaza JSON con referencias GLB locales inexistentes sin sustituir el plano', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plano 2D' }).click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Nuevo' }).click();
+  await page.getByLabel('Nombre del proyecto').fill('Proyecto protegido');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar' }).click();
+  const source = JSON.parse((await readFile(await (await downloadPromise).path())).toString('utf8'));
+  source.name = 'Importación incompleta';
+  source.furniture.push({
+    id: 'missing-model', kind: 'model', name: 'Sofá externo',
+    x: 1, y: 1, w: 1, d: 1, h: 1, rotation: 0,
+    color: '#e2e2df', assetId: 'missing-asset-from-another-browser',
+  });
+
+  await page.locator('input[type="file"][accept*=".json"]').setInputFiles({
+    name: 'no-portable.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(source)),
+  });
+  await expect(page.getByText(/Falta el modelo «Sofá externo»/)).toBeVisible();
+  await expect(page.getByLabel('Nombre del proyecto')).toHaveValue('Proyecto protegido');
+  await expect(page.locator('.plan-wall')).toHaveCount(4);
+  const afterDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar' }).click();
+  const after = JSON.parse((await readFile(await (await afterDownload).path())).toString('utf8'));
+  expect(after.furniture).toHaveLength(0);
+});
