@@ -79,11 +79,12 @@ src/
 ```bash
 npm run test
 npm run build
+npm run test:e2e  # instala primero Chromium: npx playwright install --with-deps chromium
 ```
 
-GitHub Actions ejecuta pruebas y compilación en cada push y pull request mediante `.github/workflows/ci.yml`. El despliegue en GitHub Pages está preparado en `.github/workflows/pages.yml`, pero se ejecuta **manualmente** para evitar errores hasta que Pages esté activado. Para publicar: entra en `Settings → Pages`, selecciona **GitHub Actions** como origen de despliegue y, después, ejecuta `Actions → Deploy to GitHub Pages → Run workflow`. No requiere tokens adicionales.
+GitHub Actions ejecuta pruebas unitarias, compilación y pruebas E2E de navegador Chromium en cada push y pull request mediante `.github/workflows/ci.yml`. El runner es `ubuntu-24.04` para ser compatible con Playwright 1.56.1. El despliegue en GitHub Pages está preparado en `.github/workflows/pages.yml`, pero se ejecuta **manualmente** para evitar errores hasta que Pages esté activado. Para publicar: entra en `Settings → Pages`, selecciona **GitHub Actions** como origen de despliegue y, después, ejecuta `Actions → Deploy to GitHub Pages → Run workflow`. No requiere tokens adicionales.
 
-La instalación de dependencias de npm y el build completos **no pudieron verificarse desde el entorno en que se generó esta versión** debido al acceso al registro. Los workflows comprobarán ambos procesos en GitHub Actions, sujeto a las políticas y permisos del repositorio.
+La instalación con `npm ci`, las 37 pruebas unitarias, la compilación de producción y el primer E2E Chromium fueron verificados en [GitHub Actions, ejecución 42467419830](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42467419830). Esta verificación cubre operaciones básicas, no todas las posibilidades ni una revisión manual de diseño.
 
 ## Estructura del repositorio
 

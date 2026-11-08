@@ -3,18 +3,19 @@
 Última revisión: 2026-11-08 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Estado operativo vigente (2026-11-08, tras solucionar el lockfile)
+## Estado operativo vigente (2026-11-08, primer E2E Chromium validado)
 
-**Manual de automatización:** [AUTOMATION_RUNBOOK.md](AUTOMATION_RUNBOOK.md) (consulta obligatoria). `AGENTS.md` actualizado. `PROJECT_MEMORY.md` es principalmente histórico; varias afirmaciones antiguas están superadas.
+**F0 en curso, pero lockfile, CI reproducible e infraestructura E2E ya funcionan.** La ejecución [Test and build #42467419830](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42467419830) en `f449e59` terminó **success** con 37 pruebas unitarias, build y recorrido Playwright de Chromium. Repositorio en Node 22, `npm ci`, runner `ubuntu-24.04` (Playwright 1.56.1 no acepta ubuntu-26.04).
 
-- **F0 en curso; bloqueo de lockfile RESUELTO.** `package-lock.json` v3 versionado (`d29e07b`), CI usa `npm ci` con Node 22 (`a2fa4db`), `Test and build` verde tras el cambio de CI ([42463858802](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42463858802)) y tras la limpieza de bootstrap ([42463921846](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42463921846)). No confundir con E2E: solo se verifican Vitest + build.
-- **F1 y F2 parcialmente implementadas:** arrastre de muros y vértices, geometría de recintos parcial, dimensiones y snapping básico. Comprobar casos límite y sincronización 2D/3D/JSON.
-- **Próximo paso concreto:** integrar Playwright y al menos un E2E básico en Actions; extender a crear plano, arrastrar muros, redimensionar, undo/redo, exportar/importar. Después abordar IndexedDB/GLB y migraciones, antes de cerrar F0.
-- **Regla crítica:** si falla `git clone` o npm **en el agente**, consultar GitHub Actions por `/actions/runs` y trabajos del SHA correcto; no repetir un diagnóstico DNS cada hora. Nunca inferir CI rojo o ausente a partir de una lista vacía de statuses. Continuar una tarea con herramientas disponibles y registrar el resultado real.
+- **Playwright ya integrado:** `playwright.config.ts`, `e2e/editor.e2e.ts`, script `npm run test:e2e` y paso Chromium en `.github/workflows/ci.yml`. Escenario real: vivienda en blanco, dimensiones, dibujar/arrastrar pared, undo/redo, JSON, recarga local e importación.
+- **Defecto real detectado y corregido:** el formulario de dimensiones quedaba bloqueado por la validación de `Altura=2.55` con paso 0.1. `src/App.tsx` utiliza ahora validación explícita del ancho/fondo (`noValidate`) y paso 0.01 para altura, commit `f449e59`.
+- **Fases:** F1/F2 parcialmente implementadas, F3-F5 pendientes. No cerrar F0 hasta comprobar activos GLB/IndexedDB, corrupción/cuotas de almacenamiento y migraciones del formato.
+- **Siguiente tarea exacta:** tests de recuperación y persistencia IndexedDB/GLB, especialmente exportación portable, assets ausentes y errores de cuota. Añadir pruebas E2E negativas de JSON corrupto como incremento cercano; preservar proyectos anteriores.
+- **Continuidad:** consultar [AUTOMATION_RUNBOOK.md](AUTOMATION_RUNBOOK.md) y runs de Actions del SHA real. No repetir lockfile/bootstrap, ni diagnosticar falta de red de la terminal si CI funciona.
 
 ## Estado comprobado
 
-- F0 (#1): **en curso**. Hay Vitest, TypeScript, compilación Vite y GitHub Actions; `package-lock.json` v3 ya está versionado y CI utiliza `npm ci`. Siguen pendientes Playwright/E2E, pruebas de assets y migraciones.
+- F0 (#1): **en curso**. Hay Vitest, TypeScript, compilación Vite y GitHub Actions; `package-lock.json` v3 ya está versionado y CI utiliza `npm ci`. El primer recorrido Playwright/E2E ya pasó en Chromium; faltan assets, migraciones y más escenarios de borde.
 - F1 (#2): **parcial**. `src/lib/topology.ts` contiene subdivisión de caras, conciliación de habitaciones y propagación de juntas. `src/components/Plan2D.tsx` ya permite arrastrar paredes y extremos. Falta verificar topología avanzada, colisiones y casos límite.
 - F2 (#3): **parcial**. Hay controles de dimensiones, zoom y snapping básico; faltan controles avanzados y pruebas E2E.
 - F3 (#4): **pendiente de criterios de aceptación**.
@@ -26,7 +27,7 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - Estas pruebas **no están ejecutadas**: el entorno de ejecución no dispone de acceso de red a GitHub ni de una copia local instalable del repositorio. La conexión GitHub permite leer/escribir archivos mediante API, pero no ejecutar `npm` ni consultar aquí los resultados de Actions. No se afirma CI verde.
 - No se cerró ningún issue. No se detectó ni se afirmó ningún conflicto con conversaciones en curso.
 
-## Siguiente unidad de trabajo (F0, prioridad máxima)
+## Siguiente unidad de trabajo (registro histórico previo al lockfile; NO usar como prioridad vigente)
 
 1. Obtener un entorno de trabajo con checkout completo y acceso al registro npm; generar `package-lock.json` con npm de Node 22, confirmar reproducibilidad y cambiar CI a `npm ci`.
 2. Ejecutar `npm run test` y `npm run build`; corregir regresiones si aparecen. Añadir script de lint y configuración solo cuando pueda validarse.
@@ -107,3 +108,11 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - El workflow `.github/workflows/ci.yml` se actualizó para utilizar exclusivamente `npm ci --no-audit --no-fund` (commit `a2fa4db`). Comprobar el resultado de esta ejecución antes de declarar la nueva configuración verificada.
 - Bloqueo anterior resuelto: no hace falta disponer de un checkout local en el entorno de conversación, porque GitHub Actions dispone de conectividad y ejecuta los comandos correctamente.
 - F0 permanece abierta: siguiente prioridad pruebas E2E con Playwright, importación/exportación JSON con assets GLB, persistencia y migraciones. No regresar a tareas de bootstrap ya completadas.
+
+## Revisión de continuidad — 2026-11-08 (E2E Chromium operativo)
+
+- `@playwright/test@1.56.1` instalado y lockfile real actualizado por [bootstrap validado](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42466786619) (commit `dde1e4f`). La instalación de Chromium exigió fijar `ubuntu-24.04` por la falta de compatibilidad con `ubuntu-26.04` del runner anterior.
+- Commit `cda6b25`: configuración Playwright, `e2e/editor.e2e.ts`, script npm, CI E2E con capturas y traces en fallos. Commit `8c6fcc1`: runner Ubuntu compatible.
+- El primer E2E reveló una **regresión funcional real**: la altura inicial de 2,55 m no satisfacía el `step=0.1` del mismo formulario y bloqueaba el submit de dimensiones. Se documentó en [run fallido 42467092988](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42467092988); commit `f449e59` corrigió el formulario. Commit `4317bf1` incorporó regresión unitaria sobre redimensionado de un plano nuevo.
+- **Verificación exacta:** [Test and build #42467419830](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42467419830) = `completed/success`; 37 tests Vitest, build TypeScript/Vite y E2E Chromium reales pasaron. No representa aún cobertura de toda la app.
+- El workflow temporal `bootstrap-playwright.yml` ya puede retirarse. **Siguiente unidad F0:** pruebas de activos GLB/IndexedDB y recuperación ante errores de almacenamiento; comprobar la exportación portable y la migración de JSON antiguo. Issues #1-#5 siguen abiertos salvo criterios completos.

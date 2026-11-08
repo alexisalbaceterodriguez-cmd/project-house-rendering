@@ -65,13 +65,20 @@ Diferenciar los niveles de cobertura:
 
 ## 4. Roadmap y prioridad actual
 
-- **F0 (#1):** lockfile y CI reproducible **HECHOS**. Pendientes: Playwright E2E (crear proyecto en blanco; dibujar/arrastrar pared; cambiar tamaño; undo/redo; exportar/importar JSON), pruebas de recuperación local/IndexedDB/GLB, migraciones y validación de casos límite. No cerrar F0 aún.
+- **F0 (#1):** lockfile, CI reproducible y **primer Playwright E2E Chromium HECHOS** (creación, edición de muro, dimensiones, undo/redo, export/import y recarga). Pendientes: recuperación local/IndexedDB/GLB, errores, migraciones, escenarios E2E adicionales y validación de casos límite. No cerrar F0 aún.
 - **F1 (#2):** editor ya tiene arrastre básico de extremos/muros y topología de recintos parcial. Pendientes: grafo consistente, intersecciones complejas, área útil, aperturas y colisiones.
 - **F2 (#3):** cotas/dimensiones, zoom y snap básicos ya existen; faltan pan/zoom preciso, controles avanzados, selección, anclajes de perímetro, usabilidad táctil y pruebas.
 - **F3 (#4):** cocinas y baños modulares con catálogo GLB y variantes; criterios aún pendientes.
 - **F4/F5 (#5):** materiales PBR, HDRI/iluminación, renders comparables, cámaras, rendimiento y versiones; criterios aún pendientes.
 
-**Próxima tarea prioritaria:** añadir una infraestructura Playwright mínima con al menos un escenario E2E reproducible y ejecución en GitHub Actions; ampliar a las operaciones críticas del editor. Confirmar primero que no ha sido implementada por otro ciclo.
+**Próxima tarea prioritaria (actualizado 08/11):** Playwright E2E inicial ya está implementado y pasó en Chromium; ampliar pruebas de persistencia y recuperación IndexedDB/GLB, cuotas, assets ausentes y migraciones, y más escenarios de error en navegador. Confirmar primero el estado real de main.
+
+### Evidencia y lección adicional del 08/11/2026: pruebas en navegador
+
+- `@playwright/test@1.56.1` está instalado en `devDependencies` con lockfile real. El CI ejecuta `npm run test:e2e` en Chromium. [Run #42467419830](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42467419830) verificó 37 tests unitarios, build y E2E en verde.
+- **Pin imprescindible en este setup:** GitHub asignó Ubuntu 26.04 a `ubuntu-latest`, que Playwright 1.56.1 rechazó. El workflow `ci.yml` fija `runs-on: ubuntu-24.04`. Mantener esta compatibilidad hasta actualizar Playwright tras comprobarla en Actions. No afirmar fallo en la app por un navegador no instalado.
+- El primer E2E descubrió un fallo real que no aparecía en Vitest: un campo de altura de 2,55 m usaba `step=0.1` y anulaba silenciosamente el submit de dimensiones. Se corrigió en `src/App.tsx` (`noValidate` y altura `step=0.01`), commit `f449e59`. Consultar siempre screenshot, trace, `error-context.md` y logs de Playwright antes de diagnosticar.
+- El bootstrap temporal de Playwright se elimina tras generar las dependencias: no restaurarlo en futuras sesiones salvo necesidad real.
 
 ## 5. Límites y comunicación
 

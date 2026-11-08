@@ -12,8 +12,8 @@ Este repositorio desarrolla **Atelier 60**, un editor web de viviendas en 2D y 3
 ## Reglas esenciales
 
 - **No bloquearse por el DNS de la terminal del agente.** GitHub Actions funciona y permite ejecutar tests y compilar. Cuando `git clone` / npm local fallen, continuar mediante GitHub API y consultar los runs del SHA actual en `/actions/runs` con sus jobs. Los estados combinados vacíos no sustituyen ese control.
-- **No repetir trabajo resuelto:** `package-lock.json` v3 ya está publicado; CI usa `npm ci` con Node 22; tests y build pasaron en GitHub Actions el 08/11/2026. El workflow de bootstrap temporal ya fue eliminado.
-- Los tests de Vitest + build **NO equivalen a E2E**. La tarea inmediata de F0 es añadir Playwright en GitHub Actions y cubrir operaciones de edición y guardado/importación.
+- **No repetir trabajo resuelto:** `package-lock.json` v3 actualizado, CI usa `npm ci` con Node 22 y Ubuntu 24.04 para Playwright 1.56.1; unitarias, build y E2E ya pasan en Actions (42467419830). El bootstrap de dependencias se retira tras instalar.
+- Los tests Vitest + build **NO equivalen a E2E**. Ahora existe Playwright real en GitHub Actions: el primer recorrido Chromium pasó en run 42467419830 y cubre plano nuevo, dimensiones, muro, arrastre, undo/redo, JSON y autoguardado. **Próximo incremento:** recuperación/errores de persistencia e IndexedDB/GLB; no volver a instalar Playwright.
 - En cada sesión escoger **una unidad concreta**, implementar código y tests, comprobar CI del commit cuando sea posible, subsanar fallos reales, registrar la siguiente tarea y seguir en el ciclo siguiente. No conformarse con diagnosticar o planificar.
 - Mantener coherencia de geometría en plano SVG, 3D y JSON; preservar datos anteriores y undo/redo. No declarar cerradas fases sin cumplir los criterios de los issues.
 - Evitar conflictos: comprobar HEAD y SHA de los archivos antes de escribir, usar rama/PR si procede y no forzar pushes ni sobrescribir trabajo paralelo. No fingir espera ni acciones completadas.
