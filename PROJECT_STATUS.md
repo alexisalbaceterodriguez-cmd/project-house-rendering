@@ -5,7 +5,7 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 
 ## Estado comprobado
 
-- F0 (#1): **en curso**. Hay Vitest, TypeScript, compilación Vite y workflow de GitHub Actions; todavía NO existe `package-lock.json`, el workflow utiliza `npm install` y no `npm ci`, y no hay pruebas Playwright/E2E identificadas en los archivos inspeccionados.
+- F0 (#1): **en curso**. Hay Vitest, TypeScript, compilación Vite y GitHub Actions; `package-lock.json` v3 ya está versionado y CI utiliza `npm ci`. Siguen pendientes Playwright/E2E, pruebas de assets y migraciones.
 - F1 (#2): **parcial**. `src/lib/topology.ts` contiene subdivisión de caras, conciliación de habitaciones y propagación de juntas. `src/components/Plan2D.tsx` ya permite arrastrar paredes y extremos. Falta verificar topología avanzada, colisiones y casos límite.
 - F2 (#3): **parcial**. Hay controles de dimensiones, zoom y snapping básico; faltan controles avanzados y pruebas E2E.
 - F3 (#4): **pendiente de criterios de aceptación**.
@@ -91,3 +91,10 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - Intento real de `git clone --depth 1` fallido: `Could not resolve host: github.com`. El conector GitHub permite editar archivos, pero este entorno no puede instalar dependencias ni ejecutar Vitest, build, lint o E2E. **Estos commits no están validados mediante ejecución.**
 - **Siguiente tarea exacta:** comprobar tests y compilación en runner con conectividad; corregir posibles incompatibilidades de `isProject` con estados transitorios de arrastre; generar `package-lock.json` auténtico y configurar `npm ci` en CI, seguido de Playwright. No cerrar F0 ni otros issues sin aceptación.
 - No hay forma fiable de detectar una conversación concurrente ni de posponer exactamente diez minutos; no se simuló espera.
+
+## Revisión de continuidad — 2026-11-08, lockfile y CI reproducible
+
+- La ejecución de GitHub Actions [Bootstrap npm lockfile](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42463787120) **terminó correctamente**. Generó `package-lock.json` con Node 22/npm, ejecutó `npm ci`, `npm run test` y `npm run build`, y versionó el lockfile en el commit `d29e07b`.
+- El workflow `.github/workflows/ci.yml` se actualizó para utilizar exclusivamente `npm ci --no-audit --no-fund` (commit `a2fa4db`). Comprobar el resultado de esta ejecución antes de declarar la nueva configuración verificada.
+- Bloqueo anterior resuelto: no hace falta disponer de un checkout local en el entorno de conversación, porque GitHub Actions dispone de conectividad y ejecuta los comandos correctamente.
+- F0 permanece abierta: siguiente prioridad pruebas E2E con Playwright, importación/exportación JSON con assets GLB, persistencia y migraciones. No regresar a tareas de bootstrap ya completadas.
