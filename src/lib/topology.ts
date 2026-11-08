@@ -199,23 +199,43 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
   if(!target||target.outer)return;
   const oldA={...target.a},oldB={...target.b};
   const constrain=(v:Point):Point=>({x:clamp(v.x,0,p.width),y:clamp(v.y,0,p.depth)});
-  target.a=constrain(nextA);target.b=constrain(nextB);
-  if(distance(target.a,target.b)<.2){target.a=oldA;target.b=oldB;return;}
+  const a=constrain(nextA),b=constrain(nextB);
+  if(distance(a,b)<.2)return;
+
+  // Prepare all connected endpoint moves before touching the project. Reject a
+  // drag that would collapse a neighbouring wall rather than tearing the joint.
+  const proposed=new Map<string,{a:Point;b:Point}>();
+  proposed.set(id,{a,b});
   if(linked){
-    // Propagate exact endpoint junctions only; crossing and T-intersections
-    // on long walls remain attached geometrically by their intersection.
+    const direction=sub(oldB,oldA);
+    const denominator=Math.max(EPS,dot(direction,direction));
+    const translation=distance(sub(a,oldA),sub(b,oldB))<.001;
     for(const other of p.walls){
       if(other.id===id||other.outer)continue;
-      for(const v of [other.a,other.b]){
-        const direction=sub(oldB,oldA);const fraction=dot(sub(v,oldA),direction)/Math.max(EPS,dot(direction,direction));
+      const endpoints=([other.a,other.b] as const).map(v=>{
+        const fraction=dot(sub(v,oldA),direction)/denominator;
         const projected={x:oldA.x+fraction*direction.x,y:oldA.y+fraction*direction.y};
-        const translation=distance(sub(target.a,oldA),sub(target.b,oldB))<.001;
-        if(translation&&fraction>EPS&&fraction<1-EPS&&distance(v,projected)<.001){
-          v.x=clamp(v.x+target.a.x-oldA.x,0,p.width);v.y=clamp(v.y+target.a.y-oldA.y,0,p.depth);
-        }else if(distance(v,oldA)<.001){v.x=target.a.x;v.y=target.a.y;}
-        else if(distance(v,oldB)<.001){v.x=target.b.x;v.y=target.b.y;}
-      }
+        if(translation&&fraction>EPS&&fraction<1-EPS&&distance(v,projected)<.001)
+          return constrain({x:v.x+a.x-oldA.x,y:v.y+a.y-oldA.y});
+        if(distance(v,oldA)<.001)return {...a};
+        if(distance(v,oldB)<.001)return {...b};
+        return {...v};
+      });
+      if(distance(endpoints[0],other.a)>.0001||distance(endpoints[1],other.b)>.0001)
+        proposed.set(other.id,{a:endpoints[0],b:endpoints[1]});
     }
+  }
+  // Openings must continue to fit after the resize. A rejected drag leaves
+  // every affected wall unchanged, including the selected wall.
+  for(const [wallId,points] of proposed){
+    const length=distance(points.a,points.b);
+    if(length<.2)return;
+    if(p.openings.some(o=>o.wallId===wallId &&
+      (o.offset*length-o.width/2<.05||(1-o.offset)*length-o.width/2<.05)))return;
+  }
+  for(const [wallId,points] of proposed){
+    const wall=p.walls.find(w=>w.id===wallId);
+    if(wall){wall.a=points.a;wall.b=points.b;}
   }
 }
 
