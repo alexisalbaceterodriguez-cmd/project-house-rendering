@@ -188,6 +188,21 @@ describe('F0: almacenamiento y recuperación del editor', () => {
     useEditor.getState().redo();
     expect(useEditor.getState().project.name).toBe('Cambio guardado');
   });
+  it('rechaza importaciones inválidas sin borrar el proyecto ni su historial', async () => {
+    vi.stubGlobal('localStorage', storageMock());
+    const { useEditor } = await import('../store');
+    const original = structuredClone(demoProject);
+    useEditor.getState().load(original);
+    useEditor.getState().change(p => { p.name = 'Trabajo pendiente'; });
+    const before = useEditor.getState();
+    const malformed = structuredClone(original);
+    malformed.openings.push({ id: 'huérfana', wallId: 'muro-inexistente', kind: 'door', offset: .5, width: .8, height: 2, sill: 0 });
+    useEditor.getState().load(malformed);
+    expect(useEditor.getState().project).toEqual(before.project);
+    expect(useEditor.getState().history).toEqual(before.history);
+    expect(useEditor.getState().redoStack).toEqual(before.redoStack);
+  });
+
   it('aísla un proyecto importado de mutaciones externas posteriores', async () => {
     const storage = storageMock();
     vi.stubGlobal('localStorage', storage);
