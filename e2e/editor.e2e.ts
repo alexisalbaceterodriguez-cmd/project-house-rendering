@@ -274,3 +274,26 @@ test('impide exportar un JSON incompleto si falta un modelo en IndexedDB', async
   expect(downloaded).toBe(false);
   await expect(page.locator('.plan-wall')).toHaveCount(4);
 });
+
+
+test('rechaza un GLB corrupto sin añadir muebles ni guardar activos', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plano 2D' }).click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Nuevo' }).click();
+  await expect(page.locator('.plan-wall')).toHaveCount(4);
+
+  // A .glb extension is not proof that the binary payload is glTF.
+  await page.locator('input[type="file"][accept*=".glb"]').setInputFiles({
+    name: 'corrupto.glb',
+    mimeType: 'model/gltf-binary',
+    buffer: Buffer.from('not-a-valid-binary-glb'),
+  });
+  await expect(page.getByText('El archivo no es un GLB 2.0 válido.')).toBeVisible();
+  await expect(page.locator('.plan-wall')).toHaveCount(4);
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar' }).click();
+  const exported = JSON.parse((await readFile(await (await downloadPromise).path())).toString('utf8')) as { furniture: unknown[] };
+  expect(exported.furniture).toHaveLength(0);
+});
