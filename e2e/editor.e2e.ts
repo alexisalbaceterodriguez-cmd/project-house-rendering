@@ -219,3 +219,58 @@ test('conserva un modelo GLB en IndexedDB y en un JSON portable', async ({ page 
   expect(restored?.modelData).toBe(model?.modelData);
   expect(restored?.assetId).toBeUndefined();
 });
+
+
+test('impide exportar un JSON incompleto si falta un modelo en IndexedDB', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plano 2D' }).click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Nuevo' }).click();
+
+  const json = Buffer.from(JSON.stringify({ asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [] }], nodes: [] }));
+  const padded = Buffer.concat([json, Buffer.alloc((4 - json.length % 4) % 4, 0x20)]);
+  const glb = Buffer.alloc(20 + padded.length);
+  glb.writeUInt32LE(0x46546c67, 0);
+  glb.writeUInt32LE(2, 4);
+  glb.writeUInt32LE(glb.length, 8);
+  glb.writeUInt32LE(padded.length, 12);
+  glb.writeUInt32LE(0x4e4f534a, 16);
+  padded.copy(glb, 20);
+  await page.locator('input[type="file"][accept*=".glb"]').setInputFiles({
+    name: 'modelo-que-desaparece.glb', mimeType: 'model/gltf-binary', buffer: glb,
+  });
+  await expect(page.getByText('Modelo guardado en IndexedDB e importado al proyecto.')).toBeVisible();
+
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = localStorage.getItem('atelier-60-project-v1');
+    const project = raw && JSON.parse(raw) as { furniture: Array<{ assetId?: string }> };
+    return !!project?.furniture.some(f => f.assetId);
+  })).toBe(true);
+
+  // Simulate browser storage eviction without changing the project geometry.
+  await page.evaluate(async () => {
+    const raw = localStorage.getItem('atelier-60-project-v1');
+    if (!raw) throw Error('Missing saved project');
+    const project = JSON.parse(raw) as { furniture: Array<{ assetId?: string }> };
+    const id = project.furniture.find(f => f.assetId)?.assetId;
+    if (!id) throw Error('Missing model asset reference');
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('atelier60-assets-v1', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction('models', 'readwrite');
+        transaction.objectStore('models').delete(id);
+        transaction.oncomplete = () => { database.close(); resolve(); };
+        transaction.onerror = () => { database.close(); reject(transaction.error); };
+      };
+    });
+  });
+
+  let downloaded = false;
+  page.on('download', () => { downloaded = true; });
+  await page.getByRole('button', { name: 'Exportar' }).click();
+  await expect(page.getByText(/Falta el modelo .* en este navegador/)).toBeVisible();
+  expect(downloaded).toBe(false);
+  await expect(page.locator('.plan-wall')).toHaveCount(4);
+});
