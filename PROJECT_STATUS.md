@@ -41,3 +41,11 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - Commit `20baa6848ef10a8d5035665f29e80d1159901c6c`: `src/__tests__/storage.test.ts` incorpora tres casos de prueba para recuperación, rechazo de proyectos inválidos y escritura de respaldo.
 - **No verificado**: el checkout por `git clone` vuelve a fallar por DNS (`Could not resolve host: github.com`); no se pudieron ejecutar npm, Vitest, compilación ni E2E. Los cambios se publicaron mediante GitHub API, no mediante un checkout local.
 - Próxima prioridad: comprobar y corregir las pruebas en un runner operativo; obtener `package-lock.json` auténtico, sustituir `npm install` por `npm ci` y comenzar Playwright. No cerrar F0 hasta verificar aceptación.
+
+## Revisión de continuidad — 2026-11-08 03:35 (Europe/Madrid)
+
+- Consultados commits de main, issues #1–#5, PR abiertos (búsqueda sin resultados), workflow de CI, package.json, store, validación y pruebas. El commit anterior a esta revisión era `3b2969c`.
+- **Commit `42eb858`**: lectura independiente de proyecto principal y respaldo. Antes, el acceso a ambos se evaluaba en una única expresión; si leer la copia fallaba, se descartaba incluso un principal válido, y viceversa. Ahora cada error de lectura se aísla y se prueba la otra copia.
+- **Commit `fb4e496`**: dos pruebas de regresión para errores de acceso al respaldo y al principal. Estas pruebas no se han ejecutado todavía.
+- Los estados de commit y workflow asociados consultados no devuelven verificaciones; esto **no equivale a CI verde**. F0 permanece abierta. No hay checkout npm verificable en este entorno.
+- **Siguiente tarea exacta:** ejecutar Vitest/TypeScript en un runner operativo, comprobar estas dos pruebas, generar y versionar package-lock auténtico, cambiar CI a npm ci y añadir E2E. Evitar añadir nuevas funciones sin resolver esta verificación.
