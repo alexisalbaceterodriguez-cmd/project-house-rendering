@@ -82,3 +82,12 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - Commit `fda8c38`: prueba de regresión para una importación con abertura huérfana; comprueba que no se destruyen ni el proyecto activo ni las pilas de deshacer/rehacer.
 - **Sin validación de ejecución**: `git ls-remote` falla por DNS (`Could not resolve host: github.com`). No hay checkout local ni dependencias instaladas; no se han ejecutado Vitest, build, lint ni E2E. El workflow sigue usando `npm install` y falta un lockfile real.
 - **Siguiente tarea exacta**: habilitar un runner con checkout y acceso npm, ejecutar pruebas y compilación, corregir fallos, generar `package-lock.json` auténtico y pasar CI a `npm ci`. Añadir Playwright E2E tras la validación. Mantener los cinco issues abiertos hasta cumplir criterios de aceptación.
+
+## Revisión de continuidad — 2026-11-08 08:37 (Europe/Madrid)
+
+- Inspeccionados `PROJECT_STATUS.md`, `package.json`, `.github/workflows/ci.yml`, `src/store.ts`, `src/lib/validation.ts`, `src/App.tsx` y las pruebas de persistencia. Los issues #1–#5 siguen siendo el plan de fases; F0 continúa sin lockfile real ni Playwright.
+- Commit `802129c`: `useEditor.change` rechaza cambios que no superen `isProject` antes de introducirlos en el estado o historial. Antes, una edición con valores inválidos podía contaminar el editor y provocar fallos de autoguardado.
+- Commit `9060d04`: prueba de regresión para verificar que una edición inválida no modifica proyecto/historial y que una edición posterior válida sigue funcionando.
+- Intento real de `git clone --depth 1` fallido: `Could not resolve host: github.com`. El conector GitHub permite editar archivos, pero este entorno no puede instalar dependencias ni ejecutar Vitest, build, lint o E2E. **Estos commits no están validados mediante ejecución.**
+- **Siguiente tarea exacta:** comprobar tests y compilación en runner con conectividad; corregir posibles incompatibilidades de `isProject` con estados transitorios de arrastre; generar `package-lock.json` auténtico y configurar `npm ci` en CI, seguido de Playwright. No cerrar F0 ni otros issues sin aceptación.
+- No hay forma fiable de detectar una conversación concurrente ni de posponer exactamente diez minutos; no se simuló espera.
