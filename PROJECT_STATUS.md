@@ -49,3 +49,12 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - **Commit `fb4e496`**: dos pruebas de regresión para errores de acceso al respaldo y al principal. Estas pruebas no se han ejecutado todavía.
 - Los estados de commit y workflow asociados consultados no devuelven verificaciones; esto **no equivale a CI verde**. F0 permanece abierta. No hay checkout npm verificable en este entorno.
 - **Siguiente tarea exacta:** ejecutar Vitest/TypeScript en un runner operativo, comprobar estas dos pruebas, generar y versionar package-lock auténtico, cambiar CI a npm ci y añadir E2E. Evitar añadir nuevas funciones sin resolver esta verificación.
+
+## Revisión de continuidad — 2026-11-08 04:41 (Europe/Madrid)
+
+- Confirmados los cinco issues abiertos (#1–#5), `package.json`, workflow `.github/workflows/ci.yml`, `src/store.ts` y pruebas de persistencia. F0 sigue sin lockfile ni Playwright, y CI usa `npm install`.
+- Intento de `git ls-remote` desde el entorno de ejecución: `Could not resolve host: github.com`. Node 22.16.0 y npm 10.9.2 están disponibles, pero no hay checkout ni acceso de red para instalar dependencias; no se han ejecutado Vitest, compilación, lint ni E2E. No se declara CI verde.
+- Commit `58b2e5f`: `saveLocal` conserva la versión anterior estructuralmente válida como respaldo antes de escribir la nueva. El primer guardado sigue sembrando una copia; un principal corrupto no reemplaza un respaldo válido. Esto evita que ambos slots contengan siempre la última revisión.
+- Commit `07253ca`: dos pruebas para comprobar la conservación de la versión anterior y la protección frente a un principal corrupto. **Pendientes de ejecutar**.
+- **Siguiente tarea exacta**: obtener un checkout con conectividad npm, ejecutar `npm run test` y `npm run build`, corregir regresiones, generar un `package-lock.json` auténtico y cambiar CI a `npm ci`. Después añadir Playwright. No cerrar F0 sin verificaciones.
+- No se ha podido determinar de forma fiable si existe una conversación concurrente activa; no se ha simulado una espera de diez minutos.
