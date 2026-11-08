@@ -103,6 +103,38 @@ export default function Plan2D() {
       }
     }
   };
+  /** Split an interior wall at the clicked point while preserving the world-space
+   * positions of all doors and windows. A cut through an opening is refused. */
+  const splitWall = (id: string, e: React.MouseEvent<SVGLineElement>) => {
+    e.stopPropagation();
+    if (tool !== 'select') return;
+    const wall = project.walls.find(w => w.id === id);
+    if (!wall || wall.outer) return;
+    const length = distance(wall.a, wall.b);
+    const cut = wallProjection(wall, pt(e as unknown as PointerEvent<SVGElement>));
+    const splitAt = cut.offset * length;
+    if (splitAt < .35 || length - splitAt < .35) return;
+    const openings = project.openings.filter(o => o.wallId === id);
+    if (openings.some(o => Math.abs(o.offset * length - splitAt) < o.width / 2 + .05)) return;
+    const newId = makeId();
+    change(p => {
+      const target = p.walls.find(w => w.id === id);
+      if (!target) return;
+      const originalEnd = { ...target.b };
+      target.b = { ...cut.point };
+      p.walls.push({ ...target, id: newId, a: { ...cut.point }, b: originalEnd });
+      for (const opening of p.openings.filter(o => o.wallId === id)) {
+        const centre = opening.offset * length;
+        if (centre < splitAt) opening.offset = centre / splitAt;
+        else {
+          opening.wallId = newId;
+          opening.offset = (centre - splitAt) / (length - splitAt);
+        }
+      }
+      reconcileRooms(p);
+    });
+    setSelection({ type: 'wall', id: newId });
+  };
   const onItemDown=(e:PointerEvent<SVGGElement>,item:Furniture)=>{
     if(tool!=='select')return;
     e.stopPropagation();
@@ -155,7 +187,7 @@ export default function Plan2D() {
       <rect data-floor="true" x="0" y="0" width={project.width} height={project.depth} fill="url(#floor-grid)" pointerEvents="none"/>
       {project.walls.map(w=><g key={w.id}>
         <line x1={w.a.x} y1={w.a.y} x2={w.b.x} y2={w.b.y} stroke={selection?.type==='wall'&&selection.id===w.id?'#438a68':'#d5cdc2'} strokeWidth={w.thickness+.045} strokeLinecap="square" pointerEvents="none"/>
-        <line x1={w.a.x} y1={w.a.y} x2={w.b.x} y2={w.b.y} stroke={selection?.type==='wall'&&selection.id===w.id?'#3a866c':'#616768'} strokeWidth={w.thickness} strokeLinecap="square" onPointerDown={e=>onWall(w.id,e)} className="plan-wall"/>
+        <line x1={w.a.x} y1={w.a.y} x2={w.b.x} y2={w.b.y} stroke={selection?.type==='wall'&&selection.id===w.id?'#3a866c':'#616768'} strokeWidth={w.thickness} strokeLinecap="square" onPointerDown={e=>onWall(w.id,e)} onDoubleClick={e=>splitWall(w.id,e)} className="plan-wall"/>
       </g>)}
       {selection?.type==='wall'&&project.walls.filter(w=>w.id===selection.id).map(w=><g key={`handles-${w.id}`}>
         {[['a',w.a],['b',w.b]].map(([endpoint,p])=>{const v=p as Point;return <circle key={endpoint as string} cx={v.x} cy={v.y} r=".17" fill="#ffffff" stroke="#287b56" strokeWidth=".06" className="wall-handle" onPointerDown={e=>onWall(w.id,e,endpoint as 'a'|'b')}/>;})}
@@ -175,6 +207,6 @@ export default function Plan2D() {
       {startWall&&pointer&&<line x1={startWall.x} y1={startWall.y} x2={pointer.x} y2={pointer.y} stroke="#267658" strokeDasharray=".14 .09" strokeWidth=".055"/>}
       <g className="dimension"><line x1="0" y1="-.3" x2={project.width} y2="-.3" stroke="#888980" strokeWidth=".018"/><text x={project.width/2} y="-.38" textAnchor="middle" fontSize=".18">{project.width.toFixed(2)} m</text><line x1="-.3" y1="0" x2="-.3" y2={project.depth} stroke="#888980" strokeWidth=".018"/><text x="-.38" y={project.depth/2} textAnchor="middle" transform={`rotate(-90 -.38 ${project.depth/2})`} fontSize=".18">{project.depth.toFixed(2)} m</text></g>
     </svg>
-    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona un muro para arrastrarlo o modificar sus extremos' }</span><div className="zoom-tools"><button title="Alejar" onClick={()=>setZoom(z=>Math.max(1,z-.2))}>−</button><span>{Math.round(zoom*100)}%</span><button title="Acercar" onClick={()=>setZoom(z=>Math.min(2.6,z+.2))}>+</button></div></div>
+    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona y arrastra un muro; doble clic para dividirlo sin desplazar puertas ni ventanas' }</span><div className="zoom-tools"><button title="Alejar" onClick={()=>setZoom(z=>Math.max(1,z-.2))}>−</button><span>{Math.round(zoom*100)}%</span><button title="Acercar" onClick={()=>setZoom(z=>Math.min(2.6,z+.2))}>+</button></div></div>
   </div>;
 }
