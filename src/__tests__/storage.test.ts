@@ -131,6 +131,47 @@ describe('F0: almacenamiento y recuperación del editor', () => {
     expect(readProject().name).toBe('Respaldo accesible');
   });
 
+
+  it('conserva el proyecto anterior cuando falla la escritura principal', async () => {
+    const first = structuredClone(demoProject);
+    first.name = 'Última versión persistida';
+    const storage = storageMock(JSON.stringify(first));
+    const originalSet = storage.setItem.getMockImplementation()!;
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === 'atelier-60-project-v1') throw new Error('QuotaExceededError');
+      return originalSet(key, value);
+    });
+    vi.stubGlobal('localStorage', storage);
+    const { saveLocal, readProject } = await import('../store');
+    const changed = structuredClone(first);
+    changed.name = 'Versión no guardada';
+    expect(saveLocal(changed)).toBe(false);
+    expect(readProject().name).toBe('Última versión persistida');
+    expect(JSON.parse(storage.getItem('atelier-60-project-v1-backup')!)).toEqual(first);
+  });
+
+  it('no sobrescribe una copia de seguridad válida si falla el guardado', async () => {
+    const first = structuredClone(demoProject);
+    first.name = 'Versión estable';
+    const storage = storageMock();
+    vi.stubGlobal('localStorage', storage);
+    const { saveLocal, readProject } = await import('../store');
+    expect(saveLocal(first)).toBe(true);
+    const second = structuredClone(first);
+    second.name = 'Versión intermedia';
+    expect(saveLocal(second)).toBe(true);
+    const previousSet = storage.setItem.getMockImplementation()!;
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === 'atelier-60-project-v1') throw new Error('QuotaExceededError');
+      return previousSet(key, value);
+    });
+    const third = structuredClone(second);
+    third.name = 'Versión fallida';
+    expect(saveLocal(third)).toBe(false);
+    expect(readProject().name).toBe('Versión intermedia');
+    expect(JSON.parse(storage.getItem('atelier-60-project-v1-backup')!)).toEqual(second);
+  });
+
   it('guarda y restaura una edición, conservando deshacer y rehacer', async () => {
     const storage = storageMock();
     vi.stubGlobal('localStorage', storage);
