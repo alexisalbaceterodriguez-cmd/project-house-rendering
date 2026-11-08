@@ -3,6 +3,15 @@
 Última revisión: 2026-11-08 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
+## Estado operativo vigente (2026-11-08, tras solucionar el lockfile)
+
+**Manual de automatización:** [AUTOMATION_RUNBOOK.md](AUTOMATION_RUNBOOK.md) (consulta obligatoria). `AGENTS.md` actualizado. `PROJECT_MEMORY.md` es principalmente histórico; varias afirmaciones antiguas están superadas.
+
+- **F0 en curso; bloqueo de lockfile RESUELTO.** `package-lock.json` v3 versionado (`d29e07b`), CI usa `npm ci` con Node 22 (`a2fa4db`), `Test and build` verde tras el cambio de CI ([42463858802](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42463858802)) y tras la limpieza de bootstrap ([42463921846](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42463921846)). No confundir con E2E: solo se verifican Vitest + build.
+- **F1 y F2 parcialmente implementadas:** arrastre de muros y vértices, geometría de recintos parcial, dimensiones y snapping básico. Comprobar casos límite y sincronización 2D/3D/JSON.
+- **Próximo paso concreto:** integrar Playwright y al menos un E2E básico en Actions; extender a crear plano, arrastrar muros, redimensionar, undo/redo, exportar/importar. Después abordar IndexedDB/GLB y migraciones, antes de cerrar F0.
+- **Regla crítica:** si falla `git clone` o npm **en el agente**, consultar GitHub Actions por `/actions/runs` y trabajos del SHA correcto; no repetir un diagnóstico DNS cada hora. Nunca inferir CI rojo o ausente a partir de una lista vacía de statuses. Continuar una tarea con herramientas disponibles y registrar el resultado real.
+
 ## Estado comprobado
 
 - F0 (#1): **en curso**. Hay Vitest, TypeScript, compilación Vite y GitHub Actions; `package-lock.json` v3 ya está versionado y CI utiliza `npm ci`. Siguen pendientes Playwright/E2E, pruebas de assets y migraciones.
