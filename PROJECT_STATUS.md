@@ -13,6 +13,12 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - **Siguiente tarea exacta:** tests de recuperación y persistencia IndexedDB/GLB, especialmente exportación portable, assets ausentes y errores de cuota. Añadir pruebas E2E negativas de JSON corrupto como incremento cercano; preservar proyectos anteriores.
 - **Continuidad:** consultar [AUTOMATION_RUNBOOK.md](AUTOMATION_RUNBOOK.md) y runs de Actions del SHA real. No repetir lockfile/bootstrap, ni diagnosticar falta de red de la terminal si CI funciona.
 
+## Revisión 2026-11-08 11:38 (Europe/Madrid): roundtrip GLB en navegador
+
+- Commit de código `d694574ca8a900fdca54d98284565866dec4dcdd`: `e2e/editor.e2e.ts` incorpora escenario Chromium que importa un GLB binario mínimo válido, verifica almacenamiento por `assetId` en IndexedDB y JSON local sin `modelData`, exporta un JSON portable con los bytes GLB en base64, reimporta y comprueba una segunda exportación idéntica.
+- Los escenarios negativos del commit `073d7cf` continúan pendientes de validación por SHA exacto. La consulta directa de `/actions/runs?per_page=5` desde el navegador de herramientas devolvió «not accessible»; no se atribuye ningún run anterior a este commit ni se declara E2E verde.
+- **Próximo paso exacto:** consultar el run de `d694574` (y `073d7cf`) en Actions, corregir cualquier fallo real de Playwright y añadir prueba de asset ausente/denegación de IndexedDB y manejo de cuota. F0 permanece abierta.
+
 ## Revisión 2026-11-08 10:38 (Europe/Madrid): E2E negativos de persistencia
 
 - Commit de código `073d7cf602fb14537feeb92643d054ef53ab0113`: `e2e/editor.e2e.ts` añade dos escenarios Chromium: importación de JSON sintácticamente corrupto/esquema incompatible sin pérdida del plano activo y recuperación desde copia válida cuando la clave primaria de localStorage está corrupta.
