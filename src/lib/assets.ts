@@ -15,7 +15,7 @@ async function useStore<T>(mode:IDBTransactionMode,work:(store:IDBObjectStore,fi
   return new Promise<T>((resolve,reject)=>{
     const tx=database.transaction(STORE,mode);
     let answer=undefined as T;let settled=false;
-    const fail=(e:unknown)=>{if(!settled){settled=true;reject(e instanceof Error?e:new Error('Error al guardar el modelo.'));}};
+    const fail=(e:unknown)=>{if(!settled){settled=true;const error=e instanceof Error?e:new Error('Error al guardar el modelo.');reject(error.name==='QuotaExceededError'?new Error('Almacenamiento de modelos 3D lleno. Libera espacio del navegador o exporta una copia del proyecto.'):error);}};
     try{work(tx.objectStore(STORE),v=>{answer=v;},fail);}catch(e){fail(e);}
     tx.oncomplete=()=>{if(!settled){settled=true;resolve(answer); }database.close();};
     tx.onerror=()=>{fail(tx.error);database.close();};
