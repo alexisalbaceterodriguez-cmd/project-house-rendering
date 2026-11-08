@@ -58,3 +58,11 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - Commit `07253ca`: dos pruebas para comprobar la conservación de la versión anterior y la protección frente a un principal corrupto. **Pendientes de ejecutar**.
 - **Siguiente tarea exacta**: obtener un checkout con conectividad npm, ejecutar `npm run test` y `npm run build`, corregir regresiones, generar un `package-lock.json` auténtico y cambiar CI a `npm ci`. Después añadir Playwright. No cerrar F0 sin verificaciones.
 - No se ha podido determinar de forma fiable si existe una conversación concurrente activa; no se ha simulado una espera de diez minutos.
+
+## Revisión de continuidad — 2026-11-08 05:43 (Europe/Madrid)
+
+- Confirmados los issues #1–#5 abiertos y comprobados `PROJECT_STATUS.md`, `package.json`, `.github/workflows/ci.yml`, `src/store.ts`, `src/lib/validation.ts`, `src/App.tsx` y pruebas existentes. F0 continúa sin lockfile y sin E2E.
+- Commit `cd2751403816286616490e47145a90d3111d88cf`: dos pruebas de regresión adicionales en `src/__tests__/storage.test.ts` para fallos al escribir la copia principal. Verifican que `saveLocal` indique fallo, la última versión principal siga legible y el respaldo conserve la versión válida más reciente. No se modificó el comportamiento productivo.
+- **Sin ejecución de tests**: `git ls-remote` sigue fallando por DNS (`Could not resolve host: github.com`); no hay checkout instalable ni acceso npm confirmado. Estas pruebas deben verificarse en CI/runner antes de afirmar que pasan.
+- Siguiente tarea exacta: obtener checkout y registro npm funcionales, ejecutar tests/build, generar lockfile real y sustituir `npm install` por `npm ci`; después añadir Playwright E2E. No cerrar F0 sin aceptación verificada.
+- No se pudo verificar con certeza si había conversación concurrente; no se simuló espera.
