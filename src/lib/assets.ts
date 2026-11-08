@@ -43,3 +43,8 @@ export function dataURLToBlob(input:string):Blob{
   const arr=new Uint8Array(bytes.length);for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);
   return new Blob([arr],{type:head.slice(5,head.indexOf(';'))||'model/gltf-binary'});
 }
+
+/** Remove assets written during a failed multi-model import. */
+export async function deleteModelAsset(id:string):Promise<void>{
+  return useStore<void>('readwrite',store=>{store.delete(id);});
+}
