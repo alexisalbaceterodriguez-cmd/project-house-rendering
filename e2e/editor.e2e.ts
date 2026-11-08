@@ -98,3 +98,46 @@ test('crear, editar, deshacer, guardar y recuperar una vivienda', async ({ page 
   await expect(page.locator('.plan-wall')).toHaveCount(5);
   expect(Number(await page.locator('.plan-wall').last().getAttribute('y1'))).toBeGreaterThan(2.4);
 });
+
+test('rechaza JSON corrupto sin perder el proyecto activo ni sus paredes', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plano 2D' }).click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Nuevo' }).click();
+  await page.getByLabel('Nombre del proyecto').fill('Trabajo que no debe perderse');
+  await page.getByLabel('Ancho de la vivienda').fill('11');
+  await page.getByRole('button', { name: 'Actualizar la planta' }).click();
+  await expect(page.locator('.plan-topline')).toContainText('11.0');
+  await expect(page.locator('.plan-wall')).toHaveCount(4);
+
+  // Both syntactically broken JSON and a structurally invalid project must
+  // leave the existing editor state untouched.
+  for (const [name, contents] of [
+    ['broken.json', '{invalid'],
+    ['wrong-schema.json', JSON.stringify({ version: 1, name: 'Not a project' })],
+  ]) {
+    await page.locator('input[type="file"][accept*=".json"]').setInputFiles({
+      name,
+      mimeType: 'application/json',
+      buffer: Buffer.from(contents),
+    });
+    await expect(page.getByLabel('Nombre del proyecto')).toHaveValue('Trabajo que no debe perderse');
+    await expect(page.locator('.plan-topline')).toContainText('11.0');
+    await expect(page.locator('.plan-wall')).toHaveCount(4);
+  }
+});
+
+test('recupera el respaldo válido cuando el guardado principal está corrupto', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    const key = 'atelier-60-project-v1';
+    const original = localStorage.getItem(key);
+    if (!original) throw new Error('Falta el proyecto inicial para la prueba de recuperación');
+    const project = JSON.parse(original) as { name: string };
+    project.name = 'Respaldo recuperable';
+    localStorage.setItem(key + '-backup', JSON.stringify(project));
+    localStorage.setItem(key, '{broken');
+  });
+  await page.reload();
+  await expect(page.getByLabel('Nombre del proyecto')).toHaveValue('Respaldo recuperable');
+});
