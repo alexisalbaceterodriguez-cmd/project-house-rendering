@@ -66,3 +66,11 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - **Sin ejecución de tests**: `git ls-remote` sigue fallando por DNS (`Could not resolve host: github.com`); no hay checkout instalable ni acceso npm confirmado. Estas pruebas deben verificarse en CI/runner antes de afirmar que pasan.
 - Siguiente tarea exacta: obtener checkout y registro npm funcionales, ejecutar tests/build, generar lockfile real y sustituir `npm install` por `npm ci`; después añadir Playwright E2E. No cerrar F0 sin aceptación verificada.
 - No se pudo verificar con certeza si había conversación concurrente; no se simuló espera.
+
+## Revisión de continuidad — 2026-11-08 06:37 (Europe/Madrid)
+
+- Consultados los cinco issues #1–#5 (todos abiertos), commits recientes de main, `package.json`, CI, `src/store.ts`, validación y pruebas. No hay cambios ajenos identificados desde la revisión anterior. No hay forma fiable de detectar una conversación simultánea desde este entorno; no se simuló espera.
+- **Commit `6acf56f`**: `useEditor.load` clona defensivamente el proyecto recibido antes de introducirlo en el estado del editor. Evita que una referencia externa a un JSON importado altere muros o metadatos sin pasar por el historial de operaciones.
+- **Commit `fba1eb8`**: prueba de regresión de aislamiento de la importación en `src/__tests__/storage.test.ts`. La prueba comprueba nombre, geometría e historial tras mutar el objeto original.
+- **Verificación pendiente**: `git ls-remote` falla por DNS (`Could not resolve host: github.com`). No hay checkout instalable ni acceso npm confirmado; Vitest, compilación, lint y E2E no ejecutados. Estados y workflow runs del commit consultado devuelven listas vacías, lo que no demuestra CI verde.
+- **Siguiente tarea exacta**: obtener un runner con checkout y acceso npm, ejecutar las pruebas existentes y la nueva, generar `package-lock.json` auténtico y pasar CI a `npm ci`. Añadir Playwright después. F0 y los otros cuatro issues siguen abiertos.
