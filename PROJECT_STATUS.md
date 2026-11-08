@@ -33,3 +33,11 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - **Verificación pendiente**: pruebas añadidas pero no ejecutadas. Intento de `git clone` desde el entorno de ejecución falló con `Could not resolve host: github.com`. GitHub API sí permite leer/escribir; no se debe presentar CI como superado.
 - F0 continúa abierta. La próxima ejecución debe priorizar obtener checkout y npm operativos, ejecutar estas pruebas, generar el lockfile real (no sintetizarlo), pasar a `npm ci` y comenzar Playwright. Si GitHub Actions indica fallos, corregirlos antes de añadir más funciones.
 - No se ha detectado evidencia de edición simultánea; tampoco hay garantía técnica de detectar una conversación activa. No se simuló una espera.
+
+## Revisión de continuidad — 2026-11-08 02:40 (Europe/Madrid)
+
+- F0 sigue abierta; issues #1–#5 continúan abiertos. No hay evidencia de ejecución de CI para el último commit: la consulta de estados y workflows asociados devolvió listas vacías (el conector de workflows solo consulta ejecuciones asociadas a PR).
+- Commit `ec78ba25f98657b6ecd0a31047d941c13ad051fb`: `src/store.ts` incorpora respaldo validado en `localStorage`, recuperación desde respaldo cuando el principal está corrupto y rechazo de guardado inválido.
+- Commit `20baa6848ef10a8d5035665f29e80d1159901c6c`: `src/__tests__/storage.test.ts` incorpora tres casos de prueba para recuperación, rechazo de proyectos inválidos y escritura de respaldo.
+- **No verificado**: el checkout por `git clone` vuelve a fallar por DNS (`Could not resolve host: github.com`); no se pudieron ejecutar npm, Vitest, compilación ni E2E. Los cambios se publicaron mediante GitHub API, no mediante un checkout local.
+- Próxima prioridad: comprobar y corregir las pruebas en un runner operativo; obtener `package-lock.json` auténtico, sustituir `npm install` por `npm ci` y comenzar Playwright. No cerrar F0 hasta verificar aceptación.
