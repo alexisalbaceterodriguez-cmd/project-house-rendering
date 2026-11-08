@@ -7,7 +7,8 @@ Este repositorio desarrolla **Atelier 60**, un editor web de viviendas en 2D y 3
 1. **`AUTOMATION_RUNBOOK.md`**: procedimiento operativo, diagnóstico de CI, salidas alternativas si falla el entorno y prioridades actualizadas. Aplicar en cada sesión.
 2. **`PROJECT_STATUS.md`**, primero la cabecera actualizada y la revisión más reciente, para conocer última tarea terminada y siguiente paso exacto.
 3. **`PROJECT_MEMORY.md`** para arquitectura, objetivos y decisiones históricas. Sus descripciones antiguas no prevalecen sobre el estado actual.
-4. Código real en `main`, `README.md`, commits, issues #1–#5, PR y GitHub Actions. El código y las ejecuciones reales prevalecen sobre los documentos.
+4. [ROADMAP.md](ROADMAP.md) y issues #1–#6: la ampliación F3A abarca catálogo de objetos reales y materiales PBR; F3B (#4) cocinas/baños; F4/F5 (#5) render y versiones. Son requisitos planificados, no tareas ya terminadas.
+5. Código real en `main`, `README.md`, commits, PR y GitHub Actions. El código y las ejecuciones reales prevalecen sobre los documentos.
 
 ## Reglas esenciales
 
@@ -28,4 +29,4 @@ Este repositorio desarrolla **Atelier 60**, un editor web de viviendas en 2D y 3
 - `src/__tests__/`: tests existentes; `.github/workflows/ci.yml`: CI.
 - `standalone.html`: prototipo legacy; no usar su JSON como si fuese compatible con el proyecto React.
 
-**Orden actual de fases:** F0 (E2E y persistencia) → F1 (topología avanzada) → F2 (ergonomía y precisión) → F3 (catálogo modular) → F4/F5 (renders y gestión). F1 y F2 tienen ya avances parciales: nunca volver a describirlas como totalmente ausentes sin comprobar código.
+**Orden actual de fases:** F0 (E2E y persistencia) → F1 (topología avanzada) → F2 (ergonomía y precisión) → F3A (catálogo general de productos reales y materiales PBR, #6) → F3B (cocinas/baños modulares, #4) → F4/F5 (renders y gestión, #5). F1 y F2 tienen ya avances parciales: nunca volver a describirlas como totalmente ausentes sin comprobar código.
