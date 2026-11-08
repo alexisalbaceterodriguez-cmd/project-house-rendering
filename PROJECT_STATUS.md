@@ -13,6 +13,13 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - **Siguiente tarea exacta:** tests de recuperación y persistencia IndexedDB/GLB, especialmente exportación portable, assets ausentes y errores de cuota. Añadir pruebas E2E negativas de JSON corrupto como incremento cercano; preservar proyectos anteriores.
 - **Continuidad:** consultar [AUTOMATION_RUNBOOK.md](AUTOMATION_RUNBOOK.md) y runs de Actions del SHA real. No repetir lockfile/bootstrap, ni diagnosticar falta de red de la terminal si CI funciona.
 
+## Revisión 2026-11-08 10:38 (Europe/Madrid): E2E negativos de persistencia
+
+- Commit de código `073d7cf602fb14537feeb92643d054ef53ab0113`: `e2e/editor.e2e.ts` añade dos escenarios Chromium: importación de JSON sintácticamente corrupto/esquema incompatible sin pérdida del plano activo y recuperación desde copia válida cuando la clave primaria de localStorage está corrupta.
+- Se comprobó que el run anterior `42467419830` tenía job `verify` `completed/success` (npm ci, Vitest, build, instalación Chromium y E2E). **Ese resultado corresponde al código anterior**, no al commit nuevo.
+- **Validación pendiente del nuevo SHA:** el endpoint `actions/runs` no estuvo accesible en esta sesión mediante el navegador web, y el conector disponible permite leer jobs por run ID, pero no listar runs push nuevos. No atribuir el verde anterior a `073d7cf`. Revisar Actions de ese SHA en el próximo ciclo y reparar cualquier fallo antes de avanzar.
+- **Siguiente unidad exacta:** comprobar resultado de CI para `073d7cf`; si es verde, ampliar pruebas IndexedDB para `putModelAsset`/`getModelAsset` y fallos de cuota o activos ausentes, y asegurar exportación/importación portable sin pérdida de modelos.
+
 ## Estado comprobado
 
 - F0 (#1): **en curso**. Hay Vitest, TypeScript, compilación Vite y GitHub Actions; `package-lock.json` v3 ya está versionado y CI utiliza `npm ci`. El primer recorrido Playwright/E2E ya pasó en Chromium; faltan assets, migraciones y más escenarios de borde.
