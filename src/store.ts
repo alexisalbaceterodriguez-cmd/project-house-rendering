@@ -54,6 +54,9 @@ export const useEditor = create<Store>((set, get) => ({
     const previous = get().project;
     const next = structuredClone(previous);
     updater(next);
+    // A malformed edit must not enter the live state or the undo history.
+    // This also prevents autosave from repeatedly failing on invalid geometry.
+    if (!isProject(next)) return;
     set(s => ({ project: next, history: record ? [...s.history.slice(-39), previous] : s.history, redoStack: record ? [] : s.redoStack }));
   },
   undo: () => set(s => s.history.length ? ({ project: s.history[s.history.length - 1], history: s.history.slice(0, -1), redoStack: [s.project, ...s.redoStack].slice(0, 40), selection: null }) : s),
