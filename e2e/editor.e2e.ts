@@ -141,3 +141,67 @@ test('recupera el respaldo válido cuando el guardado principal está corrupto',
   await page.reload();
   await expect(page.getByLabel('Nombre del proyecto')).toHaveValue('Respaldo recuperable');
 });
+
+
+test('conserva un modelo GLB en IndexedDB y en un JSON portable', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plano 2D' }).click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Nuevo' }).click();
+
+  // Minimal valid binary glTF 2.0 scene. No network models or third-party assets.
+  const json = Buffer.from(JSON.stringify({ asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [] }], nodes: [] }));
+  const padded = Buffer.concat([json, Buffer.alloc((4 - json.length % 4) % 4, 0x20)]);
+  const glb = Buffer.alloc(20 + padded.length);
+  glb.writeUInt32LE(0x46546c67, 0);
+  glb.writeUInt32LE(2, 4);
+  glb.writeUInt32LE(glb.length, 8);
+  glb.writeUInt32LE(padded.length, 12);
+  glb.writeUInt32LE(0x4e4f534a, 16);
+  padded.copy(glb, 20);
+
+  await page.locator('input[type="file"][accept*=".glb"]').setInputFiles({
+    name: 'modelo-portable.glb', mimeType: 'model/gltf-binary', buffer: glb,
+  });
+  await expect(page.getByText('Modelo guardado en IndexedDB e importado al proyecto.')).toBeVisible();
+
+  const stored = await page.evaluate(() => {
+    const project = JSON.parse(localStorage.getItem('atelier-60-project-v1') ?? '{}') as {
+      furniture?: Array<{ kind: string; assetId?: string; modelData?: string }>;
+    };
+    return project.furniture?.find(f => f.kind === 'model');
+  });
+  // Autosave is debounced; the imported model must have an asset reference,
+  // not a large inline data URL in localStorage.
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = localStorage.getItem('atelier-60-project-v1');
+    const data = raw && JSON.parse(raw) as { furniture: Array<{ kind: string; assetId?: string }> };
+    return !!data?.furniture.some(f => f.kind === 'model' && !!f.assetId);
+  })).toBe(true);
+  expect(stored?.modelData).toBeUndefined();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar' }).click();
+  const downloaded = await downloadPromise;
+  const portable = await readFile(await downloaded.path());
+  const exported = JSON.parse(portable.toString('utf8')) as {
+    furniture: Array<{ kind: string; assetId?: string; modelData?: string }>;
+  };
+  const model = exported.furniture.find(f => f.kind === 'model');
+  expect(model?.assetId).toBeUndefined();
+  expect(model?.modelData).toMatch(/^data:.*;base64,/);
+  expect(Buffer.from(model!.modelData!.split(',')[1], 'base64')).toEqual(glb);
+
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Nuevo' }).click();
+  await page.locator('input[type="file"][accept*=".json"]').setInputFiles({
+    name: 'portable.json', mimeType: 'application/json', buffer: portable,
+  });
+  await expect(page.getByText('Proyecto cargado correctamente.')).toBeVisible();
+  const secondDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar' }).click();
+  const second = JSON.parse((await readFile(await (await secondDownload).path())).toString('utf8')) as typeof exported;
+  const restored = second.furniture.find(f => f.kind === 'model');
+  expect(restored?.modelData).toBe(model?.modelData);
+  expect(restored?.assetId).toBeUndefined();
+});
