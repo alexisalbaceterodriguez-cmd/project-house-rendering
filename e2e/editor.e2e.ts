@@ -343,3 +343,56 @@ test('avisa de cuota de IndexedDB sin alterar el plano ni añadir un modelo', as
     await page.evaluate(() => (window as Window & { restoreModelPut?: () => void }).restoreModelPut?.());
   }
 });
+
+
+test('revierte activos escritos si falla el segundo GLB de una importación JSON', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Plano 2D' }).click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Nuevo' }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar' }).click();
+  const original = JSON.parse((await readFile(await (await downloadPromise).path())).toString('utf8'));
+  const modelData = 'data:model/gltf-binary;base64,' + Buffer.from('example').toString('base64');
+  original.furniture = [1, 2].map(n => ({
+    id: 'import-model-' + n, kind: 'model', name: 'Modelo ' + n,
+    x: 1 + n, y: 1, w: 1, d: 1, h: 1, rotation: 0,
+    color: '#e2e2df', modelData,
+  }));
+
+  await page.evaluate(() => {
+    const originalPut = IDBObjectStore.prototype.put;
+    let count = 0;
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === 'models' && ++count === 2) {
+        throw new DOMException('Disk full', 'QuotaExceededError');
+      }
+      return originalPut.apply(this, args);
+    };
+  });
+  await page.locator('input[type="file"][accept*=".json"]').setInputFiles({
+    name: 'dos-modelos.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(original)),
+  });
+  await expect(page.getByText(/Almacenamiento de modelos 3D lleno/)).toBeVisible();
+  await expect(page.locator('.plan-wall')).toHaveCount(4);
+  const keys = await page.evaluate(async () => {
+    return new Promise<IDBValidKey[]>((resolve, reject) => {
+      const request = indexedDB.open('atelier60-assets-v1', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction('models', 'readonly');
+        const keys = tx.objectStore('models').getAllKeys();
+        keys.onsuccess = () => resolve(keys.result);
+        keys.onerror = () => reject(keys.error);
+        tx.oncomplete = () => db.close();
+      };
+    });
+  });
+  expect(keys).toHaveLength(0);
+  const afterDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar' }).click();
+  const after = JSON.parse((await readFile(await (await afterDownload).path())).toString('utf8'));
+  expect(after.furniture).toHaveLength(0);
+});
