@@ -236,6 +236,29 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
     if(p.openings.some(o=>o.wallId===wallId &&
       (o.offset*length-o.width/2<.05||(1-o.offset)*length-o.width/2<.05)))return;
   }
+  // Reject newly introduced interior crossings and collinear overlaps. A wall
+  // drag must not silently create an unsplit X junction or duplicate wall axis.
+  // Existing crossings are tolerated until the dedicated topology editor can
+  // explicitly split them, so older projects remain editable.
+  const intersection=(u:{a:Point;b:Point},v:{a:Point;b:Point})=>{
+    const r=sub(u.b,u.a),s=sub(v.b,v.a),den=cross(r,s),delta=sub(v.a,u.a);
+    if(Math.abs(den)<EPS){
+      if(Math.abs(cross(delta,r))>EPS)return false;
+      const rr=dot(r,r);
+      if(rr<EPS)return false;
+      const t0=dot(delta,r)/rr,t1=dot(sub(v.b,u.a),r)/rr;
+      return Math.min(1,Math.max(t0,t1))-Math.max(0,Math.min(t0,t1))>1e-4;
+    }
+    const t=cross(delta,s)/den,k=cross(delta,r)/den;
+    return t>1e-4&&t<1-1e-4&&k>1e-4&&k<1-1e-4;
+  };
+  for(let i=0;i<p.walls.length;i++)for(let j=i+1;j<p.walls.length;j++){
+    const first=p.walls[i],second=p.walls[j];
+    if(!proposed.has(first.id)&&!proposed.has(second.id))continue;
+    const nextFirst=proposed.get(first.id)??first;
+    const nextSecond=proposed.get(second.id)??second;
+    if(intersection(nextFirst,nextSecond)&&!intersection(first,second))return;
+  }
   for(const [wallId,points] of proposed){
     const wall=p.walls.find(w=>w.id===wallId);
     if(wall){wall.a=points.a;wall.b=points.b;}
