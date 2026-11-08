@@ -129,15 +129,29 @@ test('rechaza JSON corrupto sin perder el proyecto activo ni sus paredes', async
 
 test('recupera el respaldo válido cuando el guardado principal está corrupto', async ({ page }) => {
   await page.goto('/');
-  await page.evaluate(() => {
-    const key = 'atelier-60-project-v1';
-    const original = localStorage.getItem(key);
-    if (!original) throw new Error('Falta el proyecto inicial para la prueba de recuperación');
-    const project = JSON.parse(original) as { name: string };
-    project.name = 'Respaldo recuperable';
-    localStorage.setItem(key + '-backup', JSON.stringify(project));
-    localStorage.setItem(key, '{broken');
-  });
+  // A fresh browser context has no saved project until autosave has run.
+  // Exercise real saves through the UI instead of assuming localStorage
+  // already contains a project immediately after page.goto().
+  await page.getByLabel('Nombre del proyecto').fill('Respaldo recuperable');
+  await expect.poll(async () => page.evaluate(() => {
+    const primary = localStorage.getItem('atelier-60-project-v1');
+    const backup = localStorage.getItem('atelier-60-project-v1-backup');
+    return !!primary && !!backup
+      && JSON.parse(primary).name === 'Respaldo recuperable'
+      && JSON.parse(backup).name === 'Respaldo recuperable';
+  })).toBe(true);
+
+  // The next save should retain the previous good revision as backup.
+  await page.getByLabel('Nombre del proyecto').fill('Cambio posterior');
+  await expect.poll(async () => page.evaluate(() => {
+    const primary = localStorage.getItem('atelier-60-project-v1');
+    const backup = localStorage.getItem('atelier-60-project-v1-backup');
+    return !!primary && !!backup
+      && JSON.parse(primary).name === 'Cambio posterior'
+      && JSON.parse(backup).name === 'Respaldo recuperable';
+  })).toBe(true);
+
+  await page.evaluate(() => localStorage.setItem('atelier-60-project-v1', '{broken'));
   await page.reload();
   await expect(page.getByLabel('Nombre del proyecto')).toHaveValue('Respaldo recuperable');
 });
