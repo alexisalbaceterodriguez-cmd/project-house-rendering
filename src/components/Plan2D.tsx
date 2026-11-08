@@ -135,6 +135,48 @@ export default function Plan2D() {
     });
     setSelection({ type: 'wall', id: newId });
   };
+
+  const mergeSelectedWall = () => {
+    if (tool !== 'select' || selection?.type !== 'wall') return;
+    const first = project.walls.find(w => w.id === selection.id);
+    if (!first || first.outer) return;
+    const near = (a: Point, b: Point) => distance(a,b) < .001;
+    const cross = (a: Point,b: Point,c: Point) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+    const matches = project.walls.filter(w => w.id !== first.id && !w.outer && Math.abs(w.thickness-first.thickness)<.001)
+      .flatMap(other => {
+        const pairs: Array<[Point,Point,Point]> = [];
+        if (near(first.a,other.a)) pairs.push([first.a,first.b,other.b]);
+        if (near(first.a,other.b)) pairs.push([first.a,first.b,other.a]);
+        if (near(first.b,other.a)) pairs.push([first.b,first.a,other.b]);
+        if (near(first.b,other.b)) pairs.push([first.b,first.a,other.a]);
+        return pairs.filter(([joint,a,b]) => Math.abs(cross(a,joint,b)) < .001 &&
+          (joint.x-a.x)*(b.x-joint.x)+(joint.y-a.y)*(b.y-joint.y)>0)
+          .map(([joint,a,b]) => ({other,joint,a,b}));
+      });
+    if (matches.length !== 1) return;
+    const {other,joint,a,b} = matches[0];
+    if (project.walls.some(w => w.id!==first.id && w.id!==other.id &&
+      (near(w.a,joint)||near(w.b,joint)))) return;
+    const length = distance(a,b);
+    const offsets = project.openings.filter(o=>o.wallId===first.id||o.wallId===other.id).map(o=>{
+      const w=o.wallId===first.id?first:other;
+      const centre={x:w.a.x+(w.b.x-w.a.x)*o.offset,y:w.a.y+(w.b.y-w.a.y)*o.offset};
+      return {id:o.id,width:o.width,offset:distance(a,centre)/length};
+    });
+    if(offsets.some(o=>o.offset*length<o.width/2+.05||(1-o.offset)*length<o.width/2+.05)) return;
+    change(p=>{
+      const wall=p.walls.find(w=>w.id===first.id);
+      if(!wall)return;
+      wall.a={...a};wall.b={...b};
+      p.walls=p.walls.filter(w=>w.id!==other.id);
+      for(const entry of offsets){
+        const opening=p.openings.find(o=>o.id===entry.id);
+        if(opening){opening.wallId=first.id;opening.offset=entry.offset;}
+      }
+      reconcileRooms(p);
+    });
+    setSelection({type:'wall',id:first.id});
+  };
   const onItemDown=(e:PointerEvent<SVGGElement>,item:Furniture)=>{
     if(tool!=='select')return;
     e.stopPropagation();
@@ -207,6 +249,6 @@ export default function Plan2D() {
       {startWall&&pointer&&<line x1={startWall.x} y1={startWall.y} x2={pointer.x} y2={pointer.y} stroke="#267658" strokeDasharray=".14 .09" strokeWidth=".055"/>}
       <g className="dimension"><line x1="0" y1="-.3" x2={project.width} y2="-.3" stroke="#888980" strokeWidth=".018"/><text x={project.width/2} y="-.38" textAnchor="middle" fontSize=".18">{project.width.toFixed(2)} m</text><line x1="-.3" y1="0" x2="-.3" y2={project.depth} stroke="#888980" strokeWidth=".018"/><text x="-.38" y={project.depth/2} textAnchor="middle" transform={`rotate(-90 -.38 ${project.depth/2})`} fontSize=".18">{project.depth.toFixed(2)} m</text></g>
     </svg>
-    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona y arrastra un muro; doble clic para dividirlo sin desplazar puertas ni ventanas' }</span><div className="zoom-tools"><button title="Alejar" onClick={()=>setZoom(z=>Math.max(1,z-.2))}>−</button><span>{Math.round(zoom*100)}%</span><button title="Acercar" onClick={()=>setZoom(z=>Math.min(2.6,z+.2))}>+</button></div></div>
+    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona y arrastra un muro; doble clic para dividirlo sin desplazar puertas ni ventanas' }</span><div className="zoom-tools">{selection?.type==='wall' && tool==='select' && <button type="button" title="Unir segmento colineal sin otras uniones" onClick={mergeSelectedWall}>Unir muros</button>}<button title="Alejar" onClick={()=>setZoom(z=>Math.max(1,z-.2))}>−</button><span>{Math.round(zoom*100)}%</span><button title="Acercar" onClick={()=>setZoom(z=>Math.min(2.6,z+.2))}>+</button></div></div>
   </div>;
 }
