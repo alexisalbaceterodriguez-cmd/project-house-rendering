@@ -1,0 +1,43 @@
+name: Bootstrap Playwright dependency
+
+on:
+  push:
+    paths: ['.github/workflows/bootstrap-playwright.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bootstrap-playwright-main
+  cancel-in-progress: false
+
+jobs:
+  install:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Playwright and update lockfile
+        run: npm install --save-dev --save-exact @playwright/test@1.56.1 --no-audit --no-fund
+      - name: Check reproducible installation
+        run: npm ci --no-audit --no-fund
+      - name: Existing unit tests
+        run: npm run test
+      - name: Production build
+        run: npm run build
+      - name: Publish manifest and lockfile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "Playwright is already installed."
+            exit 0
+          fi
+          git commit -m "test: install pinned Playwright for browser E2E"
+          git pull --rebase origin main
+          git push origin HEAD:main
