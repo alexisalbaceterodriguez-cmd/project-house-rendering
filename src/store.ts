@@ -10,7 +10,10 @@ export const readProject = (): Project => {
   try {
     // Prefer the primary save, but recover from a previously verified backup
     // when a browser extension, interrupted write or manual edit corrupts it.
-    for (const raw of [localStorage.getItem(KEY), localStorage.getItem(BACKUP_KEY)]) {
+    for (const key of [KEY, BACKUP_KEY]) {
+      // A failure reading the optional backup must never hide a valid primary.
+      let raw: string | null;
+      try { raw = localStorage.getItem(key); } catch { continue; }
       if (!raw) continue;
       let data: unknown;
       try { data = JSON.parse(raw); } catch { continue; }
