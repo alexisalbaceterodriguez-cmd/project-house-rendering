@@ -188,4 +188,18 @@ describe('F0: almacenamiento y recuperación del editor', () => {
     useEditor.getState().redo();
     expect(useEditor.getState().project.name).toBe('Cambio guardado');
   });
+  it('aísla un proyecto importado de mutaciones externas posteriores', async () => {
+    const storage = storageMock();
+    vi.stubGlobal('localStorage', storage);
+    const { useEditor } = await import('../store');
+    const imported = structuredClone(demoProject);
+    imported.name = 'Original importado';
+    useEditor.getState().load(imported);
+    imported.name = 'Cambio externo no autorizado';
+    imported.walls[0].a.x = 99;
+    expect(useEditor.getState().project.name).toBe('Original importado');
+    expect(useEditor.getState().project.walls[0].a.x).toBe(demoProject.walls[0].a.x);
+    expect(useEditor.getState().history).toHaveLength(0);
+  });
+
 });
