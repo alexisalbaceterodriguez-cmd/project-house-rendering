@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent, type WheelEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
 import { floors } from '../data/catalog';
 import { clamp, distance, makeId, snap, wallProjection } from '../lib/geometry';
 import { roomLabelPoint, projectWarnings, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
@@ -40,7 +40,46 @@ export default function Plan2D() {
   type Drag = {type:'furniture';id:string;dx:number;dy:number}|{type:'wall';id:string;start:Point;a:Point;b:Point;handle:'a'|'b'|'move';rooms:typeof project.rooms};
   const drag = useRef<Drag | null>(null);
   const pan = useRef<{ pointerId: number; clientX: number; clientY: number; scaleX: number; scaleY: number; center: Point } | null>(null);
+  const spaceHeld = useRef(false);
+  const [spacePanning, setSpacePanning] = useState(false);
   const [startWall, setStartWall] = useState<Point | null>(null);
+  useEffect(() => {
+    const editable = (target: EventTarget | null) => {
+      const element = target instanceof Element ? target : null;
+      return Boolean(element?.closest('input, textarea, select, [contenteditable="true"]'));
+    };
+    const down = (event: KeyboardEvent) => {
+      if (editable(event.target)) return;
+      if (event.code === 'Space' && !event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        event.preventDefault();
+        spaceHeld.current = true;
+        setSpacePanning(true);
+      }
+      if (event.key === 'Escape') {
+        spaceHeld.current = false;
+        setSpacePanning(false);
+        setStartWall(null);
+        setPointer(null);
+        drag.current = null;
+        pan.current = null;
+        if (svg.current?.hasPointerCapture) {
+          // Pointer capture is also released by the browser on pointerup.
+        }
+      }
+    };
+    const up = (event: KeyboardEvent) => {
+      if (event.code === 'Space') { spaceHeld.current = false; setSpacePanning(false); }
+    };
+    const blur = () => { spaceHeld.current = false; setSpacePanning(false); pan.current = null; };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
+    };
+  }, []);
   const [pointer, setPointer] = useState<Point | null>(null);
   const [zoom, setZoom] = useState(1);
   const [viewCenter, setViewCenter] = useState<Point | null>(null);
@@ -73,7 +112,7 @@ export default function Plan2D() {
   };
   // Middle-button panning works above walls, furniture and room labels without editing them.
   const onPanStart = (e: PointerEvent<SVGSVGElement>) => {
-    if (e.button !== 1 || drag.current || pan.current) return;
+    if (!(e.button === 1 || (e.button === 0 && spaceHeld.current)) || drag.current || pan.current) return;
     const matrix = svg.current?.getScreenCTM();
     if (!matrix) return;
     e.preventDefault();
@@ -87,7 +126,7 @@ export default function Plan2D() {
     svg.current?.setPointerCapture(e.pointerId);
   };
   const onBackground = (e: PointerEvent<SVGSVGElement>) => {
-    if (pan.current) return;
+    if (pan.current || spaceHeld.current) return;
     if (e.target !== svg.current && (e.target as Element).getAttribute('data-floor') !== 'true') return;
     const p = tool === 'wall' ? snapToWallJoint(pt(e), project.walls) : pt(e);
     if (tool === 'wall') {
@@ -176,6 +215,7 @@ export default function Plan2D() {
     } else {setSelection(null);}
   };
   const onWall = (id: string, e: PointerEvent<SVGElement>, handle: 'a'|'b'|'move'='move') => {
+    if (pan.current || spaceHeld.current) return;
     e.stopPropagation();
     const wall=project.walls.find(w=>w.id===id)!;
     if (tool === 'door' || tool === 'window') {
@@ -325,7 +365,7 @@ export default function Plan2D() {
   const x0=center.x-spanX/2,y0=center.y-spanY/2;
   return <div className="plan-wrap">
     <div className="plan-topline"><span><span className="live-dot"/> PLANO EDITABLE</span><span>{project.width.toFixed(1)} × {project.depth.toFixed(1)} m · {(project.width*project.depth).toFixed(0)} m²</span></div>
-    <svg ref={svg} className="plan-svg" onWheel={onWheel} onPointerDownCapture={onPanStart} onAuxClick={e=>e.preventDefault()} viewBox={`${x0-.7} ${y0-.7} ${spanX+1.4} ${spanY+1.4}`} onPointerDown={onBackground} onPointerMove={onMove} onPointerUp={onDragEnd} onLostPointerCapture={onDragEnd} aria-label="Editor de plano 2D">
+    <svg ref={svg} className="plan-svg" onWheel={onWheel} onPointerDownCapture={onPanStart} onAuxClick={e=>e.preventDefault()} style={{cursor:spacePanning?'grab':undefined}} viewBox={`${x0-.7} ${y0-.7} ${spanX+1.4} ${spanY+1.4}`} onPointerDown={onBackground} onPointerMove={onMove} onPointerUp={onDragEnd} onLostPointerCapture={onDragEnd} aria-label="Editor de plano 2D">
       <defs><pattern id="floor-grid" width=".5" height=".5" patternUnits="userSpaceOnUse"><path d="M .5 0 L 0 0 0 .5" fill="none" stroke="#c8c4bd" strokeWidth=".013"/></pattern></defs>
       <rect data-floor="true" x="0" y="0" width={project.width} height={project.depth} fill="#f8f7f4"/>
       {project.rooms.map(room=><g key={room.id} onPointerDown={e=>{if(tool==='select'){e.stopPropagation();setSelection({type:'room',id:room.id});}}}>
@@ -356,6 +396,6 @@ export default function Plan2D() {
       {startWall&&pointer&&<line x1={startWall.x} y1={startWall.y} x2={pointer.x} y2={pointer.y} stroke="#267658" strokeDasharray=".14 .09" strokeWidth=".055"/>}
       <g className="dimension"><line x1="0" y1="-.3" x2={project.width} y2="-.3" stroke="#888980" strokeWidth=".018"/><text x={project.width/2} y="-.38" textAnchor="middle" fontSize=".18">{project.width.toFixed(2)} m</text><line x1="-.3" y1="0" x2="-.3" y2={project.depth} stroke="#888980" strokeWidth=".018"/><text x="-.38" y={project.depth/2} textAnchor="middle" transform={`rotate(-90 -.38 ${project.depth/2})`} fontSize=".18">{project.depth.toFixed(2)} m</text></g>
     </svg>
-    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona y arrastra un muro; botón central para mover el plano; doble clic para dividir' }</span><div className="zoom-tools">{selection?.type==='wall' && tool==='select' && <button type="button" title="Unir segmento colineal sin otras uniones" onClick={mergeSelectedWall}>Unir muros</button>}<button title="Alejar" onClick={()=>zoomAt(zoom/1.2)}>−</button><button title="Restablecer zoom y encuadre" onClick={()=>{setZoom(1);setViewCenter(null);}}>{Math.round(zoom*100)}%</button><button title="Acercar" onClick={()=>zoomAt(zoom*1.2)}>+</button></div></div>
+    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona y arrastra un muro; botón central o Espacio + arrastre para mover; Esc cancela; doble clic divide' }</span><div className="zoom-tools">{selection?.type==='wall' && tool==='select' && <button type="button" title="Unir segmento colineal sin otras uniones" onClick={mergeSelectedWall}>Unir muros</button>}<button title="Alejar" onClick={()=>zoomAt(zoom/1.2)}>−</button><button title="Restablecer zoom y encuadre" onClick={()=>{setZoom(1);setViewCenter(null);}}>{Math.round(zoom*100)}%</button><button title="Acercar" onClick={()=>zoomAt(zoom*1.2)}>+</button></div></div>
   </div>;
 }
