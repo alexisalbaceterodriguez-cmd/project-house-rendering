@@ -9,7 +9,7 @@ import { clamp, download, fileSafe, makeId, wallLength } from './lib/geometry';
 import { projectWarnings, reconcileRooms, resizeProject, roomArea, updateWallGeometry } from './lib/topology';
 import { blobToDataURL, dataURLToBlob, deleteModelAsset, getModelAsset, listModelAssets, putModelAsset, putModelMetadata } from './lib/assets';
 import { isProject, saveLocal, useEditor } from './store';
-import { renderModelThumbnail } from './lib/modelThumbnail';
+import { measureModelDimensions, renderModelThumbnail } from './lib/modelThumbnail';
 import type { FloorFinish, Furniture, Mode, Palette, Project, RoomKind, Selection, Tool } from './types';
 
 type SideTab = 'objects' | 'materials' | 'rooms';
@@ -342,13 +342,17 @@ export default function App(){
       if(chunk.getUint32(4,true)!==0x4e4f534a||chunk.getUint32(0,true)>file.size-20){
         throw Error('El modelo GLB no contiene un bloque JSON válido.');
       }
+      // Preserve the native metric footprint; never mutate the GLB or its pivots.
+      // Legacy models and malformed bounds still use the editable 1 m fallback.
+      let dimensions={w:1,d:1,h:1};
+      try{dimensions=await measureModelDimensions(file);}catch{/* Keep import available for models with unusable bounds. */}
       const assetId=makeId();await putModelAsset(assetId,file);
       // A failed WebGL preview must never prevent importing the actual model.
       // Generate on demand for this one file, not for every asset in the library.
       let thumbnail: string | undefined;
       try{thumbnail=await renderModelThumbnail(file);}catch{/* WebGL unavailable or unsupported GLB: keep the asset. */}
-      try{await putModelMetadata(assetId,{name:file.name.replace(/\.glb$/i,''),source:'Importación local del usuario',thumbnail});}catch{/* The model blob remains usable if metadata storage fails. */}
-      const id=makeId();change(p=>p.furniture.push({id,kind:'model',name:file.name.replace(/\.glb$/i,''),x:p.width/2,y:p.depth/2,w:1,d:1,h:1,rotation:0,color:'#e2e2df',assetId}));
+      try{await putModelMetadata(assetId,{name:file.name.replace(/\.glb$/i,''),source:'Importación local del usuario',thumbnail,...dimensions});}catch{/* The model blob remains usable if metadata storage fails. */}
+      const id=makeId();change(p=>p.furniture.push({id,kind:'model',name:file.name.replace(/\.glb$/i,''),x:p.width/2,y:p.depth/2,...dimensions,rotation:0,color:'#e2e2df',assetId}));
       setSelection({type:'furniture',id});alert('Modelo guardado en IndexedDB e importado al proyecto.');
     }catch(err){alert(err instanceof Error?err.message:'No se ha podido guardar el modelo.');}
   };
