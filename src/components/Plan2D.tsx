@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from 'react';
+import { useRef, useState, type PointerEvent, type WheelEvent } from 'react';
 import { floors } from '../data/catalog';
 import { clamp, distance, makeId, snap, wallProjection } from '../lib/geometry';
 import { roomLabelPoint, projectWarnings, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
@@ -42,6 +42,28 @@ export default function Plan2D() {
   const [startWall, setStartWall] = useState<Point | null>(null);
   const [pointer, setPointer] = useState<Point | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [viewCenter, setViewCenter] = useState<Point | null>(null);
+  // Keep the world-space point beneath the cursor fixed while zooming.
+  const zoomAt = (nextZoom: number, clientX?: number, clientY?: number) => {
+    const next = clamp(nextZoom, 1, 4);
+    const currentCenter = viewCenter ?? { x: project.width / 2, y: project.depth / 2 };
+    if (clientX !== undefined && clientY !== undefined && svg.current) {
+      const matrix = svg.current.getScreenCTM();
+      if (matrix) {
+        const anchor = new DOMPoint(clientX, clientY).matrixTransform(matrix.inverse());
+        const ratio = zoom / next;
+        setViewCenter({
+          x: clamp(anchor.x + (currentCenter.x - anchor.x) * ratio, 0, project.width),
+          y: clamp(anchor.y + (currentCenter.y - anchor.y) * ratio, 0, project.depth),
+        });
+      }
+    }
+    setZoom(next);
+  };
+  const onWheel = (event: WheelEvent<SVGSVGElement>) => {
+    event.preventDefault();
+    zoomAt(zoom * (event.deltaY < 0 ? 1.15 : 1 / 1.15), event.clientX, event.clientY);
+  };
   const pt = (e: PointerEvent<SVGSVGElement | SVGElement>): Point => {
     const matrix = svg.current?.getScreenCTM();
     if (!matrix) return {x:0,y:0};
@@ -270,10 +292,11 @@ export default function Plan2D() {
     return [ring(roomVertices(room)),...(room.holes??[]).map(ring)].join(' ');
   };
   const spanX=project.width/zoom, spanY=project.depth/zoom;
-  const x0=(project.width-spanX)/2,y0=(project.depth-spanY)/2;
+  const center=viewCenter ?? {x:project.width/2,y:project.depth/2};
+  const x0=center.x-spanX/2,y0=center.y-spanY/2;
   return <div className="plan-wrap">
     <div className="plan-topline"><span><span className="live-dot"/> PLANO EDITABLE</span><span>{project.width.toFixed(1)} × {project.depth.toFixed(1)} m · {(project.width*project.depth).toFixed(0)} m²</span></div>
-    <svg ref={svg} className="plan-svg" viewBox={`${x0-.7} ${y0-.7} ${spanX+1.4} ${spanY+1.4}`} onPointerDown={onBackground} onPointerMove={onMove} onPointerUp={onDragEnd} onLostPointerCapture={onDragEnd} aria-label="Editor de plano 2D">
+    <svg ref={svg} className="plan-svg" onWheel={onWheel} viewBox={`${x0-.7} ${y0-.7} ${spanX+1.4} ${spanY+1.4}`} onPointerDown={onBackground} onPointerMove={onMove} onPointerUp={onDragEnd} onLostPointerCapture={onDragEnd} aria-label="Editor de plano 2D">
       <defs><pattern id="floor-grid" width=".5" height=".5" patternUnits="userSpaceOnUse"><path d="M .5 0 L 0 0 0 .5" fill="none" stroke="#c8c4bd" strokeWidth=".013"/></pattern></defs>
       <rect data-floor="true" x="0" y="0" width={project.width} height={project.depth} fill="#f8f7f4"/>
       {project.rooms.map(room=><g key={room.id} onPointerDown={e=>{if(tool==='select'){e.stopPropagation();setSelection({type:'room',id:room.id});}}}>
@@ -304,6 +327,6 @@ export default function Plan2D() {
       {startWall&&pointer&&<line x1={startWall.x} y1={startWall.y} x2={pointer.x} y2={pointer.y} stroke="#267658" strokeDasharray=".14 .09" strokeWidth=".055"/>}
       <g className="dimension"><line x1="0" y1="-.3" x2={project.width} y2="-.3" stroke="#888980" strokeWidth=".018"/><text x={project.width/2} y="-.38" textAnchor="middle" fontSize=".18">{project.width.toFixed(2)} m</text><line x1="-.3" y1="0" x2="-.3" y2={project.depth} stroke="#888980" strokeWidth=".018"/><text x="-.38" y={project.depth/2} textAnchor="middle" transform={`rotate(-90 -.38 ${project.depth/2})`} fontSize=".18">{project.depth.toFixed(2)} m</text></g>
     </svg>
-    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona y arrastra un muro; doble clic para dividirlo sin desplazar puertas ni ventanas' }</span><div className="zoom-tools">{selection?.type==='wall' && tool==='select' && <button type="button" title="Unir segmento colineal sin otras uniones" onClick={mergeSelectedWall}>Unir muros</button>}<button title="Alejar" onClick={()=>setZoom(z=>Math.max(1,z-.2))}>−</button><span>{Math.round(zoom*100)}%</span><button title="Acercar" onClick={()=>setZoom(z=>Math.min(2.6,z+.2))}>+</button></div></div>
+    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona y arrastra un muro; doble clic para dividirlo sin desplazar puertas ni ventanas' }</span><div className="zoom-tools">{selection?.type==='wall' && tool==='select' && <button type="button" title="Unir segmento colineal sin otras uniones" onClick={mergeSelectedWall}>Unir muros</button>}<button title="Alejar" onClick={()=>zoomAt(zoom/1.2)}>−</button><button title="Restablecer zoom y encuadre" onClick={()=>{setZoom(1);setViewCenter(null);}}>{Math.round(zoom*100)}%</button><button title="Acercar" onClick={()=>zoomAt(zoom*1.2)}>+</button></div></div>
   </div>;
 }
