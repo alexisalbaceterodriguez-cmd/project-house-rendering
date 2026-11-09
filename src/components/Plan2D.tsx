@@ -60,11 +60,8 @@ export default function Plan2D() {
         setSpacePanning(false);
         setStartWall(null);
         setPointer(null);
-        drag.current = null;
-        pan.current = null;
-        if (svg.current?.hasPointerCapture) {
-          // Pointer capture is also released by the browser on pointerup.
-        }
+        // Do not abort an active geometry drag: its preview is already in the store.
+        // Escape cancels unfinished wall/room drawing without changing the project.
       }
     };
     const up = (event: KeyboardEvent) => {
