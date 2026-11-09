@@ -2,7 +2,7 @@
 const DATABASE='atelier60-assets-v1';
 const STORE='models';
 const META_STORE='model-metadata';
-export type ModelMetadata={name:string;source?:string;license?:string;w?:number;d?:number;h?:number};
+export type ModelMetadata={name:string;source?:string;license?:string;w?:number;d?:number;h?:number;thumbnail?:string};
 function db():Promise<IDBDatabase>{
   return new Promise((resolve,reject)=>{
     if(typeof indexedDB==='undefined'){reject(new Error('Este navegador no permite guardar modelos 3D.'));return;}
