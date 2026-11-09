@@ -7,7 +7,7 @@ import { findProductSource, PRODUCT_CATALOG_VERSION } from './data/productCatalo
 import { blankProject } from './data/defaultProject';
 import { clamp, download, fileSafe, makeId, wallLength } from './lib/geometry';
 import { projectWarnings, reconcileRooms, resizeProject, roomArea, updateWallGeometry } from './lib/topology';
-import { blobToDataURL, dataURLToBlob, deleteModelAsset, getModelAsset, listModelAssets, putModelAsset } from './lib/assets';
+import { blobToDataURL, dataURLToBlob, deleteModelAsset, getModelAsset, listModelAssets, putModelAsset, putModelMetadata } from './lib/assets';
 import { isProject, saveLocal, useEditor } from './store';
 import type { FloorFinish, Furniture, Mode, Palette, Project, RoomKind, Selection, Tool } from './types';
 
@@ -28,7 +28,7 @@ function Sidebar({importModel}:{importModel:()=>void}){
   const [tab,setTab]=useState<SideTab>('objects');
   const [filter,setFilter]=useState('Todos');
   const [search,setSearch]=useState('');
-  const [localModels,setLocalModels]=useState<{id:string;size:number}[]>([]);
+  const [localModels,setLocalModels]=useState<Awaited<ReturnType<typeof listModelAssets>>>([]);
   const [libraryError,setLibraryError]=useState('');
   const refreshModels=async()=>{try{setLocalModels(await listModelAssets());setLibraryError('');}catch{setLibraryError('No se ha podido abrir la biblioteca local.');}};
   useEffect(()=>{void refreshModels();},[]);
@@ -44,8 +44,9 @@ function Sidebar({importModel}:{importModel:()=>void}){
     try{
       if(!await getModelAsset(assetId)){setLibraryError('El archivo ya no está disponible.');void refreshModels();return;}
       const existing=project.furniture.find(f=>f.kind==='model'&&f.assetId===assetId);
+      const modelMetadata=localModels.find(model=>model.id===assetId)?.metadata;
       const id=makeId();
-      change(p=>p.furniture.push({id,kind:'model',name:existing?.name??'Modelo GLB guardado',x:p.width/2,y:p.depth/2,w:existing?.w??1,d:existing?.d??1,h:existing?.h??1,rotation:0,color:existing?.color??'#e2e2df',assetId}));
+      change(p=>p.furniture.push({id,kind:'model',name:modelMetadata?.name??existing?.name??'Modelo GLB guardado',x:p.width/2,y:p.depth/2,w:modelMetadata?.w??existing?.w??1,d:modelMetadata?.d??existing?.d??1,h:modelMetadata?.h??existing?.h??1,rotation:0,color:existing?.color??'#e2e2df',assetId}));
       setSelection({type:'furniture',id});setTool('select');setMode('split');
     }catch{setLibraryError('No se ha podido recuperar el modelo.');}
   };
@@ -67,7 +68,7 @@ function Sidebar({importModel}:{importModel:()=>void}){
         <div className="section-label">BIBLIOTECA GLB LOCAL <button type="button" onClick={()=>void refreshModels()} title="Actualizar biblioteca">Actualizar</button></div>
         <p className="small-help">Modelos guardados en este navegador, incluso de otros proyectos. No se sincronizan entre dispositivos.</p>
         {libraryError&&<p role="alert" className="footnote">{libraryError}</p>}
-        <div className="catalog-grid">{localModels.map(model=>{const match=project.furniture.find(f=>f.kind==='model'&&f.assetId===model.id);return <button className="catalog-card" key={model.id} onClick={()=>void insertStoredModel(model.id)} title="Insertar modelo guardado"><span className="catalog-icon"><Box size={24}/></span><span className="catalog-name">{match?.name??'GLB · '+model.id.slice(0,8)}</span><small>{(model.size/1048576).toFixed(2)} MB</small><span className="add-overlay"><Plus size={15}/></span></button>;})}</div>
+        <div className="catalog-grid">{localModels.map(model=>{const match=project.furniture.find(f=>f.kind==='model'&&f.assetId===model.id);return <button className="catalog-card" key={model.id} onClick={()=>void insertStoredModel(model.id)} title="Insertar modelo guardado"><span className="catalog-icon"><Box size={24}/></span><span className="catalog-name">{model.metadata?.name??match?.name??'GLB · '+model.id.slice(0,8)}</span><small>{(model.size/1048576).toFixed(2)} MB</small>{model.metadata?.source&&<small title={model.metadata.source}>Origen: {model.metadata.source}</small>}{model.metadata?.license&&<small>Licencia: {model.metadata.license}</small>}<span className="add-overlay"><Plus size={15}/></span></button>;})}</div>
         <p className="footnote">Los elementos incluidos son diseños paramétricos propios, no modelos comerciales. Las referencias identifican cada diseño; no representan SKU de fabricantes externos.</p><button className="import-card" onClick={importModel}><Upload size={18}/><span><strong>Importar modelo 3D</strong><small>Archivo .glb local · máx. 12 MB</small></span><Plus size={16}/></button>
       </>}
       {tab==='materials'&&<>
@@ -281,6 +282,8 @@ export default function App(){
         throw Error('El modelo GLB no contiene un bloque JSON válido.');
       }
       const assetId=makeId();await putModelAsset(assetId,file);
+      // Preserve original filename even if the instance is later deleted.
+      try{await putModelMetadata(assetId,{name:file.name.replace(/\.glb$/i,''),source:'Importación local del usuario'});}catch{/* The model blob remains usable if metadata storage fails. */}
       const id=makeId();change(p=>p.furniture.push({id,kind:'model',name:file.name.replace(/\.glb$/i,''),x:p.width/2,y:p.depth/2,w:1,d:1,h:1,rotation:0,color:'#e2e2df',assetId}));
       setSelection({type:'furniture',id});alert('Modelo guardado en IndexedDB e importado al proyecto.');
     }catch(err){alert(err instanceof Error?err.message:'No se ha podido guardar el modelo.');}
