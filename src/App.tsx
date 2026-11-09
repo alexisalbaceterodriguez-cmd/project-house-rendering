@@ -343,8 +343,11 @@ export default function App(){
         throw Error('El modelo GLB no contiene un bloque JSON válido.');
       }
       const assetId=makeId();await putModelAsset(assetId,file);
-      // Preserve original filename even if the instance is later deleted.
-      try{await putModelMetadata(assetId,{name:file.name.replace(/\.glb$/i,''),source:'Importación local del usuario'});}catch{/* The model blob remains usable if metadata storage fails. */}
+      // A failed WebGL preview must never prevent importing the actual model.
+      // Generate on demand for this one file, not for every asset in the library.
+      let thumbnail: string | undefined;
+      try{thumbnail=await renderModelThumbnail(file);}catch{/* WebGL unavailable or unsupported GLB: keep the asset. */}
+      try{await putModelMetadata(assetId,{name:file.name.replace(/\.glb$/i,''),source:'Importación local del usuario',thumbnail});}catch{/* The model blob remains usable if metadata storage fails. */}
       const id=makeId();change(p=>p.furniture.push({id,kind:'model',name:file.name.replace(/\.glb$/i,''),x:p.width/2,y:p.depth/2,w:1,d:1,h:1,rotation:0,color:'#e2e2df',assetId}));
       setSelection({type:'furniture',id});alert('Modelo guardado en IndexedDB e importado al proyecto.');
     }catch(err){alert(err instanceof Error?err.message:'No se ha podido guardar el modelo.');}
