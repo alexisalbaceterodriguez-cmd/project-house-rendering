@@ -78,6 +78,7 @@ export default function Plan2D() {
     };
   }, []);
   const [pointer, setPointer] = useState<Point | null>(null);
+  const [alignment, setAlignment] = useState<{ x?: number; y?: number } | null>(null);
   const [zoom, setZoom] = useState(1);
   const [viewCenter, setViewCenter] = useState<Point | null>(null);
   // Keep the world-space point beneath the cursor fixed while zooming.
@@ -311,6 +312,7 @@ export default function Plan2D() {
   const onItemDown=(e:PointerEvent<SVGGElement>,item:Furniture)=>{
     if(tool!=='select')return;
     e.stopPropagation();
+    setAlignment(null);
     setSelection({type:'furniture',id:item.id}); checkpoint();
     const point=pt(e);drag.current={type:'furniture',id:item.id,dx:point.x-item.x,dy:point.y-item.y};
     svg.current?.setPointerCapture(e.pointerId);
@@ -332,7 +334,20 @@ export default function Plan2D() {
         change(project=>{const f=project.furniture.find(i=>i.id===id);if(f){
           const angle=f.rotation*Math.PI/180;const hx=(Math.abs(Math.cos(angle))*f.w+Math.abs(Math.sin(angle))*f.d)/2;
           const hy=(Math.abs(Math.sin(angle))*f.w+Math.abs(Math.cos(angle))*f.d)/2;
-          f.x=clamp(snap(p.x-dx),hx,Math.max(hx,project.width-hx));f.y=clamp(snap(p.y-dy),hy,Math.max(hy,project.depth-hy));
+          const rawX=p.x-dx, rawY=p.y-dy;
+          const others=project.furniture.filter(other=>other.id!==id);
+          const nearestX=others.reduce<{value:number;gap:number}|null>((best,other)=>{
+            const gap=Math.abs(other.x-rawX);
+            return gap<=.18&&(!best||gap<best.gap)?{value:other.x,gap}:best;
+          },null);
+          const nearestY=others.reduce<{value:number;gap:number}|null>((best,other)=>{
+            const gap=Math.abs(other.y-rawY);
+            return gap<=.18&&(!best||gap<best.gap)?{value:other.y,gap}:best;
+          },null);
+          const x=clamp(nearestX?nearestX.value:snap(rawX),hx,Math.max(hx,project.width-hx));
+          const y=clamp(nearestY?nearestY.value:snap(rawY),hy,Math.max(hy,project.depth-hy));
+          f.x=x;f.y=y;
+          setAlignment({x:nearestX&&Math.abs(x-nearestX.value)<.001?x:undefined,y:nearestY&&Math.abs(y-nearestY.value)<.001?y:undefined});
         }},false);
       }else{
         const move=drag.current;const dx=p.x-move.start.x,dy=p.y-move.start.y;
@@ -351,6 +366,7 @@ export default function Plan2D() {
   const onDragEnd=(e:PointerEvent<SVGSVGElement>)=>{
     if (pan.current?.pointerId === e.pointerId) pan.current=null;
     drag.current=null;
+    setAlignment(null);
   };
   const warnings=projectWarnings(project);
   const roomPath=(room:typeof project.rooms[number])=>{
@@ -390,9 +406,11 @@ export default function Plan2D() {
         {iconFor(item)}
         {selection?.type==='furniture'&&selection.id===item.id&&<rect x={-item.w/2-.06} y={-item.d/2-.06} width={item.w+.12} height={item.d+.12} stroke="#34765b" strokeWidth=".045" fill="none" strokeDasharray=".09 .05" rx=".04"/>}
       </g>)}
+       {alignment?.x !== undefined && <line x1={alignment.x} y1="0" x2={alignment.x} y2={project.depth} stroke="#198c9b" strokeWidth=".025" strokeDasharray=".12 .09" pointerEvents="none"/>}
+       {alignment?.y !== undefined && <line x1="0" y1={alignment.y} x2={project.width} y2={alignment.y} stroke="#198c9b" strokeWidth=".025" strokeDasharray=".12 .09" pointerEvents="none"/>}
       {startWall&&pointer&&<line x1={startWall.x} y1={startWall.y} x2={pointer.x} y2={pointer.y} stroke="#267658" strokeDasharray=".14 .09" strokeWidth=".055"/>}
       <g className="dimension"><line x1="0" y1="-.3" x2={project.width} y2="-.3" stroke="#888980" strokeWidth=".018"/><text x={project.width/2} y="-.38" textAnchor="middle" fontSize=".18">{project.width.toFixed(2)} m</text><line x1="-.3" y1="0" x2="-.3" y2={project.depth} stroke="#888980" strokeWidth=".018"/><text x="-.38" y={project.depth/2} textAnchor="middle" transform={`rotate(-90 -.38 ${project.depth/2})`} fontSize=".18">{project.depth.toFixed(2)} m</text></g>
     </svg>
-    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Selecciona y arrastra un muro; botón central o Espacio + arrastre para mover; Esc cancela; doble clic divide' }</span><div className="zoom-tools">{selection?.type==='wall' && tool==='select' && <button type="button" title="Unir segmento colineal sin otras uniones" onClick={mergeSelectedWall}>Unir muros</button>}<button title="Alejar" onClick={()=>zoomAt(zoom/1.2)}>−</button><button title="Restablecer zoom y encuadre" onClick={()=>{setZoom(1);setViewCenter(null);}}>{Math.round(zoom*100)}%</button><button title="Acercar" onClick={()=>zoomAt(zoom*1.2)}>+</button></div></div>
+    <div className="plan-footer"><span>{warnings.length?`${warnings.length} aviso(s) de geometría · `:''}{tool==='wall'||tool==='room'?(startWall?'Haz clic en el segundo extremo':'Haz clic para marcar el primer extremo (imán a muros existentes)'):tool==='door'||tool==='window'?'Haz clic en un tabique para insertar':'Arrastra muebles para alinearlos con guías; selecciona y arrastra un muro; botón central o Espacio + arrastre para mover; Esc cancela; doble clic divide' }</span><div className="zoom-tools">{selection?.type==='wall' && tool==='select' && <button type="button" title="Unir segmento colineal sin otras uniones" onClick={mergeSelectedWall}>Unir muros</button>}<button title="Alejar" onClick={()=>zoomAt(zoom/1.2)}>−</button><button title="Restablecer zoom y encuadre" onClick={()=>{setZoom(1);setViewCenter(null);}}>{Math.round(zoom*100)}%</button><button title="Acercar" onClick={()=>zoomAt(zoom*1.2)}>+</button></div></div>
   </div>;
 }
