@@ -30,6 +30,25 @@ function Sidebar({importModel}:{importModel:()=>void}){
   const [search,setSearch]=useState('');
   const [localModels,setLocalModels]=useState<Awaited<ReturnType<typeof listModelAssets>>>([]);
   const [libraryError,setLibraryError]=useState('');
+  const [editingModel,setEditingModel]=useState<string|null>(null);
+  const [modelDraft,setModelDraft]=useState({name:'',source:'',license:'',w:'',d:'',h:''});
+  const [savingModel,setSavingModel]=useState(false);
+  const editModel=(model:Awaited<ReturnType<typeof listModelAssets>>[number])=>{
+    setEditingModel(model.id);
+    setModelDraft({name:model.metadata?.name??'',source:model.metadata?.source??'',license:model.metadata?.license??'',w:String(model.metadata?.w??''),d:String(model.metadata?.d??''),h:String(model.metadata?.h??'')});
+    setLibraryError('');
+  };
+  const saveModelDetails=async()=>{
+    if(!editingModel||savingModel)return;
+    const dimensions=[modelDraft.w,modelDraft.d,modelDraft.h];
+    if(!modelDraft.name.trim()||dimensions.some(v=>v!==''&&(!Number.isFinite(Number(v))||Number(v)<=0||Number(v)>15))){setLibraryError('Indica un nombre y dimensiones válidas entre 0 y 15 m.');return;}
+    setSavingModel(true);
+    try{
+      await putModelMetadata(editingModel,{name:modelDraft.name.trim(),source:modelDraft.source.trim()||undefined,license:modelDraft.license.trim()||undefined,...Object.fromEntries((['w','d','h'] as const).filter(k=>modelDraft[k]!=='').map(k=>[k,Number(modelDraft[k])]))});
+      await refreshModels();setEditingModel(null);
+    }catch{setLibraryError('No se han podido guardar los datos del modelo.');}
+    finally{setSavingModel(false);}
+  };
   const refreshModels=async()=>{try{setLocalModels(await listModelAssets());setLibraryError('');}catch{setLibraryError('No se ha podido abrir la biblioteca local.');}};
   useEffect(()=>{void refreshModels();},[]);
   const { project,change,setSelection,setTool,setMode }=useEditor();
@@ -69,6 +88,9 @@ function Sidebar({importModel}:{importModel:()=>void}){
         <p className="small-help">Modelos guardados en este navegador, incluso de otros proyectos. No se sincronizan entre dispositivos.</p>
         {libraryError&&<p role="alert" className="footnote">{libraryError}</p>}
         <div className="catalog-grid">{localModels.map(model=>{const match=project.furniture.find(f=>f.kind==='model'&&f.assetId===model.id);return <button className="catalog-card" key={model.id} onClick={()=>void insertStoredModel(model.id)} title="Insertar modelo guardado"><span className="catalog-icon"><Box size={24}/></span><span className="catalog-name">{model.metadata?.name??match?.name??'GLB · '+model.id.slice(0,8)}</span><small>{(model.size/1048576).toFixed(2)} MB</small>{model.metadata?.source&&<small title={model.metadata.source}>Origen: {model.metadata.source}</small>}{model.metadata?.license&&<small>Licencia: {model.metadata.license}</small>}<span className="add-overlay"><Plus size={15}/></span></button>;})}</div>
+        {localModels.length>0&&<div className="section-label">EDITAR FICHA DE MODELO</div>}
+        {localModels.length>0&&<label className="field"><span>Modelo de la biblioteca</span><select aria-label="Editar ficha GLB" value={editingModel??""} onChange={e=>{const model=localModels.find(m=>m.id===e.target.value);if(model)editModel(model);else setEditingModel(null);}}><option value="">Seleccionar modelo…</option>{localModels.map(m=><option key={m.id} value={m.id}>{m.metadata?.name??m.id.slice(0,8)}</option>)}</select></label>}
+        {editingModel&&<div className="dimension-form"><p className="small-help">Los cambios se guardan en este navegador y se aplican al insertar el modelo de nuevo. No modifican instancias existentes.</p>{([["name","Nombre"],["source","Procedencia"],["license","Licencia"],["w","Ancho (m)"],["d","Fondo (m)"],["h","Alto (m)"]] as const).map(([key,label])=><label className="field" key={key}><span>{label}</span><input aria-label={label+" del GLB"} type={key==="w"||key==="d"||key==="h"?"number":"text"} min={key==="w"||key==="d"||key==="h"?"0.01":undefined} max={key==="w"||key==="d"||key==="h"?"15":undefined} step="0.01" value={modelDraft[key]} onChange={e=>setModelDraft(prev=>({...prev,[key]:e.target.value}))}/></label>)}<button type="button" className="primary-btn" disabled={savingModel} onClick={()=>void saveModelDetails()}>{savingModel?"Guardando…":"Guardar ficha GLB"}</button></div>}
         <p className="footnote">Los elementos incluidos son diseños paramétricos propios, no modelos comerciales. Las referencias identifican cada diseño; no representan SKU de fabricantes externos.</p><button className="import-card" onClick={importModel}><Upload size={18}/><span><strong>Importar modelo 3D</strong><small>Archivo .glb local · máx. 12 MB</small></span><Plus size={16}/></button>
       </>}
       {tab==='materials'&&<>
