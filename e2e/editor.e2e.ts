@@ -255,7 +255,7 @@ test('impide exportar un JSON incompleto si falta un modelo en IndexedDB', async
     const id = project.furniture.find(f => f.assetId)?.assetId;
     if (!id) throw Error('Missing model asset reference');
     await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open('atelier60-assets-v1', 1);
+      const request = indexedDB.open('atelier60-assets-v1');
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         const database = request.result;
@@ -378,7 +378,7 @@ test('revierte activos escritos si falla el segundo GLB de una importación JSON
   await expect(page.locator('.plan-wall')).toHaveCount(4);
   const keys = await page.evaluate(async () => {
     return new Promise<IDBValidKey[]>((resolve, reject) => {
-      const request = indexedDB.open('atelier60-assets-v1', 1);
+      const request = indexedDB.open('atelier60-assets-v1');
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         const db = request.result;
