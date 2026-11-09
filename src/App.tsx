@@ -25,7 +25,7 @@ const kindColors:Record<string,string>={living:'#d7c6a9',bedroom:'#ccd2bd',bathr
 function Field({label,value,onChange,min=-100,max=100,step=.1,suffix='m'}:{label:string;value:number;onChange:(n:number)=>void;min?:number;max?:number;step?:number;suffix?:string}){
   return <label className="field"><span>{label}</span><div className="input-suffix"><input type="number" min={min} max={max} step={step} value={Number(value.toFixed(3))} onChange={e=>{const n=Number(e.target.value);if(Number.isFinite(n))onChange(clamp(n,min,max));}}/><small>{suffix}</small></div></label>;
 }
-function Sidebar({importModel}:{importModel:()=>void}){
+function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;modelUnits:'m'|'cm'|'mm';setModelUnits:(unit:'m'|'cm'|'mm')=>void}){
   const [tab,setTab]=useState<SideTab>('objects');
   const [filter,setFilter]=useState('Todos');
   const [search,setSearch]=useState('');
@@ -130,7 +130,7 @@ function Sidebar({importModel}:{importModel:()=>void}){
         {localModels.length>0&&<div className="section-label">EDITAR FICHA DE MODELO</div>}
         {localModels.length>0&&<label className="field"><span>Modelo de la biblioteca</span><select aria-label="Editar ficha GLB" value={editingModel??""} onChange={e=>{const model=localModels.find(m=>m.id===e.target.value);if(model)editModel(model);else setEditingModel(null);}}><option value="">Seleccionar modelo…</option>{localModels.map(m=><option key={m.id} value={m.id}>{m.metadata?.name??m.id.slice(0,8)}</option>)}</select></label>}
         {editingModel&&<div className="dimension-form"><label className="field"><span>Miniatura (imagen local)</span><button type="button" disabled={renderingThumbnail} onClick={()=>void generateThumbnail()}>{renderingThumbnail?"Generando vista…":"Generar miniatura desde GLB"}</button><input type="file" accept="image/*" aria-label="Miniatura del GLB" onChange={e=>{const file=e.target.files?.[0];if(file)void uploadThumbnail(file);}}/></label>{modelThumbnail&&<div><img src={modelThumbnail} alt="Vista previa de miniatura" style={{maxWidth:128,maxHeight:128,objectFit:"contain"}}/><button type="button" onClick={()=>setModelThumbnail(undefined)}>Quitar miniatura</button></div>}<p className="small-help">Los cambios se guardan en este navegador y se aplican al insertar el modelo de nuevo. No modifican instancias existentes.</p>{([["name","Nombre"],["source","Procedencia"],["license","Licencia"],["w","Ancho (m)"],["d","Fondo (m)"],["h","Alto (m)"]] as const).map(([key,label])=><label className="field" key={key}><span>{label}</span><input aria-label={label+" del GLB"} type={key==="w"||key==="d"||key==="h"?"number":"text"} min={key==="w"||key==="d"||key==="h"?"0.01":undefined} max={key==="w"||key==="d"||key==="h"?"15":undefined} step="0.01" value={modelDraft[key]} onChange={e=>setModelDraft(prev=>({...prev,[key]:e.target.value}))}/></label>)}<button type="button" className="primary-btn" disabled={savingModel} onClick={()=>void saveModelDetails()}>{savingModel?"Guardando…":"Guardar ficha GLB"}</button></div>}
-        <p className="footnote">Los elementos incluidos son diseños paramétricos propios, no modelos comerciales. Las referencias identifican cada diseño; no representan SKU de fabricantes externos.</p><button className="import-card" onClick={importModel}><Upload size={18}/><span><strong>Importar modelo 3D</strong><small>Archivo .glb local · máx. 12 MB</small></span><Plus size={16}/></button>
+        <p className="footnote">Los elementos incluidos son diseños paramétricos propios, no modelos comerciales. Las referencias identifican cada diseño; no representan SKU de fabricantes externos.</p><label className="field"><span>Unidades del archivo GLB</span><select aria-label="Unidades del modelo GLB" value={modelUnits} onChange={e=>setModelUnits(e.target.value as 'm'|'cm'|'mm')}><option value="m">Metros (m)</option><option value="cm">Centímetros (cm)</option><option value="mm">Milímetros (mm)</option></select></label><button className="import-card" onClick={importModel}><Upload size={18}/><span><strong>Importar modelo 3D</strong><small>Archivo .glb local · máx. 12 MB</small></span><Plus size={16}/></button>
       </>}
       {tab==='materials'&&<>
         <p className="small-help">Aplica un ambiente completo o modifica los materiales de cada estancia desde sus propiedades.</p>
@@ -259,6 +259,7 @@ function Help({onClose}:{onClose:()=>void}){
 }
 export default function App(){
   const {project,change,load,reset,selection,setSelection,undo,redo,mode}=useEditor();
+  const [modelUnits,setModelUnits]=useState<'m'|'cm'|'mm'>('m');
   const [toast,setToast]=useState(''); const [help,setHelp]=useState(false); const [topView,setTopView]=useState(false);
   const jsonInput=useRef<HTMLInputElement>(null);const glbInput=useRef<HTMLInputElement>(null);const canvasRef=useRef<HTMLCanvasElement|null>(null);
   const alert=useCallback((msg:string)=>{setToast(msg);setTimeout(()=>setToast(''),4200);},[]);
@@ -345,7 +346,15 @@ export default function App(){
       // Preserve the native metric footprint; never mutate the GLB or its pivots.
       // Legacy models and malformed bounds still use the editable 1 m fallback.
       let dimensions={w:1,d:1,h:1};
-      try{dimensions=await measureModelDimensions(file);}catch{/* Keep import available for models with unusable bounds. */}
+      try{
+        const raw=await measureModelDimensions(file);
+        const factor=modelUnits==='cm'?.01:modelUnits==='mm'?.001:1;
+        dimensions={w:raw.w*factor,d:raw.d*factor,h:raw.h*factor};
+        if(Object.values(dimensions).some(v=>!Number.isFinite(v)||v<.001||v>15))throw Error('Las dimensiones convertidas deben estar entre 1 mm y 15 m. Revisa las unidades del GLB.');
+      }catch(err){
+        if(err instanceof Error&&err.message.startsWith('Las dimensiones convertidas'))throw err;
+        // Invalid geometry retains the legacy fallback without blocking import.
+      }
       const assetId=makeId();await putModelAsset(assetId,file);
       // A failed WebGL preview must never prevent importing the actual model.
       // Generate on demand for this one file, not for every asset in the library.
@@ -363,7 +372,7 @@ export default function App(){
   return <div className="app-shell">
     <input type="file" accept=".json,application/json" ref={jsonInput} className="file-hidden" onChange={importJSON}/><input type="file" accept=".glb,model/gltf-binary" ref={glbInput} className="file-hidden" onChange={importGLB}/>
     <Header onBlank={onBlank} onReset={onReset} onImport={()=>jsonInput.current?.click()} onExport={exportJSON} onScreenshot={capture} onSvg={exportSVG} toast={toast}/>
-    <div className="workspace"><Sidebar importModel={()=>glbInput.current?.click()}/>
+    <div className="workspace"><Sidebar importModel={()=>glbInput.current?.click()} modelUnits={modelUnits} setModelUnits={setModelUnits}/>
       <main className="editor-area"><div className="workspace-intro"><div><span className="eyebrow">TU ESPACIO, A TU MANERA</span><h1>Diseña cada rincón.</h1><p>Da forma a la distribución, elige acabados y vive el espacio en tres dimensiones.</p></div><div className="project-pill"><span className="live-dot"/><span>PROYECTO ACTIVO</span><strong>{(project.width*project.depth).toFixed(0)} m²</strong></div></div>
         <EditorToolbar/>
         <div className={`editors mode-${mode}`}>{mode!=='3d'&&<Plan2D/>}{mode!=='2d'&&<div className="scene-host"><Scene3D canvasRef={canvasRef} topView={topView}/><div className="camera-buttons"><button className={!topView?'selected':''} onClick={()=>setTopView(false)}><Box size={14}/> Isométrica</button><button className={topView?'selected':''} onClick={()=>setTopView(true)}><Grid2X2 size={14}/> Cenital</button></div></div>}</div>
