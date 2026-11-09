@@ -30,6 +30,8 @@ function Sidebar({importModel}:{importModel:()=>void}){
   const [search,setSearch]=useState('');
   const [localModels,setLocalModels]=useState<Awaited<ReturnType<typeof listModelAssets>>>([]);
   const [libraryError,setLibraryError]=useState('');
+  const [librarySearch,setLibrarySearch]=useState('');
+  const [onlyLicensed,setOnlyLicensed]=useState(false);
   const [editingModel,setEditingModel]=useState<string|null>(null);
   const [modelDraft,setModelDraft]=useState({name:'',source:'',license:'',w:'',d:'',h:''});
   const [savingModel,setSavingModel]=useState(false);
@@ -53,6 +55,11 @@ function Sidebar({importModel}:{importModel:()=>void}){
   useEffect(()=>{void refreshModels();},[]);
   const { project,change,setSelection,setTool,setMode }=useEditor();
   const groups=['Todos',...new Set(catalog.map(item=>item.category))];
+  const visibleLocalModels=localModels.filter(model=>{
+    const query=librarySearch.trim().toLocaleLowerCase();
+    const matches=[model.metadata?.name,model.metadata?.source,model.metadata?.license,model.id].some(value=>value?.toLocaleLowerCase().includes(query));
+    return matches&&(!onlyLicensed||Boolean(model.metadata?.license?.trim()));
+  });
   const visible=catalog.filter(o=>(filter==='Todos'||o.category===filter)&&[o.name,o.category,findProductSource(o.kind)?.reference].some(value=>value?.toLowerCase().includes(search.toLowerCase())));
   const add=(entry:typeof catalog[number])=>{
     const id=makeId();
@@ -86,8 +93,12 @@ function Sidebar({importModel}:{importModel:()=>void}){
         <div className="catalog-grid">{visible.map(c=><button className="catalog-card" key={c.kind} onClick={()=>add(c)} title={`Añadir ${c.name}`}><span className="catalog-icon">{c.icon}</span><span className="catalog-name">{c.name}</span><small>{c.w} × {c.d} m</small><small title="Geometría original, no producto comercial">{findProductSource(c.kind)?.reference} · Diseño propio</small><span className="add-overlay"><Plus size={15}/></span></button>)}</div>
         <div className="section-label">BIBLIOTECA GLB LOCAL <button type="button" onClick={()=>void refreshModels()} title="Actualizar biblioteca">Actualizar</button></div>
         <p className="small-help">Modelos guardados en este navegador, incluso de otros proyectos. No se sincronizan entre dispositivos.</p>
+        <input className="search" aria-label="Buscar en biblioteca GLB" placeholder="Buscar modelos, origen o licencia…" value={librarySearch} onChange={e=>setLibrarySearch(e.target.value)}/>
+        <label className="small-help"><input type="checkbox" checked={onlyLicensed} onChange={e=>setOnlyLicensed(e.target.checked)}/> Solo con licencia indicada</label>
+        <p className="small-help">{visibleLocalModels.length} de {localModels.length} modelos disponibles</p>
         {libraryError&&<p role="alert" className="footnote">{libraryError}</p>}
-        <div className="catalog-grid">{localModels.map(model=>{const match=project.furniture.find(f=>f.kind==='model'&&f.assetId===model.id);return <button className="catalog-card" key={model.id} onClick={()=>void insertStoredModel(model.id)} title="Insertar modelo guardado"><span className="catalog-icon"><Box size={24}/></span><span className="catalog-name">{model.metadata?.name??match?.name??'GLB · '+model.id.slice(0,8)}</span><small>{(model.size/1048576).toFixed(2)} MB</small>{model.metadata?.source&&<small title={model.metadata.source}>Origen: {model.metadata.source}</small>}{model.metadata?.license&&<small>Licencia: {model.metadata.license}</small>}<span className="add-overlay"><Plus size={15}/></span></button>;})}</div>
+        <div className="catalog-grid">{visibleLocalModels.map(model=>{const match=project.furniture.find(f=>f.kind==='model'&&f.assetId===model.id);return <button className="catalog-card" key={model.id} onClick={()=>void insertStoredModel(model.id)} title="Insertar modelo guardado"><span className="catalog-icon"><Box size={24}/></span><span className="catalog-name">{model.metadata?.name??match?.name??'GLB · '+model.id.slice(0,8)}</span><small>{(model.size/1048576).toFixed(2)} MB</small>{model.metadata?.source&&<small title={model.metadata.source}>Origen: {model.metadata.source}</small>}{model.metadata?.license&&<small>Licencia: {model.metadata.license}</small>}<span className="add-overlay"><Plus size={15}/></span></button>;})}</div>
+        {localModels.length>0&&visibleLocalModels.length===0&&<p className="small-help">No hay modelos que coincidan con estos filtros.</p>}
         {localModels.length>0&&<div className="section-label">EDITAR FICHA DE MODELO</div>}
         {localModels.length>0&&<label className="field"><span>Modelo de la biblioteca</span><select aria-label="Editar ficha GLB" value={editingModel??""} onChange={e=>{const model=localModels.find(m=>m.id===e.target.value);if(model)editModel(model);else setEditingModel(null);}}><option value="">Seleccionar modelo…</option>{localModels.map(m=><option key={m.id} value={m.id}>{m.metadata?.name??m.id.slice(0,8)}</option>)}</select></label>}
         {editingModel&&<div className="dimension-form"><p className="small-help">Los cambios se guardan en este navegador y se aplican al insertar el modelo de nuevo. No modifican instancias existentes.</p>{([["name","Nombre"],["source","Procedencia"],["license","Licencia"],["w","Ancho (m)"],["d","Fondo (m)"],["h","Alto (m)"]] as const).map(([key,label])=><label className="field" key={key}><span>{label}</span><input aria-label={label+" del GLB"} type={key==="w"||key==="d"||key==="h"?"number":"text"} min={key==="w"||key==="d"||key==="h"?"0.01":undefined} max={key==="w"||key==="d"||key==="h"?"15":undefined} step="0.01" value={modelDraft[key]} onChange={e=>setModelDraft(prev=>({...prev,[key]:e.target.value}))}/></label>)}<button type="button" className="primary-btn" disabled={savingModel} onClick={()=>void saveModelDetails()}>{savingModel?"Guardando…":"Guardar ficha GLB"}</button></div>}
