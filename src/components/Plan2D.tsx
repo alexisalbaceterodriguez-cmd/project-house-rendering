@@ -79,6 +79,7 @@ export default function Plan2D() {
   }, []);
   const [pointer, setPointer] = useState<Point | null>(null);
   const [alignment, setAlignment] = useState<{ x?: number; y?: number } | null>(null);
+  const [spacing, setSpacing] = useState<{ axis: 'x' | 'y'; from: number; to: number; cross: number; metres: number }[]>([]);
   const [zoom, setZoom] = useState(1);
   const [viewCenter, setViewCenter] = useState<Point | null>(null);
   // Keep the world-space point beneath the cursor fixed while zooming.
@@ -313,6 +314,7 @@ export default function Plan2D() {
     if(tool!=='select')return;
     e.stopPropagation();
     setAlignment(null);
+    setSpacing([]);
     setSelection({type:'furniture',id:item.id}); checkpoint();
     const point=pt(e);drag.current={type:'furniture',id:item.id,dx:point.x-item.x,dy:point.y-item.y};
     svg.current?.setPointerCapture(e.pointerId);
@@ -365,6 +367,36 @@ export default function Plan2D() {
           const x=clamp(nearestX?nearestX.value:snap(rawX),hx,Math.max(hx,project.width-hx));
           const y=clamp(nearestY?nearestY.value:snap(rawY),hy,Math.max(hy,project.depth-hy));
           f.x=x;f.y=y;
+          // Show the nearest clear horizontal/vertical gap to another object.
+          // Rotated furniture uses its visible axis-aligned footprint.
+          const gaps: { axis:'x'|'y'; from:number; to:number; cross:number; metres:number }[] = [];
+          for (const axis of ['x','y'] as const) {
+            const ownCenter=axis==='x'?x:y;
+            const ownHalf=axis==='x'?hx:hy;
+            const ownCross=axis==='x'?y:x;
+            const ownCrossHalf=axis==='x'?hy:hx;
+            let best: typeof gaps[number] | undefined;
+            for (const other of others) {
+              const a=other.rotation*Math.PI/180;
+              const ox=(Math.abs(Math.cos(a))*other.w+Math.abs(Math.sin(a))*other.d)/2;
+              const oy=(Math.abs(Math.sin(a))*other.w+Math.abs(Math.cos(a))*other.d)/2;
+              const otherCenter=axis==='x'?other.x:other.y;
+              const otherHalf=axis==='x'?ox:oy;
+              const otherCross=axis==='x'?other.y:other.x;
+              const otherCrossHalf=axis==='x'?oy:ox;
+              if(Math.abs(ownCross-otherCross)>ownCrossHalf+otherCrossHalf+.3)continue;
+              const left=ownCenter+ownHalf<=otherCenter-otherHalf;
+              const right=otherCenter+otherHalf<=ownCenter-ownHalf;
+              if(!left&&!right)continue;
+              const from=left?ownCenter+ownHalf:otherCenter+otherHalf;
+              const to=left?otherCenter-otherHalf:ownCenter-ownHalf;
+              const metres=to-from;
+              if(metres>3 || (best && metres>=best.metres))continue;
+              best={axis,from,to,cross:(ownCross+otherCross)/2,metres};
+            }
+            if(best)gaps.push(best);
+          }
+          setSpacing(gaps);
           setAlignment({x:nearestX&&Math.abs(x-nearestX.value)<.001?x:undefined,y:nearestY&&Math.abs(y-nearestY.value)<.001?y:undefined});
         }},false);
       }else{
@@ -385,6 +417,7 @@ export default function Plan2D() {
     if (pan.current?.pointerId === e.pointerId) pan.current=null;
     drag.current=null;
     setAlignment(null);
+    setSpacing([]);
   };
   const warnings=projectWarnings(project);
   const roomPath=(room:typeof project.rooms[number])=>{
@@ -426,6 +459,9 @@ export default function Plan2D() {
       </g>)}
        {alignment?.x !== undefined && <line x1={alignment.x} y1="0" x2={alignment.x} y2={project.depth} stroke="#198c9b" strokeWidth=".025" strokeDasharray=".12 .09" pointerEvents="none"/>}
        {alignment?.y !== undefined && <line x1="0" y1={alignment.y} x2={project.width} y2={alignment.y} stroke="#198c9b" strokeWidth=".025" strokeDasharray=".12 .09" pointerEvents="none"/>}
+      {spacing.map((gap,i)=><g key={i} pointerEvents="none" className="dimension">
+        {gap.axis==='x'?<><line x1={gap.from} y1={gap.cross} x2={gap.to} y2={gap.cross} stroke="#198c9b" strokeWidth=".018"/><line x1={gap.from} y1={gap.cross-.07} x2={gap.from} y2={gap.cross+.07} stroke="#198c9b" strokeWidth=".018"/><line x1={gap.to} y1={gap.cross-.07} x2={gap.to} y2={gap.cross+.07} stroke="#198c9b" strokeWidth=".018"/><text x={(gap.from+gap.to)/2} y={gap.cross-.09} textAnchor="middle" fontSize=".16" fill="#126b78" stroke="#f8f7f4" strokeWidth=".045" paintOrder="stroke">{gap.metres.toFixed(2)} m</text></>:<><line x1={gap.cross} y1={gap.from} x2={gap.cross} y2={gap.to} stroke="#198c9b" strokeWidth=".018"/><line x1={gap.cross-.07} y1={gap.from} x2={gap.cross+.07} y2={gap.from} stroke="#198c9b" strokeWidth=".018"/><line x1={gap.cross-.07} y1={gap.to} x2={gap.cross+.07} y2={gap.to} stroke="#198c9b" strokeWidth=".018"/><text x={gap.cross+.09} y={(gap.from+gap.to)/2} fontSize=".16" fill="#126b78" stroke="#f8f7f4" strokeWidth=".045" paintOrder="stroke">{gap.metres.toFixed(2)} m</text></>}
+      </g>)}
       {startWall&&pointer&&<line x1={startWall.x} y1={startWall.y} x2={pointer.x} y2={pointer.y} stroke="#267658" strokeDasharray=".14 .09" strokeWidth=".055"/>}
       <g className="dimension"><line x1="0" y1="-.3" x2={project.width} y2="-.3" stroke="#888980" strokeWidth=".018"/><text x={project.width/2} y="-.38" textAnchor="middle" fontSize=".18">{project.width.toFixed(2)} m</text><line x1="-.3" y1="0" x2="-.3" y2={project.depth} stroke="#888980" strokeWidth=".018"/><text x="-.38" y={project.depth/2} textAnchor="middle" transform={`rotate(-90 -.38 ${project.depth/2})`} fontSize=".18">{project.depth.toFixed(2)} m</text></g>
     </svg>
