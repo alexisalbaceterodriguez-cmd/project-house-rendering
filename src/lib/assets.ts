@@ -48,3 +48,20 @@ export function dataURLToBlob(input:string):Blob{
 export async function deleteModelAsset(id:string):Promise<void>{
   return useStore<void>('readwrite',store=>{store.delete(id);});
 }
+
+/** Enumerate reusable local GLB blobs without loading their contents into memory. */
+export async function listModelAssets():Promise<{id:string;size:number}[]>{
+  return useStore<{id:string;size:number}[]>('readonly',(store,finish,fail)=>{
+    const entries:{id:string;size:number}[]=[];
+    const request=store.openCursor();
+    request.onsuccess=()=>{
+      const cursor=request.result;
+      if(!cursor){finish(entries);return;}
+      if(typeof cursor.key==='string' && cursor.value instanceof Blob){
+        entries.push({id:cursor.key,size:cursor.value.size});
+      }
+      cursor.continue();
+    };
+    request.onerror=()=>fail(request.error);
+  });
+}
