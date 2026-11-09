@@ -72,14 +72,28 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
     // Clone bones and skin bindings together so animated furniture renders independently.
     const model=cloneSkeleton(scene);
     model.traverse(object=>{
-      if(object instanceof THREE.Mesh){object.castShadow=true;object.receiveShadow=true;}
+      if(object instanceof THREE.Mesh){object.castShadow=true;object.receiveShadow=true;
+        // Never mutate materials held by the cached GLTF scene or another instance.
+        if(item.modelFinish){
+          const apply=(original:THREE.Material):THREE.Material=>{
+            const material=original.clone();
+            if(material instanceof THREE.MeshStandardMaterial){
+              material.color.set(item.modelFinish!.color);
+              material.roughness=item.modelFinish!.roughness;
+              material.metalness=item.modelFinish!.metalness;
+            }
+            return material;
+          };
+          object.material=Array.isArray(object.material)?object.material.map(apply):apply(object.material);
+        }
+      }
     });
     // Rotate only this instance's clone. Keep the GLB bytes and cached scene intact.
     if(item.modelUpAxis==='Z')model.rotation.x=-Math.PI/2;
     if(item.modelUpAxis==='X')model.rotation.z=Math.PI/2;
     const oriented=new THREE.Group();oriented.add(model);
     return oriented;
-  },[scene,item.modelUpAxis]);
+  },[scene,item.modelUpAxis,item.modelFinish]);
   const {size,center}=useMemo(()=>{const bb=new THREE.Box3().setFromObject(clone);const dimensions=bb.getSize(new THREE.Vector3());const center=bb.getCenter(new THREE.Vector3());return{size:dimensions,center};},[clone]);
   return <group position={[item.modelOffsetX??0,item.modelElevation??0,item.modelOffsetZ??0]}><group scale={[item.w/Math.max(size.x,.001),item.h/Math.max(size.y,.001),item.d/Math.max(size.z,.001)]}>
     <primitive object={clone} position={[-center.x, -center.y+size.y/2, -center.z]}/>
