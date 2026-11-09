@@ -74,8 +74,12 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
     model.traverse(object=>{
       if(object instanceof THREE.Mesh){object.castShadow=true;object.receiveShadow=true;}
     });
-    return model;
-  },[scene]);
+    // Rotate only this instance's clone. Keep the GLB bytes and cached scene intact.
+    if(item.modelUpAxis==='Z')model.rotation.x=-Math.PI/2;
+    if(item.modelUpAxis==='X')model.rotation.z=Math.PI/2;
+    const oriented=new THREE.Group();oriented.add(model);
+    return oriented;
+  },[scene,item.modelUpAxis]);
   const {size,center}=useMemo(()=>{const bb=new THREE.Box3().setFromObject(clone);const dimensions=bb.getSize(new THREE.Vector3());const center=bb.getCenter(new THREE.Vector3());return{size:dimensions,center};},[clone]);
   return <group scale={[item.w/Math.max(size.x,.001),item.h/Math.max(size.y,.001),item.d/Math.max(size.z,.001)]}>
     <primitive object={clone} position={[-center.x, -center.y+size.y/2, -center.z]}/>
