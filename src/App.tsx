@@ -3,6 +3,7 @@ import { Armchair, ArrowDownToLine, Box, Camera, Check, ChevronDown, CircleHelp,
 import Plan2D from './components/Plan2D';
 import Scene3D from './components/Scene3D';
 import { catalog, floors, styles } from './data/catalog';
+import { findProductSource, PRODUCT_CATALOG_VERSION } from './data/productCatalog';
 import { blankProject } from './data/defaultProject';
 import { clamp, download, fileSafe, makeId, wallLength } from './lib/geometry';
 import { projectWarnings, reconcileRooms, resizeProject, roomArea, updateWallGeometry } from './lib/topology';
@@ -29,7 +30,7 @@ function Sidebar({importModel}:{importModel:()=>void}){
   const [search,setSearch]=useState('');
   const { project,change,setSelection,setTool,setMode }=useEditor();
   const groups=['Todos',...new Set(catalog.map(item=>item.category))];
-  const visible=catalog.filter(o=>(filter==='Todos'||o.category===filter)&&o.name.toLowerCase().includes(search.toLowerCase()));
+  const visible=catalog.filter(o=>(filter==='Todos'||o.category===filter)&&[o.name,o.category,findProductSource(o.kind)?.reference].some(value=>value?.toLowerCase().includes(search.toLowerCase())));
   const add=(entry:typeof catalog[number])=>{
     const id=makeId();
     change(p=>p.furniture.push({id,kind:entry.kind,name:entry.name,x:clamp(2+(p.furniture.length%5)*.22,.5,p.width-.5),y:clamp(2.7,.5,p.depth-.5),w:entry.w,d:entry.d,h:entry.h,rotation:0,color:entry.color}));
@@ -48,9 +49,9 @@ function Sidebar({importModel}:{importModel:()=>void}){
         <p className="small-help">Añade elementos al plano y arrástralos hasta su posición.</p>
         <input className="search" placeholder="Buscar muebles..." value={search} onChange={e=>setSearch(e.target.value)}/>
         <div className="chips">{groups.map(g=><button key={g} className={filter===g?'active':''} onClick={()=>setFilter(g)}>{g}</button>)}</div>
-        <div className="section-label">CATÁLOGO PARAMÉTRICO</div>
-        <div className="catalog-grid">{visible.map(c=><button className="catalog-card" key={c.kind} onClick={()=>add(c)} title={`Añadir ${c.name}`}><span className="catalog-icon">{c.icon}</span><span className="catalog-name">{c.name}</span><small>{c.w} × {c.d} m</small><span className="add-overlay"><Plus size={15}/></span></button>)}</div>
-        <button className="import-card" onClick={importModel}><Upload size={18}/><span><strong>Importar modelo 3D</strong><small>Archivo .glb local · máx. 12 MB</small></span><Plus size={16}/></button>
+        <div className="section-label">CATÁLOGO PARAMÉTRICO · V{PRODUCT_CATALOG_VERSION}</div>
+        <div className="catalog-grid">{visible.map(c=><button className="catalog-card" key={c.kind} onClick={()=>add(c)} title={`Añadir ${c.name}`}><span className="catalog-icon">{c.icon}</span><span className="catalog-name">{c.name}</span><small>{c.w} × {c.d} m</small><small title="Geometría original, no producto comercial">{findProductSource(c.kind)?.reference} · Diseño propio</small><span className="add-overlay"><Plus size={15}/></span></button>)}</div>
+        <p className="footnote">Los elementos incluidos son diseños paramétricos propios, no modelos comerciales. Las referencias identifican cada diseño; no representan SKU de fabricantes externos.</p><button className="import-card" onClick={importModel}><Upload size={18}/><span><strong>Importar modelo 3D</strong><small>Archivo .glb local · máx. 12 MB</small></span><Plus size={16}/></button>
       </>}
       {tab==='materials'&&<>
         <p className="small-help">Aplica un ambiente completo o modifica los materiales de cada estancia desde sus propiedades.</p>
