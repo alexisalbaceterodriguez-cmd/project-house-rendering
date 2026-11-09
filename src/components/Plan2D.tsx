@@ -336,14 +336,32 @@ export default function Plan2D() {
           const hy=(Math.abs(Math.sin(angle))*f.w+Math.abs(Math.cos(angle))*f.d)/2;
           const rawX=p.x-dx, rawY=p.y-dy;
           const others=project.furniture.filter(other=>other.id!==id);
-          const nearestX=others.reduce<{value:number;gap:number}|null>((best,other)=>{
-            const gap=Math.abs(other.x-rawX);
-            return gap<=.18&&(!best||gap<best.gap)?{value:other.x,gap}:best;
-          },null);
-          const nearestY=others.reduce<{value:number;gap:number}|null>((best,other)=>{
-            const gap=Math.abs(other.y-rawY);
-            return gap<=.18&&(!best||gap<best.gap)?{value:other.y,gap}:best;
-          },null);
+          // Align centres AND visible edges, accounting for rotated bounding boxes.
+          // Compare candidate translations, not absolute coordinates: different-size
+          // furniture can share a left/right/top/bottom edge without sharing a centre.
+          const nearest = (axis:'x'|'y') => {
+            const raw=axis==='x'?rawX:rawY;
+            const half=axis==='x'?hx:hy;
+            const candidates=[0,-half,half];
+            let best:{value:number;gap:number}|null=null;
+            for(const other of others){
+              const radians=other.rotation*Math.PI/180;
+              const extent=(axis==='x'
+                ? Math.abs(Math.cos(radians))*other.w+Math.abs(Math.sin(radians))*other.d
+                : Math.abs(Math.sin(radians))*other.w+Math.abs(Math.cos(radians))*other.d)/2;
+              const centre=axis==='x'?other.x:other.y;
+              for(const offset of candidates){
+                for(const target of [centre,centre-extent,centre+extent]){
+                  const value=target-offset;
+                  const gap=Math.abs(value-raw);
+                  if(gap<=.18&&(!best||gap<best.gap))best={value,gap};
+                }
+              }
+            }
+            return best;
+          };
+          const nearestX=nearest('x');
+          const nearestY=nearest('y');
           const x=clamp(nearestX?nearestX.value:snap(rawX),hx,Math.max(hx,project.width-hx));
           const y=clamp(nearestY?nearestY.value:snap(rawY),hy,Math.max(hy,project.depth-hy));
           f.x=x;f.y=y;
