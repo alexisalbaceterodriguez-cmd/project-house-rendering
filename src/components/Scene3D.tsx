@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo, useState, type MutableRefObject } from 'r
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { floors } from '../data/catalog';
 import { clamp, wallLength, wallParts } from '../lib/geometry';
 import { roomVertices } from '../lib/topology';
@@ -66,7 +67,15 @@ function OpeningModel({opening:o,length,thickness}:{opening:Opening;length:numbe
 }
 function ImportedModel({url,item}:{url:string;item:Furniture}){
   const {scene}=useGLTF(url);
-  const clone=useMemo(()=>scene.clone(true),[scene]);
+  const clone=useMemo(()=>{
+    // A regular Object3D clone leaves skinned meshes bound to the original skeleton.
+    // Clone bones and skin bindings together so animated furniture renders independently.
+    const model=cloneSkeleton(scene);
+    model.traverse(object=>{
+      if(object instanceof THREE.Mesh){object.castShadow=true;object.receiveShadow=true;}
+    });
+    return model;
+  },[scene]);
   const {size,center}=useMemo(()=>{const bb=new THREE.Box3().setFromObject(clone);const dimensions=bb.getSize(new THREE.Vector3());const center=bb.getCenter(new THREE.Vector3());return{size:dimensions,center};},[clone]);
   return <group scale={[item.w/Math.max(size.x,.001),item.h/Math.max(size.y,.001),item.d/Math.max(size.z,.001)]}>
     <primitive object={clone} position={[-center.x, -center.y+size.y/2, -center.z]}/>
