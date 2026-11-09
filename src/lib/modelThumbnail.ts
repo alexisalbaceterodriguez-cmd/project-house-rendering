@@ -37,15 +37,15 @@ export async function renderModelThumbnail(blob: Blob): Promise<string> {
 }
 
 /** Metric bounds in the same axes used by Scene3D (X width, Z depth, Y height).
- * Invalid or oversized geometry is rejected rather than silently distorting it. */
+ * Invalid geometry is rejected; the import UI validates the converted metric dimensions. */
 export async function measureModelDimensions(blob: Blob): Promise<{w:number;d:number;h:number}> {
   const gltf = await new GLTFLoader().parseAsync(await blob.arrayBuffer(), '');
   const bounds = new THREE.Box3().setFromObject(gltf.scene);
   if (bounds.isEmpty()) throw new Error('El GLB no contiene geometría medible.');
   const size = bounds.getSize(new THREE.Vector3());
   const dimensions = [size.x, size.z, size.y];
-  if (dimensions.some(value => !Number.isFinite(value) || value <= 0 || value > 15)) {
-    throw new Error('Dimensiones del GLB fuera del rango permitido (0–15 m).');
+  if (dimensions.some(value => !Number.isFinite(value) || value <= 0)) {
+    throw new Error('Dimensiones del GLB inválidas.');
   }
   return {w:size.x,d:size.z,h:size.y};
 }
