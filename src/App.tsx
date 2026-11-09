@@ -35,8 +35,24 @@ function Sidebar({importModel}:{importModel:()=>void}){
   const [editingModel,setEditingModel]=useState<string|null>(null);
   const [modelDraft,setModelDraft]=useState({name:'',source:'',license:'',w:'',d:'',h:''});
   const [savingModel,setSavingModel]=useState(false);
+  const [modelThumbnail,setModelThumbnail]=useState<string|undefined>();
+  const uploadThumbnail=async(file:File)=>{
+    if(!file.type.startsWith('image/')||file.size>5*1024*1024){setLibraryError('Selecciona una imagen de hasta 5 MB.');return;}
+    const url=URL.createObjectURL(file);
+    try{
+      const img=new window.Image();
+      await new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=()=>reject(new Error('Imagen no válida'));img.src=url;});
+      const canvas=document.createElement('canvas');
+      const ratio=Math.min(1,256/img.naturalWidth,256/img.naturalHeight);
+      canvas.width=Math.max(1,Math.round(img.naturalWidth*ratio));canvas.height=Math.max(1,Math.round(img.naturalHeight*ratio));
+      const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas no disponible');
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      setModelThumbnail(canvas.toDataURL('image/jpeg',0.75));setLibraryError('');
+    }catch{setLibraryError('No se ha podido procesar la miniatura.');}
+    finally{URL.revokeObjectURL(url);}
+  };
   const editModel=(model:Awaited<ReturnType<typeof listModelAssets>>[number])=>{
-    setEditingModel(model.id);
+    setEditingModel(model.id);setModelThumbnail(model.metadata?.thumbnail);
     setModelDraft({name:model.metadata?.name??'',source:model.metadata?.source??'',license:model.metadata?.license??'',w:String(model.metadata?.w??''),d:String(model.metadata?.d??''),h:String(model.metadata?.h??'')});
     setLibraryError('');
   };
@@ -46,7 +62,7 @@ function Sidebar({importModel}:{importModel:()=>void}){
     if(!modelDraft.name.trim()||dimensions.some(v=>v!==''&&(!Number.isFinite(Number(v))||Number(v)<=0||Number(v)>15))){setLibraryError('Indica un nombre y dimensiones válidas entre 0 y 15 m.');return;}
     setSavingModel(true);
     try{
-      await putModelMetadata(editingModel,{name:modelDraft.name.trim(),source:modelDraft.source.trim()||undefined,license:modelDraft.license.trim()||undefined,...Object.fromEntries((['w','d','h'] as const).filter(k=>modelDraft[k]!=='').map(k=>[k,Number(modelDraft[k])]))});
+      await putModelMetadata(editingModel,{name:modelDraft.name.trim(),source:modelDraft.source.trim()||undefined,license:modelDraft.license.trim()||undefined,thumbnail:modelThumbnail,...Object.fromEntries((['w','d','h'] as const).filter(k=>modelDraft[k]!=='').map(k=>[k,Number(modelDraft[k])]))});
       await refreshModels();setEditingModel(null);
     }catch{setLibraryError('No se han podido guardar los datos del modelo.');}
     finally{setSavingModel(false);}
@@ -97,11 +113,11 @@ function Sidebar({importModel}:{importModel:()=>void}){
         <label className="small-help"><input type="checkbox" checked={onlyLicensed} onChange={e=>setOnlyLicensed(e.target.checked)}/> Solo con licencia indicada</label>
         <p className="small-help">{visibleLocalModels.length} de {localModels.length} modelos disponibles</p>
         {libraryError&&<p role="alert" className="footnote">{libraryError}</p>}
-        <div className="catalog-grid">{visibleLocalModels.map(model=>{const match=project.furniture.find(f=>f.kind==='model'&&f.assetId===model.id);return <button className="catalog-card" key={model.id} onClick={()=>void insertStoredModel(model.id)} title="Insertar modelo guardado"><span className="catalog-icon"><Box size={24}/></span><span className="catalog-name">{model.metadata?.name??match?.name??'GLB · '+model.id.slice(0,8)}</span><small>{(model.size/1048576).toFixed(2)} MB</small>{model.metadata?.source&&<small title={model.metadata.source}>Origen: {model.metadata.source}</small>}{model.metadata?.license&&<small>Licencia: {model.metadata.license}</small>}<span className="add-overlay"><Plus size={15}/></span></button>;})}</div>
+        <div className="catalog-grid">{visibleLocalModels.map(model=>{const match=project.furniture.find(f=>f.kind==='model'&&f.assetId===model.id);return <button className="catalog-card" key={model.id} onClick={()=>void insertStoredModel(model.id)} title="Insertar modelo guardado"><span className="catalog-icon">{model.metadata?.thumbnail?<img src={model.metadata.thumbnail} alt="" style={{width:64,height:64,objectFit:"contain",borderRadius:6}}/>:<Box size={24}/>}</span><span className="catalog-name">{model.metadata?.name??match?.name??'GLB · '+model.id.slice(0,8)}</span><small>{(model.size/1048576).toFixed(2)} MB</small>{model.metadata?.source&&<small title={model.metadata.source}>Origen: {model.metadata.source}</small>}{model.metadata?.license&&<small>Licencia: {model.metadata.license}</small>}<span className="add-overlay"><Plus size={15}/></span></button>;})}</div>
         {localModels.length>0&&visibleLocalModels.length===0&&<p className="small-help">No hay modelos que coincidan con estos filtros.</p>}
         {localModels.length>0&&<div className="section-label">EDITAR FICHA DE MODELO</div>}
         {localModels.length>0&&<label className="field"><span>Modelo de la biblioteca</span><select aria-label="Editar ficha GLB" value={editingModel??""} onChange={e=>{const model=localModels.find(m=>m.id===e.target.value);if(model)editModel(model);else setEditingModel(null);}}><option value="">Seleccionar modelo…</option>{localModels.map(m=><option key={m.id} value={m.id}>{m.metadata?.name??m.id.slice(0,8)}</option>)}</select></label>}
-        {editingModel&&<div className="dimension-form"><p className="small-help">Los cambios se guardan en este navegador y se aplican al insertar el modelo de nuevo. No modifican instancias existentes.</p>{([["name","Nombre"],["source","Procedencia"],["license","Licencia"],["w","Ancho (m)"],["d","Fondo (m)"],["h","Alto (m)"]] as const).map(([key,label])=><label className="field" key={key}><span>{label}</span><input aria-label={label+" del GLB"} type={key==="w"||key==="d"||key==="h"?"number":"text"} min={key==="w"||key==="d"||key==="h"?"0.01":undefined} max={key==="w"||key==="d"||key==="h"?"15":undefined} step="0.01" value={modelDraft[key]} onChange={e=>setModelDraft(prev=>({...prev,[key]:e.target.value}))}/></label>)}<button type="button" className="primary-btn" disabled={savingModel} onClick={()=>void saveModelDetails()}>{savingModel?"Guardando…":"Guardar ficha GLB"}</button></div>}
+        {editingModel&&<div className="dimension-form"><label className="field"><span>Miniatura (imagen local)</span><input type="file" accept="image/*" aria-label="Miniatura del GLB" onChange={e=>{const file=e.target.files?.[0];if(file)void uploadThumbnail(file);}}/></label>{modelThumbnail&&<div><img src={modelThumbnail} alt="Vista previa de miniatura" style={{maxWidth:128,maxHeight:128,objectFit:"contain"}}/><button type="button" onClick={()=>setModelThumbnail(undefined)}>Quitar miniatura</button></div>}<p className="small-help">Los cambios se guardan en este navegador y se aplican al insertar el modelo de nuevo. No modifican instancias existentes.</p>{([["name","Nombre"],["source","Procedencia"],["license","Licencia"],["w","Ancho (m)"],["d","Fondo (m)"],["h","Alto (m)"]] as const).map(([key,label])=><label className="field" key={key}><span>{label}</span><input aria-label={label+" del GLB"} type={key==="w"||key==="d"||key==="h"?"number":"text"} min={key==="w"||key==="d"||key==="h"?"0.01":undefined} max={key==="w"||key==="d"||key==="h"?"15":undefined} step="0.01" value={modelDraft[key]} onChange={e=>setModelDraft(prev=>({...prev,[key]:e.target.value}))}/></label>)}<button type="button" className="primary-btn" disabled={savingModel} onClick={()=>void saveModelDetails()}>{savingModel?"Guardando…":"Guardar ficha GLB"}</button></div>}
         <p className="footnote">Los elementos incluidos son diseños paramétricos propios, no modelos comerciales. Las referencias identifican cada diseño; no representan SKU de fabricantes externos.</p><button className="import-card" onClick={importModel}><Upload size={18}/><span><strong>Importar modelo 3D</strong><small>Archivo .glb local · máx. 12 MB</small></span><Plus size={16}/></button>
       </>}
       {tab==='materials'&&<>
