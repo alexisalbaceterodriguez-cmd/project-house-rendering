@@ -7,7 +7,7 @@ import { findProductSource, PRODUCT_CATALOG_VERSION } from './data/productCatalo
 import { blankProject } from './data/defaultProject';
 import { clamp, download, fileSafe, makeId, wallLength } from './lib/geometry';
 import { projectWarnings, reconcileRooms, resizeProject, roomArea, updateWallGeometry } from './lib/topology';
-import { blobToDataURL, dataURLToBlob, deleteModelAsset, getModelAsset, putModelAsset } from './lib/assets';
+import { blobToDataURL, dataURLToBlob, deleteModelAsset, getModelAsset, listModelAssets, putModelAsset } from './lib/assets';
 import { isProject, saveLocal, useEditor } from './store';
 import type { FloorFinish, Furniture, Mode, Palette, Project, RoomKind, Selection, Tool } from './types';
 
@@ -28,6 +28,10 @@ function Sidebar({importModel}:{importModel:()=>void}){
   const [tab,setTab]=useState<SideTab>('objects');
   const [filter,setFilter]=useState('Todos');
   const [search,setSearch]=useState('');
+  const [localModels,setLocalModels]=useState<{id:string;size:number}[]>([]);
+  const [libraryError,setLibraryError]=useState('');
+  const refreshModels=async()=>{try{setLocalModels(await listModelAssets());setLibraryError('');}catch{setLibraryError('No se ha podido abrir la biblioteca local.');}};
+  useEffect(()=>{void refreshModels();},[]);
   const { project,change,setSelection,setTool,setMode }=useEditor();
   const groups=['Todos',...new Set(catalog.map(item=>item.category))];
   const visible=catalog.filter(o=>(filter==='Todos'||o.category===filter)&&[o.name,o.category,findProductSource(o.kind)?.reference].some(value=>value?.toLowerCase().includes(search.toLowerCase())));
@@ -35,6 +39,15 @@ function Sidebar({importModel}:{importModel:()=>void}){
     const id=makeId();
     change(p=>p.furniture.push({id,kind:entry.kind,name:entry.name,x:clamp(2+(p.furniture.length%5)*.22,.5,p.width-.5),y:clamp(2.7,.5,p.depth-.5),w:entry.w,d:entry.d,h:entry.h,rotation:0,color:entry.color,productId:findProductSource(entry.kind)?.id}));
     setSelection({type:'furniture',id}); setTool('select');setMode('split');
+  };
+  const insertStoredModel=async(assetId:string)=>{
+    try{
+      if(!await getModelAsset(assetId)){setLibraryError('El archivo ya no está disponible.');void refreshModels();return;}
+      const existing=project.furniture.find(f=>f.kind==='model'&&f.assetId===assetId);
+      const id=makeId();
+      change(p=>p.furniture.push({id,kind:'model',name:existing?.name??'Modelo GLB guardado',x:p.width/2,y:p.depth/2,w:existing?.w??1,d:existing?.d??1,h:existing?.h??1,rotation:0,color:existing?.color??'#e2e2df',assetId}));
+      setSelection({type:'furniture',id});setTool('select');setMode('split');
+    }catch{setLibraryError('No se ha podido recuperar el modelo.');}
   };
   const applyStyle=(name:string,palette:Palette)=>change(p=>{p.palette={...palette};p.furniture=p.furniture.map(f=>({...f,color:f.kind==='sofa'?palette.textile:f.kind==='chair'||f.kind==='table'?palette.wood:f.color}));});
   return <aside className="sidebar">
@@ -51,6 +64,10 @@ function Sidebar({importModel}:{importModel:()=>void}){
         <div className="chips">{groups.map(g=><button key={g} className={filter===g?'active':''} onClick={()=>setFilter(g)}>{g}</button>)}</div>
         <div className="section-label">CATÁLOGO PARAMÉTRICO · V{PRODUCT_CATALOG_VERSION}</div>
         <div className="catalog-grid">{visible.map(c=><button className="catalog-card" key={c.kind} onClick={()=>add(c)} title={`Añadir ${c.name}`}><span className="catalog-icon">{c.icon}</span><span className="catalog-name">{c.name}</span><small>{c.w} × {c.d} m</small><small title="Geometría original, no producto comercial">{findProductSource(c.kind)?.reference} · Diseño propio</small><span className="add-overlay"><Plus size={15}/></span></button>)}</div>
+        <div className="section-label">BIBLIOTECA GLB LOCAL <button type="button" onClick={()=>void refreshModels()} title="Actualizar biblioteca">Actualizar</button></div>
+        <p className="small-help">Modelos guardados en este navegador, incluso de otros proyectos. No se sincronizan entre dispositivos.</p>
+        {libraryError&&<p role="alert" className="footnote">{libraryError}</p>}
+        <div className="catalog-grid">{localModels.map(model=>{const match=project.furniture.find(f=>f.kind==='model'&&f.assetId===model.id);return <button className="catalog-card" key={model.id} onClick={()=>void insertStoredModel(model.id)} title="Insertar modelo guardado"><span className="catalog-icon"><Box size={24}/></span><span className="catalog-name">{match?.name??'GLB · '+model.id.slice(0,8)}</span><small>{(model.size/1048576).toFixed(2)} MB</small><span className="add-overlay"><Plus size={15}/></span></button>;})}</div>
         <p className="footnote">Los elementos incluidos son diseños paramétricos propios, no modelos comerciales. Las referencias identifican cada diseño; no representan SKU de fabricantes externos.</p><button className="import-card" onClick={importModel}><Upload size={18}/><span><strong>Importar modelo 3D</strong><small>Archivo .glb local · máx. 12 MB</small></span><Plus size={16}/></button>
       </>}
       {tab==='materials'&&<>
