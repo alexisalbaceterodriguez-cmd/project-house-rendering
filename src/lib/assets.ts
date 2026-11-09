@@ -1,11 +1,13 @@
 /** Browser-local model blobs, deliberately separate from project JSON/history. */
 const DATABASE='atelier60-assets-v1';
 const STORE='models';
+const META_STORE='model-metadata';
+export type ModelMetadata={name:string;source?:string;license?:string;w?:number;d?:number;h?:number};
 function db():Promise<IDBDatabase>{
   return new Promise((resolve,reject)=>{
     if(typeof indexedDB==='undefined'){reject(new Error('Este navegador no permite guardar modelos 3D.'));return;}
-    const request=indexedDB.open(DATABASE,1);
-    request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STORE))request.result.createObjectStore(STORE);};
+    const request=indexedDB.open(DATABASE,2);
+    request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STORE))request.result.createObjectStore(STORE);if(!request.result.objectStoreNames.contains(META_STORE))request.result.createObjectStore(META_STORE);};
     request.onsuccess=()=>resolve(request.result);
     request.onerror=()=>reject(request.error??new Error('No se puede abrir IndexedDB.'));
   });
@@ -20,6 +22,28 @@ async function useStore<T>(mode:IDBTransactionMode,work:(store:IDBObjectStore,fi
     tx.oncomplete=()=>{if(!settled){settled=true;resolve(answer); }database.close();};
     tx.onerror=()=>{fail(tx.error);database.close();};
     tx.onabort=()=>{fail(tx.error);database.close();};
+  });
+}
+/** Metadata survives removal of an instance and is independent of project JSON. */
+export async function putModelMetadata(id:string,metadata:ModelMetadata):Promise<void>{
+  const database=await db();
+  return new Promise((resolve,reject)=>{
+    const tx=database.transaction(META_STORE,'readwrite');
+    tx.objectStore(META_STORE).put(metadata,id);
+    tx.oncomplete=()=>{database.close();resolve();};
+    tx.onerror=()=>{database.close();reject(tx.error);};
+    tx.onabort=()=>{database.close();reject(tx.error);};
+  });
+}
+export async function getModelMetadata(id:string):Promise<ModelMetadata|null>{
+  const database=await db();
+  return new Promise((resolve,reject)=>{
+    const tx=database.transaction(META_STORE,'readonly');
+    const request=tx.objectStore(META_STORE).get(id);
+    let result:ModelMetadata|null=null;
+    request.onsuccess=()=>{result=request.result??null;};
+    tx.oncomplete=()=>{database.close();resolve(result);};
+    tx.onerror=()=>{database.close();reject(tx.error);};
   });
 }
 export async function putModelAsset(id:string,blob:Blob):Promise<void>{
@@ -50,9 +74,9 @@ export async function deleteModelAsset(id:string):Promise<void>{
 }
 
 /** Enumerate reusable local GLB blobs without loading their contents into memory. */
-export async function listModelAssets():Promise<{id:string;size:number}[]>{
-  return useStore<{id:string;size:number}[]>('readonly',(store,finish,fail)=>{
-    const entries:{id:string;size:number}[]=[];
+export async function listModelAssets():Promise<{id:string;size:number;metadata?:ModelMetadata}[]>{
+  const models=await useStore<{id:string;size:number;metadata?:ModelMetadata}[]>('readonly',(store,finish,fail)=>{
+    const entries:{id:string;size:number;metadata?:ModelMetadata}[]=[];
     const request=store.openCursor();
     request.onsuccess=()=>{
       const cursor=request.result;
@@ -64,4 +88,5 @@ export async function listModelAssets():Promise<{id:string;size:number}[]>{
     };
     request.onerror=()=>fail(request.error);
   });
+  return Promise.all(models.map(async model=>({...model,metadata:await getModelMetadata(model.id)??undefined})));
 }
