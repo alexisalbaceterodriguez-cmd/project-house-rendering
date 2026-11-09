@@ -39,7 +39,7 @@ export default function Plan2D() {
   const svg = useRef<SVGSVGElement>(null);
   type Drag = {type:'furniture';id:string;dx:number;dy:number}|{type:'wall';id:string;start:Point;a:Point;b:Point;handle:'a'|'b'|'move';rooms:typeof project.rooms};
   const drag = useRef<Drag | null>(null);
-  const pan = useRef<{ pointerId: number; start: Point; center: Point } | null>(null);
+  const pan = useRef<{ pointerId: number; clientX: number; clientY: number; scaleX: number; scaleY: number; center: Point } | null>(null);
   const [startWall, setStartWall] = useState<Point | null>(null);
   const [pointer, setPointer] = useState<Point | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -78,10 +78,10 @@ export default function Plan2D() {
     if (!matrix) return;
     e.preventDefault();
     e.stopPropagation();
-    const start = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
     pan.current = {
       pointerId: e.pointerId,
-      start: { x: start.x, y: start.y },
+      clientX: e.clientX, clientY: e.clientY,
+      scaleX: Math.hypot(matrix.a, matrix.b), scaleY: Math.hypot(matrix.c, matrix.d),
       center: viewCenter ?? { x: project.width / 2, y: project.depth / 2 },
     };
     svg.current?.setPointerCapture(e.pointerId);
@@ -281,13 +281,10 @@ export default function Plan2D() {
   const onMove=(e:PointerEvent<SVGSVGElement>)=>{
     if (pan.current) {
       if (e.pointerId !== pan.current.pointerId) return;
-      const matrix = svg.current?.getScreenCTM();
-      if (!matrix) return;
-      const current = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
-      const { start, center } = pan.current;
+      const { clientX, clientY, scaleX, scaleY, center } = pan.current;
       setViewCenter({
-        x: clamp(center.x + start.x - current.x, 0, project.width),
-        y: clamp(center.y + start.y - current.y, 0, project.depth),
+        x: clamp(center.x + (clientX - e.clientX) / scaleX, 0, project.width),
+        y: clamp(center.y + (clientY - e.clientY) / scaleY, 0, project.depth),
       });
       return;
     }
