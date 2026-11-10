@@ -373,6 +373,33 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
   }
 }
 
+/**
+ * Split an interior wall at a normalized position, preserving its thickness
+ * and remapping openings to the resulting segments. Reject cuts through an
+ * opening (or too close to an end) without changing the project.
+ * The original wall ID stays with the first segment for stable references.
+ */
+export function splitInteriorWall(p:Project,id:string,fraction=.5):boolean {
+  const wall=p.walls.find(w=>w.id===id);
+  if(!wall||wall.outer||!Number.isFinite(fraction)||fraction<=0||fraction>=1)return false;
+  const length=distance(wall.a,wall.b);
+  if(length*fraction<.2||length*(1-fraction)<.2)return false;
+  const openings=p.openings.filter(o=>o.wallId===id);
+  // A cut cannot pass through a door or window, including the 5 cm margin.
+  if(openings.some(o=>Math.abs(o.offset-fraction)*length<o.width/2+.05))return false;
+  const joint={x:wall.a.x+(wall.b.x-wall.a.x)*fraction,y:wall.a.y+(wall.b.y-wall.a.y)*fraction};
+  const secondId=makeId();
+  const originalEnd={...wall.b};
+  wall.b=joint;
+  p.walls.push({id:secondId,a:{...joint},b:originalEnd,thickness:wall.thickness});
+  for(const opening of openings){
+    if(opening.offset<fraction)opening.offset/=fraction;
+    else {opening.wallId=secondId;opening.offset=(opening.offset-fraction)/(1-fraction);}
+  }
+  reconcileRooms(p);
+  return true;
+}
+
 /** Warnings are advisory, not normative building-code validation. */
 export function projectWarnings(p:Project):string[] {
   const issues:string[]=[];
