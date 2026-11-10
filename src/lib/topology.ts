@@ -4,7 +4,7 @@
  * wall centre-lines, NOT a surveyed or code-compliant net area calculation.
  */
 import type { Point, Project, Room, Wall } from '../types';
-import { clamp, distance, makeId } from './geometry';
+import { clamp, distance, makeId, wallProjection } from './geometry';
 const EPS = 1e-5;
 const KEY_PRECISION = 4;
 const key = (p: Point) => `${p.x.toFixed(KEY_PRECISION)},${p.y.toFixed(KEY_PRECISION)}`;
@@ -199,7 +199,19 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
   if(!target||target.outer)return;
   const oldA={...target.a},oldB={...target.b};
   const constrain=(v:Point):Point=>({x:clamp(v.x,0,p.width),y:clamp(v.y,0,p.depth)});
-  const a=constrain(nextA),b=constrain(nextB);
+  // A partition attached to the fixed perimeter may slide along that edge,
+  // but dragging its handle must never leave an open gap at the envelope.
+  const keepExteriorJoint = (oldPoint: Point, proposed: Point): Point => {
+    if (!linked) return proposed;
+    const exterior = p.walls.filter(w => w.outer &&
+      distance(wallProjection(w, oldPoint).point, oldPoint) < .001);
+    if (!exterior.length) return proposed;
+    // Two perimeter edges meet at a corner: keep the corner fixed.
+    if (exterior.length > 1) return { ...oldPoint };
+    return constrain(wallProjection(exterior[0], proposed).point);
+  };
+  const a=keepExteriorJoint(oldA,constrain(nextA));
+  const b=keepExteriorJoint(oldB,constrain(nextB));
   if(distance(a,b)<.2)return;
 
   // Prepare all connected endpoint moves before touching the project. Reject a
