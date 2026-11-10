@@ -400,6 +400,51 @@ export function splitInteriorWall(p:Project,id:string,fraction=.5):boolean {
   return true;
 }
 
+/**
+ * Merge two consecutive, collinear interior segments. The selected wall keeps
+ * its ID, while openings from both walls are mapped to the new axis.
+ * Junctions used by a third wall are deliberately not removed.
+ */
+export function mergeInteriorWalls(p:Project,firstId:string,secondId:string):boolean {
+  const first=p.walls.find(w=>w.id===firstId);
+  const second=p.walls.find(w=>w.id===secondId);
+  if(!first||!second||first===second||first.outer||second.outer)return false;
+  if(Math.abs(first.thickness-second.thickness)>1e-4)return false;
+  const ends1=[first.a,first.b],ends2=[second.a,second.b];
+  const joined=ends1.flatMap((a,i)=>ends2.map((b,j)=>({a,b,i,j})))
+    .find(pair=>distance(pair.a,pair.b)<.001);
+  if(!joined)return false;
+  const start=ends1[1-joined.i],end=ends2[1-joined.j],joint=joined.a;
+  const axis=sub(end,start),len=distance(start,end);
+  if(len<.4||Math.abs(cross(sub(joint,start),axis))/len>.001)return false;
+  // The joint must be between the two remote endpoints, not an overlap.
+  const fraction=dot(sub(joint,start),axis)/(len*len);
+  if(fraction<=EPS||fraction>=1-EPS)return false;
+  // A third endpoint or a wall axis crossing the joint makes this a real
+  // topological junction; removing it would hide a connection.
+  for(const other of p.walls){
+    if(other.id===firstId||other.id===secondId)continue;
+    if([other.a,other.b].some(v=>distance(v,joint)<.001))return false;
+    const projection=wallProjection(other,joint);
+    if(distance(projection.point,joint)<.001&&projection.offset>EPS&&projection.offset<1-EPS)return false;
+  }
+  const openings=p.openings.filter(o=>o.wallId===firstId||o.wallId===secondId);
+  const mapped=openings.map(opening=>{
+    const wall=opening.wallId===firstId?first:second;
+    const point={x:wall.a.x+(wall.b.x-wall.a.x)*opening.offset,
+      y:wall.a.y+(wall.b.y-wall.a.y)*opening.offset};
+    const offset=dot(sub(point,start),axis)/(len*len);
+    return {opening,offset};
+  });
+  if(mapped.some(({opening,offset})=>!Number.isFinite(offset)||
+    offset*len-opening.width/2<.05||(1-offset)*len-opening.width/2<.05))return false;
+  first.a={...start};first.b={...end};
+  p.walls=p.walls.filter(w=>w.id!==secondId);
+  for(const {opening,offset} of mapped){opening.wallId=firstId;opening.offset=offset;}
+  reconcileRooms(p);
+  return true;
+}
+
 /** Warnings are advisory, not normative building-code validation. */
 export function projectWarnings(p:Project):string[] {
   const issues:string[]=[];
