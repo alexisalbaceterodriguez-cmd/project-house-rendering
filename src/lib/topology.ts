@@ -210,8 +210,24 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
     if (exterior.length > 1) return { ...oldPoint };
     return constrain(wallProjection(exterior[0], proposed).point);
   };
-  const a=keepExteriorJoint(oldA,constrain(nextA));
-  const b=keepExteriorJoint(oldB,constrain(nextB));
+  // When dragging a single handle, snap it onto a nearby interior wall
+  // axis to create an exact T-junction. Do not snap whole-wall translations:
+  // those must preserve the user's requested displacement.
+  const snapInteriorJoint = (point:Point):Point => {
+    if (!linked) return point;
+    let best=point,nearest=.12;
+    for (const wall of p.walls) {
+      if (wall.id===id || wall.outer) continue;
+      const projection=wallProjection(wall,point);
+      const gap=distance(point,projection.point);
+      if (gap<nearest) { nearest=gap;best={...projection.point}; }
+    }
+    return best;
+  };
+  const movedA=distance(oldA,nextA)>.0001;
+  const movedB=distance(oldB,nextB)>.0001;
+  const a=keepExteriorJoint(oldA,constrain(movedA&&!movedB?snapInteriorJoint(nextA):nextA));
+  const b=keepExteriorJoint(oldB,constrain(movedB&&!movedA?snapInteriorJoint(nextB):nextB));
   if(distance(a,b)<.2)return;
 
   // Prepare all connected endpoint moves before touching the project. Reject a
