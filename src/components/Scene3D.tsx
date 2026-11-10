@@ -81,7 +81,7 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
           const apply=(original:THREE.Material,slot:number):THREE.Material=>{
             const target=item.modelFinish!.materialName;
             if(target){
-              const meshTarget=/^@mesh:(\\d+):slot:(\\d+)$/.exec(target);
+              const meshTarget=/^@mesh:(\d+):slot:(\d+)$/.exec(target);
               if(meshTarget ? (Number(meshTarget[1])!==currentMesh || Number(meshTarget[2])!==slot) : original.name!==target)return original;
             }
             const material=original.clone();
