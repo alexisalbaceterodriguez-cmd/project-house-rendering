@@ -77,18 +77,16 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
         const currentMesh=meshIndex++;
         object.castShadow=true;object.receiveShadow=true;
         // Never mutate materials held by the cached GLTF scene or another instance.
-        if(item.modelFinish){
+        if(item.modelFinish || item.modelFinishes?.length){
           const apply=(original:THREE.Material,slot:number):THREE.Material=>{
-            const target=item.modelFinish!.materialName;
-            if(target){
-              const meshTarget=/^@mesh:(\d+):slot:(\d+)$/.exec(target);
-              if(meshTarget ? (Number(meshTarget[1])!==currentMesh || Number(meshTarget[2])!==slot) : original.name!==target)return original;
-            }
+            const finish=[...(item.modelFinishes??[]),...(item.modelFinish?[item.modelFinish]:[])].reverse().find(finish=>{const target=finish.materialName;if(!target)return true;const meshTarget=/^@mesh:(\d+):slot:(\d+)$/.exec(target);return meshTarget ? (Number(meshTarget[1])===currentMesh && Number(meshTarget[2])===slot) : original.name===target;});
+            if(!finish)return original;
+            const target=finish.materialName;
             const material=original.clone();
             if(material instanceof THREE.MeshStandardMaterial){
-              material.color.set(item.modelFinish!.color);
-              material.roughness=item.modelFinish!.roughness;
-              material.metalness=item.modelFinish!.metalness;
+              material.color.set(finish.color);
+              material.roughness=finish.roughness;
+              material.metalness=finish.metalness;
             }
             return material;
           };
@@ -101,7 +99,7 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
     if(item.modelUpAxis==='X')model.rotation.z=Math.PI/2;
     const oriented=new THREE.Group();oriented.add(model);
     return oriented;
-  },[scene,item.modelUpAxis,item.modelFinish]);
+  },[scene,item.modelUpAxis,item.modelFinish,item.modelFinishes]);
   const {size,center}=useMemo(()=>{const bb=new THREE.Box3().setFromObject(clone);const dimensions=bb.getSize(new THREE.Vector3());const center=bb.getCenter(new THREE.Vector3());return{size:dimensions,center};},[clone]);
   return <group position={[item.modelOffsetX??0,item.modelElevation??0,item.modelOffsetZ??0]}><group scale={[item.w/Math.max(size.x,.001),item.h/Math.max(size.y,.001),item.d/Math.max(size.z,.001)]}>
     <primitive object={clone} position={[-center.x, -center.y+size.y/2, -center.z]}/>
