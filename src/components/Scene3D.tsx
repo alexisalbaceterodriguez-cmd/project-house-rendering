@@ -101,7 +101,13 @@ function ImportedModel({url,item,selected}:{url:string;item:Furniture;selected:b
         // Never mutate materials held by the cached GLTF scene or another instance.
         if(item.modelFinish || item.modelFinishes?.length){
           const apply=(original:THREE.Material,slot:number):THREE.Material=>{
-            const finish=[...(item.modelFinishes??[]),...(item.modelFinish?[item.modelFinish]:[])].reverse().find(finish=>{const target=finish.materialName;if(!target)return true;const meshTarget=/^@mesh:(\d+):slot:(\d+)$/.exec(target);return meshTarget ? (Number(meshTarget[1])===currentMesh && Number(meshTarget[2])===slot) : original.name===target;});
+            // Specific mesh overrides always win over shared-name and global finishes,
+            // regardless of the order in which the user saved them.
+            const finishes=[...(item.modelFinishes??[]),...(item.modelFinish?[item.modelFinish]:[])];
+            const meshKey=`@mesh:${currentMesh}:slot:${slot}`;
+            const finish=finishes.slice().reverse().find(f=>f.materialName===meshKey)
+              ?? finishes.slice().reverse().find(f=>!!original.name && f.materialName===original.name)
+              ?? finishes.slice().reverse().find(f=>!f.materialName);
             const highlighted=selected && item.modelFinish?.materialName===`@mesh:${currentMesh}:slot:${slot}`;
             if(!finish && !highlighted)return original;
             const material=original.clone();
