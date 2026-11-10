@@ -215,7 +215,17 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
   // those must preserve the user's requested displacement.
   const snapInteriorJoint = (point:Point):Point => {
     if (!linked) return point;
+    // Prefer existing vertices over axes: joining a real endpoint creates
+    // one shared node rather than two almost-coincident T connections.
     let best=point,nearest=.12;
+    for (const wall of p.walls) {
+      if (wall.id===id) continue;
+      for (const endpoint of [wall.a,wall.b]) {
+        const gap=distance(point,endpoint);
+        if (gap<nearest) { nearest=gap;best={...endpoint}; }
+      }
+    }
+    if (best!==point) return best;
     for (const wall of p.walls) {
       if (wall.id===id || wall.outer) continue;
       const projection=wallProjection(wall,point);
