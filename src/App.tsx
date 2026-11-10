@@ -29,23 +29,24 @@ function Field({label,value,onChange,min=-100,max=100,step=.1,suffix='m'}:{label
 }
 function ModelMaterialPicker({item,onChange}:{item:Furniture;onChange:(name:string|undefined)=>void}){
   const [names,setNames]=useState<string[]>([]);
-  const [unnamed,setUnnamed]=useState(0);
+  const [unnamed,setUnnamed]=useState<{id:string;label:string}[]>([]);
   const [status,setStatus]=useState('Leyendo materiales del modelo…');
   useEffect(()=>{
     let active=true;
-    setNames([]);setUnnamed(0);setStatus('Leyendo materiales del modelo…');
+    setNames([]);setUnnamed([]);setStatus('Leyendo materiales del modelo…');
     const load=async()=>{
       const blob=item.modelData?dataURLToBlob(item.modelData):item.assetId?await getModelAsset(item.assetId):null;
       if(!blob)throw new Error('No se encuentra el archivo GLB.');
       const gltf=await new GLTFLoader().parseAsync(await blob.arrayBuffer(),'');
-      const found=new Set<string>();let missing=0;
+      const found=new Set<string>();const missing:{id:string;label:string}[]=[];let meshIndex=0;
       gltf.scene.traverse(object=>{
         if(!(object instanceof THREE.Mesh))return;
+        const currentMesh=meshIndex++;
         const materials=Array.isArray(object.material)?object.material:[object.material];
-        for(const material of materials){
+        for(const [slot,material] of materials.entries()){
           if(!(material instanceof THREE.MeshStandardMaterial))continue;
           if(material.name.trim())found.add(material.name);
-          else missing++;
+          else missing.push({id:`@mesh:${currentMesh}:slot:${slot}`,label:`${object.name||`Malla ${currentMesh+1}`} · superficie ${slot+1} (sin nombre)`});
         }
       });
       if(active){setNames([...found].sort((a,b)=>a.localeCompare(b)));setUnnamed(missing);setStatus('');}
@@ -58,10 +59,11 @@ function ModelMaterialPicker({item,onChange}:{item:Furniture;onChange:(name:stri
     <option value="">Todos los materiales PBR</option>
     {selected&&!names.includes(selected)&&<option value={selected}>{selected} (no encontrado)</option>}
     {names.map(name=><option key={name} value={name}>{name}</option>)}
+    {unnamed.map(entry=><option key={entry.id} value={entry.id}>{entry.label}</option>)}
   </select></label>
   {status&&<p className="small-help" role="status">{status}</p>}
-  {unnamed>0&&<p className="small-help">{unnamed} superficies PBR sin nombre: solo se pueden modificar con «Todos los materiales PBR».</p>}
-  {!status&&names.length===0&&<p className="small-help">El GLB no contiene materiales PBR con nombre.</p>}
+  {unnamed.length>0&&<p className="small-help">{unnamed.length} superficies sin nombre disponibles para editar individualmente.</p>}
+  {!status&&names.length===0&&unnamed.length===0&&<p className="small-help">El GLB no contiene materiales PBR editables.</p>}
   </>;
 }
 
