@@ -67,6 +67,28 @@ function OpeningModel({opening:o,length,thickness}:{opening:Opening;length:numbe
 }
 function ImportedModel({url,item}:{url:string;item:Furniture}){
   const {scene}=useGLTF(url);
+  const {change,setSelection}=useEditor();
+  // Shift-click picks the actual GLB mesh/material slot, including unnamed or shared materials.
+  const pickSurface=(event:import('@react-three/fiber').ThreeEvent<MouseEvent>)=>{
+    if(!event.nativeEvent.shiftKey)return;
+    let meshIndex=0;let selectedMesh=-1;
+    clone.traverse(object=>{
+      if(object instanceof THREE.Mesh){if(object===event.object)selectedMesh=meshIndex;meshIndex++;}
+    });
+    if(selectedMesh<0)return;
+    event.stopPropagation();
+    const mesh=event.object as THREE.Mesh;
+    const slot=Array.isArray(mesh.material)?(event.face?.materialIndex??0):0;
+    const material=Array.isArray(mesh.material)?mesh.material[slot]:mesh.material;
+    if(!(material instanceof THREE.MeshStandardMaterial))return;
+    const materialName=`@mesh:${selectedMesh}:slot:${slot}`;
+    setSelection({type:'furniture',id:item.id});
+    change(project=>{
+      const target=project.furniture.find(f=>f.id===item.id);
+      if(!target)return;
+      target.modelFinish={...(target.modelFinish??{color:'#ffffff',roughness:0.8,metalness:0}),materialName};
+    });
+  };
   const clone=useMemo(()=>{
     // A regular Object3D clone leaves skinned meshes bound to the original skeleton.
     // Clone bones and skin bindings together so animated furniture renders independently.
@@ -102,7 +124,7 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
   },[scene,item.modelUpAxis,item.modelFinish,item.modelFinishes]);
   const {size,center}=useMemo(()=>{const bb=new THREE.Box3().setFromObject(clone);const dimensions=bb.getSize(new THREE.Vector3());const center=bb.getCenter(new THREE.Vector3());return{size:dimensions,center};},[clone]);
   return <group position={[item.modelOffsetX??0,item.modelElevation??0,item.modelOffsetZ??0]}><group scale={[item.w/Math.max(size.x,.001),item.h/Math.max(size.y,.001),item.d/Math.max(size.z,.001)]}>
-    <primitive object={clone} position={[-center.x, -center.y+size.y/2, -center.z]}/>
+    <primitive object={clone} position={[-center.x, -center.y+size.y/2, -center.z]} onClick={pickSurface}/>
   </group></group>;
 }
 function ModelShape({item}:{item:Furniture}){
@@ -176,7 +198,7 @@ function CameraRig({project,top}:{project:Project;top:boolean}){
 export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefObject<HTMLCanvasElement|null>;topView?:boolean}){
   const {project,selection,setSelection,wallsVisible,cutaway}=useEditor();
   return <div className="scene-wrap">
-    <div className="scene-topline"><span><span className="live-dot"/> VISTA 3D EN TIEMPO REAL</span><span>Arrastra para orbitar · Rueda para zoom</span></div>
+    <div className="scene-topline"><span><span className="live-dot"/> VISTA 3D EN TIEMPO REAL</span><span>Arrastra para orbitar · Rueda para zoom · Mayús+clic: material GLB</span></div>
     <Canvas shadows dpr={[1,1.8]} gl={{antialias:true,preserveDrawingBuffer:true}} camera={{position:[11,11,12],fov:42,near:.1,far:250}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
       <color attach="background" args={['#f4f3ef']}/>
       <ambientLight intensity={.8}/>
