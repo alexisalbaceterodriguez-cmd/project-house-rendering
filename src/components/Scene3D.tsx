@@ -71,12 +71,19 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
     // A regular Object3D clone leaves skinned meshes bound to the original skeleton.
     // Clone bones and skin bindings together so animated furniture renders independently.
     const model=cloneSkeleton(scene);
+    let meshIndex=0;
     model.traverse(object=>{
-      if(object instanceof THREE.Mesh){object.castShadow=true;object.receiveShadow=true;
+      if(object instanceof THREE.Mesh){
+        const currentMesh=meshIndex++;
+        object.castShadow=true;object.receiveShadow=true;
         // Never mutate materials held by the cached GLTF scene or another instance.
         if(item.modelFinish){
-          const apply=(original:THREE.Material):THREE.Material=>{
-            if(item.modelFinish!.materialName && original.name!==item.modelFinish!.materialName)return original;
+          const apply=(original:THREE.Material,slot:number):THREE.Material=>{
+            const target=item.modelFinish!.materialName;
+            if(target){
+              const meshTarget=/^@mesh:(\\d+):slot:(\\d+)$/.exec(target);
+              if(meshTarget ? (Number(meshTarget[1])!==currentMesh || Number(meshTarget[2])!==slot) : original.name!==target)return original;
+            }
             const material=original.clone();
             if(material instanceof THREE.MeshStandardMaterial){
               material.color.set(item.modelFinish!.color);
@@ -85,7 +92,7 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
             }
             return material;
           };
-          object.material=Array.isArray(object.material)?object.material.map(apply):apply(object.material);
+          object.material=Array.isArray(object.material)?object.material.map((material,slot)=>apply(material,slot)):apply(object.material,0);
         }
       }
     });
