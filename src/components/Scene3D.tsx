@@ -76,6 +76,7 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
         // Never mutate materials held by the cached GLTF scene or another instance.
         if(item.modelFinish){
           const apply=(original:THREE.Material):THREE.Material=>{
+            if(item.modelFinish!.materialName && original.name!==item.modelFinish!.materialName)return original;
             const material=original.clone();
             if(material instanceof THREE.MeshStandardMaterial){
               material.color.set(item.modelFinish!.color);
