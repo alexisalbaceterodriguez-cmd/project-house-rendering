@@ -99,7 +99,7 @@ function ImportedModel({url,item,selected}:{url:string;item:Furniture;selected:b
         const currentMesh=meshIndex++;
         object.castShadow=true;object.receiveShadow=true;
         // Never mutate materials held by the cached GLTF scene or another instance.
-        if(item.modelFinish || item.modelFinishes?.length || (selected && item.modelFinish?.materialName?.startsWith('@mesh:'))){
+        if(item.modelFinish || item.modelFinishes?.length){
           const apply=(original:THREE.Material,slot:number):THREE.Material=>{
             const finish=[...(item.modelFinishes??[]),...(item.modelFinish?[item.modelFinish]:[])].reverse().find(finish=>{const target=finish.materialName;if(!target)return true;const meshTarget=/^@mesh:(\d+):slot:(\d+)$/.exec(target);return meshTarget ? (Number(meshTarget[1])===currentMesh && Number(meshTarget[2])===slot) : original.name===target;});
             const highlighted=selected && item.modelFinish?.materialName===`@mesh:${currentMesh}:slot:${slot}`;
