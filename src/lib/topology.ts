@@ -297,6 +297,45 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
         proposed.set(other.id,{a:endpoints[0],b:endpoints[1]});
     }
   }
+  // Propagate a moved shared vertex through connected branches, including
+  // endpoints belonging to a T-junction carried by the edited wall. The
+  // first pass above only updates walls touching the selected wall directly.
+  // Use original coordinates for matching, so propagation cannot drift.
+  if(linked){
+    let changed=true;
+    while(changed){
+      changed=false;
+      for(const source of p.walls){
+        const moved=proposed.get(source.id);
+        if(!moved)continue;
+        for(const [oldVertex,newVertex] of [[source.a,moved.a],[source.b,moved.b]] as const){
+          if(distance(oldVertex,newVertex)<.0001)continue;
+          for(const neighbour of p.walls){
+            if(neighbour.id===source.id)continue;
+            const touchesA=distance(neighbour.a,oldVertex)<.001;
+            const touchesB=distance(neighbour.b,oldVertex)<.001;
+            if(!touchesA&&!touchesB)continue;
+            // The exterior envelope is fixed. Reject rather than detach a
+            // partition from a fixed perimeter vertex.
+            if(neighbour.outer)return;
+            const current=proposed.get(neighbour.id)??{a:neighbour.a,b:neighbour.b};
+            if((touchesA&&distance(current.a,newVertex)>.0001)||
+               (touchesB&&distance(current.b,newVertex)>.0001)){
+              // Another branch may already have moved the same vertex to a
+              // different destination; reject the ambiguous edit atomically.
+              if((touchesA&&distance(current.a,neighbour.a)>.0001)||
+                 (touchesB&&distance(current.b,neighbour.b)>.0001))return;
+              proposed.set(neighbour.id,{
+                a:touchesA?{...newVertex}:current.a,
+                b:touchesB?{...newVertex}:current.b
+              });
+              changed=true;
+            }
+          }
+        }
+      }
+    }
+  }
   // Openings must continue to fit after the resize. A rejected drag leaves
   // every affected wall unchanged, including the selected wall.
   for(const [wallId,points] of proposed){
