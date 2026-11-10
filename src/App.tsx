@@ -62,14 +62,24 @@ function ModelMaterialPicker({item,onChange,onUseOriginal}:{item:Furniture;onCha
   const selected=item.modelFinish?.materialName??'';
   const matched=selected?originals.filter(surface=>surface.id===selected||(!selected.startsWith('@mesh:')&&surface.name===selected)):originals;
   const saved=[...(item.modelFinishes??[]),...(item.modelFinish?[item.modelFinish]:[])];
-  const applied=matched.filter(surface=>saved.some(finish=>!finish.materialName||finish.materialName===surface.id||finish.materialName===surface.name));
+  // Mirror Scene3D's specificity rules so the inspector reports the effective finish.
+  const effectiveFinish=(surface:(typeof originals)[number])=>
+    [...saved].reverse().find(finish=>finish.materialName===surface.id)
+    ?? [...saved].reverse().find(finish=>surface.name!=='Sin nombre'&&finish.materialName===surface.name)
+    ?? [...saved].reverse().find(finish=>!finish.materialName);
+  const applied=matched.filter(surface=>!!effectiveFinish(surface));
+  const finishSource=(surface:(typeof originals)[number])=>{
+    const finish=effectiveFinish(surface);
+    return !finish?'Original':finish.materialName===surface.id?'Individual':finish.materialName?'Compartido':'General';
+  };
   return <><label className="field"><span>Material del GLB</span><select aria-label="Material GLB objetivo" value={selected} onChange={event=>onChange(event.target.value||undefined)}>
     <option value="">Todos los materiales PBR</option>
     {selected&&!names.includes(selected)&&!unnamed.some(entry=>entry.id===selected)&&<option value={selected}>{selected} (no encontrado)</option>}
     {names.map(name=><option key={name} value={name}>{name}</option>)}
     {unnamed.map(entry=><option key={entry.id} value={entry.id}>{entry.label}</option>)}
   </select></label>
-  {!status&&matched.length>0&&<div className="field" aria-label="Información del material original"><strong>Material original del archivo</strong><p className="small-help">{selected?`${matched.length} superficie(s) seleccionada(s)`:`${matched.length} superficies PBR`}. {applied.length} con personalización activa.</p>{matched.slice(0,8).map(surface=><div key={surface.id} className="small-help" style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}><span aria-hidden="true" style={{width:18,height:18,flexShrink:0,background:surface.color,border:'1px solid #aaa',borderRadius:4}}/><span>{surface.mesh} · {surface.name} · {surface.id}<br/>Original: {surface.color} · rugosidad {surface.roughness.toFixed(2)} · metalicidad {surface.metalness.toFixed(2)}</span></div>)}{matched.length>8&&<p className="small-help">Se muestran 8 de {matched.length} superficies. Selecciona una para ver sus propiedades.</p>}</div>}
+  {!status&&matched.length>0&&<div className="field" aria-label="Información del material original"><strong>Material original del archivo</strong><p className="small-help">{selected?`${matched.length} superficie(s) seleccionada(s)`:`${matched.length} superficies PBR`}. {applied.length} con personalización activa.</p>{matched.slice(0,8).map(surface=><div key={surface.id} className="small-help" style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}><span aria-hidden="true" style={{width:18,height:18,flexShrink:0,background:surface.color,border:'1px solid #aaa',borderRadius:4}}/><span>{surface.mesh} · {surface.name} · {surface.id}<br/>Original: {surface.color} · rugosidad {surface.roughness.toFixed(2)} · metalicidad {surface.metalness.toFixed(2)}<br/><strong>Acabado efectivo: {finishSource(surface)}</strong>{effectiveFinish(surface)&&<> · {effectiveFinish(surface)!.color} · rugosidad {effectiveFinish(surface)!.roughness.toFixed(2)} · metalicidad {effectiveFinish(surface)!.metalness.toFixed(2)}</>}</span></div>)}{matched.length>8&&<p className="small-help">Se muestran 8 de {matched.length} superficies. Selecciona una para ver sus propiedades.</p>}</div>}
+  {!status&&matched.length===1&&selected.startsWith('@mesh:')&&saved.some(finish=>finish.materialName===selected)&&<p className="small-help">Esta superficie tiene un acabado individual prioritario. Para recuperar el acabado compartido o general, elimina su personalización individual en «Acabados guardados» o desactiva la sobrescritura activa.</p>}
   {!status&&matched.length===1&&<button type="button" className="btn" onClick={()=>onUseOriginal({color:matched[0].color,roughness:matched[0].roughness,metalness:matched[0].metalness})}>Usar valores originales de esta superficie</button>}
   {!status&&selected.startsWith('@mesh:')&&matched.length===1&&matched[0].name!=='Sin nombre'&&names.includes(matched[0].name)&&<button type="button" className="btn" onClick={()=>onChange(matched[0].name)} title="Conservar el acabado actual y aplicarlo a todas las mallas que comparten este material">Aplicar a todas las superficies con «{matched[0].name}» ({originals.filter(surface=>surface.name===matched[0].name).length})</button>}
   {!status&&matched.length>1&&selected&&<p className="small-help">Selecciona una superficie individual para copiar sus valores originales sin ambigüedad.</p>}
