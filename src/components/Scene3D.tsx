@@ -65,7 +65,7 @@ function OpeningModel({opening:o,length,thickness}:{opening:Opening;length:numbe
     </group>}
   </group>;
 }
-function ImportedModel({url,item}:{url:string;item:Furniture}){
+function ImportedModel({url,item,selected}:{url:string;item:Furniture;selected:boolean}){
   const {scene}=useGLTF(url);
   const {change,setSelection}=useEditor();
   // Shift-click picks the actual GLB mesh/material slot, including unnamed or shared materials.
@@ -99,16 +99,16 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
         const currentMesh=meshIndex++;
         object.castShadow=true;object.receiveShadow=true;
         // Never mutate materials held by the cached GLTF scene or another instance.
-        if(item.modelFinish || item.modelFinishes?.length){
+        if(item.modelFinish || item.modelFinishes?.length || (selected && item.modelFinish?.materialName?.startsWith('@mesh:'))){
           const apply=(original:THREE.Material,slot:number):THREE.Material=>{
             const finish=[...(item.modelFinishes??[]),...(item.modelFinish?[item.modelFinish]:[])].reverse().find(finish=>{const target=finish.materialName;if(!target)return true;const meshTarget=/^@mesh:(\d+):slot:(\d+)$/.exec(target);return meshTarget ? (Number(meshTarget[1])===currentMesh && Number(meshTarget[2])===slot) : original.name===target;});
-            if(!finish)return original;
-            const target=finish.materialName;
+            const highlighted=selected && item.modelFinish?.materialName===`@mesh:${currentMesh}:slot:${slot}`;
+            if(!finish && !highlighted)return original;
             const material=original.clone();
             if(material instanceof THREE.MeshStandardMaterial){
-              material.color.set(finish.color);
-              material.roughness=finish.roughness;
-              material.metalness=finish.metalness;
+              if(finish){material.color.set(finish.color);material.roughness=finish.roughness;material.metalness=finish.metalness;}
+              // Visual feedback is transient: never serialize it or mutate cached GLTF materials.
+              if(highlighted){material.emissive.set('#2b9071');material.emissiveIntensity=0.22;}
             }
             return material;
           };
@@ -121,13 +121,13 @@ function ImportedModel({url,item}:{url:string;item:Furniture}){
     if(item.modelUpAxis==='X')model.rotation.z=Math.PI/2;
     const oriented=new THREE.Group();oriented.add(model);
     return oriented;
-  },[scene,item.modelUpAxis,item.modelFinish,item.modelFinishes]);
+  },[scene,item.modelUpAxis,item.modelFinish,item.modelFinishes,selected]);
   const {size,center}=useMemo(()=>{const bb=new THREE.Box3().setFromObject(clone);const dimensions=bb.getSize(new THREE.Vector3());const center=bb.getCenter(new THREE.Vector3());return{size:dimensions,center};},[clone]);
   return <group position={[item.modelOffsetX??0,item.modelElevation??0,item.modelOffsetZ??0]}><group scale={[item.w/Math.max(size.x,.001),item.h/Math.max(size.y,.001),item.d/Math.max(size.z,.001)]}>
     <primitive object={clone} position={[-center.x, -center.y+size.y/2, -center.z]} onClick={pickSurface}/>
   </group></group>;
 }
-function ModelShape({item}:{item:Furniture}){
+function ModelShape({item,selected}:{item:Furniture;selected:boolean}){
   const [url,setUrl]=useState<string|null>(item.modelData??null);
   useEffect(()=>{
     if(item.modelData){setUrl(item.modelData);return;}
@@ -138,7 +138,7 @@ function ModelShape({item}:{item:Furniture}){
     }).catch(()=>{if(active)setUrl(null);});
     return ()=>{active=false;if(objectURL)URL.revokeObjectURL(objectURL);};
   },[item.assetId,item.modelData]);
-  return url?<Suspense fallback={<Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#ddd5c5"/>}><ImportedModel url={url} item={item}/></Suspense>:<Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#c3cbbe"/>;
+  return url?<Suspense fallback={<Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#ddd5c5"/>}><ImportedModel url={url} item={item} selected={selected}/></Suspense>:<Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#c3cbbe"/>;
 }
 function Bed({item}:{item:Furniture}){
   return <><Box position={[0,.20,0]} size={[item.w,.35,item.d]} color="#c0a489"/>
@@ -148,7 +148,7 @@ function Bed({item}:{item:Furniture}){
     <Box position={[0,.54,item.d*.17]} size={[item.w*.84,.08,item.d*.40]} color="#c7b4a0"/>
   </>;
 }
-function FurnitureShape({item,project}:{item:Furniture;project:Project}){
+function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;selected:boolean}){
   const {w,d,h}=item;
   const wood=project.palette.wood;
   switch(item.kind){
@@ -177,12 +177,12 @@ function FurnitureShape({item,project}:{item:Furniture;project:Project}){
     case 'plant':return <><mesh castShadow position={[0,.24,0]}><cylinderGeometry args={[w*.27,w*.2,.48,12]}/><meshStandardMaterial color="#b7a185"/></mesh>{[[0,.75,0],[.12,.98,.12],[-.13,.95,-.08],[0,1.2,.02]].map((p,i)=><mesh key={i} position={p as [number,number,number]}><sphereGeometry args={[.23,9,7]}/><meshStandardMaterial color={i%2?'#4f8060':'#6d9875'}/></mesh>)}</>;
     case 'lamp':return <><mesh castShadow position={[0,.04,0]}><cylinderGeometry args={[.16,.16,.08,24]}/><meshStandardMaterial color="#7b7871"/></mesh><Box position={[0,h/2,0]} size={[.027,h,.027]} color="#797875" material="metal"/><mesh position={[0,h-.12,0]}><coneGeometry args={[.27,.34,24,1,true]}/><meshStandardMaterial color="#eae0cd" side={THREE.DoubleSide}/></mesh><pointLight position={[0,h-.15,0]} intensity={.13} color="#fff2d3" distance={2}/></>;
     case 'rug':return <Box position={[0,.014,0]} size={[w,.028,d]} color={item.color}/>;
-    case 'model':return <ModelShape item={item}/>;
+    case 'model':return <ModelShape item={item} selected={selected}/>;
   }
 }
 function ObjectModel({item,project,selected,onSelect}:{item:Furniture;project:Project;selected:boolean;onSelect:()=>void}){
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]} onClick={e=>{e.stopPropagation();onSelect();}} onPointerOver={()=>{document.body.style.cursor='pointer';}} onPointerOut={()=>{document.body.style.cursor='';}}>
-    <FurnitureShape item={item} project={project}/>
+    <FurnitureShape item={item} project={project} selected={selected}/>
     {selected&&<mesh rotation={[-Math.PI/2,0,0]} position={[0,.03,0]}><ringGeometry args={[Math.max(item.w,item.d)*.66,Math.max(item.w,item.d)*.68,40]}/><meshBasicMaterial color="#2b9071" side={THREE.DoubleSide}/></mesh>}
   </group>;
 }
