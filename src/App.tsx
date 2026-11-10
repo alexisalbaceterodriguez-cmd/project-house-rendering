@@ -46,7 +46,9 @@ function ModelMaterialPicker({item,onChange}:{item:Furniture;onChange:(name:stri
         for(const [slot,material] of materials.entries()){
           if(!(material instanceof THREE.MeshStandardMaterial))continue;
           if(material.name.trim())found.add(material.name);
-          else missing.push({id:`@mesh:${currentMesh}:slot:${slot}`,label:`${object.name||`Malla ${currentMesh+1}`} · superficie ${slot+1} (sin nombre)`});
+          // Expose every mesh slot, including named/shared materials, for precise per-part editing.
+          // Named material options above still intentionally target all meshes using that material.
+          missing.push({id:`@mesh:${currentMesh}:slot:${slot}`,label:`${object.name||`Malla ${currentMesh+1}`} · superficie ${slot+1} (${material.name.trim()||'sin nombre'})`});
         }
       });
       if(active){setNames([...found].sort((a,b)=>a.localeCompare(b)));setUnnamed(missing);setStatus('');}
@@ -62,7 +64,7 @@ function ModelMaterialPicker({item,onChange}:{item:Furniture;onChange:(name:stri
     {unnamed.map(entry=><option key={entry.id} value={entry.id}>{entry.label}</option>)}
   </select></label>
   {status&&<p className="small-help" role="status">{status}</p>}
-  {unnamed.length>0&&<p className="small-help">{unnamed.length} superficies sin nombre disponibles para editar individualmente.</p>}
+  {unnamed.length>0&&<p className="small-help">{unnamed.length} superficies individuales disponibles, incluidas las que comparten material. Las opciones por nombre afectan a todas las mallas que usan ese material.</p>}
   {!status&&names.length===0&&unnamed.length===0&&<p className="small-help">El GLB no contiene materiales PBR editables.</p>}
   </>;
 }
