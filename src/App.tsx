@@ -30,15 +30,16 @@ function Field({label,value,onChange,min=-100,max=100,step=.1,suffix='m'}:{label
 function ModelMaterialPicker({item,onChange}:{item:Furniture;onChange:(name:string|undefined)=>void}){
   const [names,setNames]=useState<string[]>([]);
   const [unnamed,setUnnamed]=useState<{id:string;label:string}[]>([]);
+  const [originals,setOriginals]=useState<{id:string;name:string;color:string;roughness:number;metalness:number;mesh:string}[]>([]);
   const [status,setStatus]=useState('Leyendo materiales del modelo…');
   useEffect(()=>{
     let active=true;
-    setNames([]);setUnnamed([]);setStatus('Leyendo materiales del modelo…');
+    setNames([]);setUnnamed([]);setOriginals([]);setStatus('Leyendo materiales del modelo…');
     const load=async()=>{
       const blob=item.modelData?dataURLToBlob(item.modelData):item.assetId?await getModelAsset(item.assetId):null;
       if(!blob)throw new Error('No se encuentra el archivo GLB.');
       const gltf=await new GLTFLoader().parseAsync(await blob.arrayBuffer(),'');
-      const found=new Set<string>();const missing:{id:string;label:string}[]=[];let meshIndex=0;
+      const found=new Set<string>();const missing:{id:string;label:string}[]=[];const surfaces:{id:string;name:string;color:string;roughness:number;metalness:number;mesh:string}[]=[];let meshIndex=0;
       gltf.scene.traverse(object=>{
         if(!(object instanceof THREE.Mesh))return;
         const currentMesh=meshIndex++;
@@ -48,21 +49,27 @@ function ModelMaterialPicker({item,onChange}:{item:Furniture;onChange:(name:stri
           if(material.name.trim())found.add(material.name);
           // Expose every mesh slot, including named/shared materials, for precise per-part editing.
           // Named material options above still intentionally target all meshes using that material.
-          missing.push({id:`@mesh:${currentMesh}:slot:${slot}`,label:`${object.name||`Malla ${currentMesh+1}`} · superficie ${slot+1} (${material.name.trim()||'sin nombre'})`});
+          const id=`@mesh:${currentMesh}:slot:${slot}`;
+          missing.push({id,label:`${object.name||`Malla ${currentMesh+1}`} · superficie ${slot+1} (${material.name.trim()||'sin nombre'})`});
+          surfaces.push({id,name:material.name.trim()||'Sin nombre',color:`#${material.color.getHexString()}`,roughness:material.roughness,metalness:material.metalness,mesh:object.name||`Malla ${currentMesh+1}`});
         }
       });
-      if(active){setNames([...found].sort((a,b)=>a.localeCompare(b)));setUnnamed(missing);setStatus('');}
+      if(active){setNames([...found].sort((a,b)=>a.localeCompare(b)));setUnnamed(missing);setOriginals(surfaces);setStatus('');}
     };
     void load().catch(error=>{if(active)setStatus(error instanceof Error?error.message:'No se pudieron leer los materiales.');});
     return()=>{active=false;};
   },[item.assetId,item.modelData]);
   const selected=item.modelFinish?.materialName??'';
+  const matched=selected?originals.filter(surface=>surface.id===selected||(!selected.startsWith('@mesh:')&&surface.name===selected)):originals;
+  const saved=[...(item.modelFinishes??[]),...(item.modelFinish?[item.modelFinish]:[])];
+  const applied=matched.filter(surface=>saved.some(finish=>!finish.materialName||finish.materialName===surface.id||finish.materialName===surface.name));
   return <><label className="field"><span>Material del GLB</span><select aria-label="Material GLB objetivo" value={selected} onChange={event=>onChange(event.target.value||undefined)}>
     <option value="">Todos los materiales PBR</option>
     {selected&&!names.includes(selected)&&!unnamed.some(entry=>entry.id===selected)&&<option value={selected}>{selected} (no encontrado)</option>}
     {names.map(name=><option key={name} value={name}>{name}</option>)}
     {unnamed.map(entry=><option key={entry.id} value={entry.id}>{entry.label}</option>)}
   </select></label>
+  {!status&&matched.length>0&&<div className="field" aria-label="Información del material original"><strong>Material original del archivo</strong><p className="small-help">{selected?`${matched.length} superficie(s) seleccionada(s)`:`${matched.length} superficies PBR`}. {applied.length} con personalización activa.</p>{matched.slice(0,8).map(surface=><div key={surface.id} className="small-help" style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}><span aria-hidden="true" style={{width:18,height:18,flexShrink:0,background:surface.color,border:'1px solid #aaa',borderRadius:4}}/><span>{surface.mesh} · {surface.name} · {surface.id}<br/>Original: {surface.color} · rugosidad {surface.roughness.toFixed(2)} · metalicidad {surface.metalness.toFixed(2)}</span></div>)}{matched.length>8&&<p className="small-help">Se muestran 8 de {matched.length} superficies. Selecciona una para ver sus propiedades.</p>}</div>}
   {status&&<p className="small-help" role="status">{status}</p>}
   {unnamed.length>0&&<p className="small-help">{unnamed.length} superficies individuales disponibles, incluidas las que comparten material. Las opciones por nombre afectan a todas las mallas que usan ese material.</p>}
   {!status&&names.length===0&&unnamed.length===0&&<p className="small-help">El GLB no contiene materiales PBR editables.</p>}
