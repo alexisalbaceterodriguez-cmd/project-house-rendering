@@ -57,7 +57,7 @@ function ModelMaterialPicker({item,onChange}:{item:Furniture;onChange:(name:stri
   const selected=item.modelFinish?.materialName??'';
   return <><label className="field"><span>Material del GLB</span><select aria-label="Material GLB objetivo" value={selected} onChange={event=>onChange(event.target.value||undefined)}>
     <option value="">Todos los materiales PBR</option>
-    {selected&&!names.includes(selected)&&<option value={selected}>{selected} (no encontrado)</option>}
+    {selected&&!names.includes(selected)&&!unnamed.some(entry=>entry.id===selected)&&<option value={selected}>{selected} (no encontrado)</option>}
     {names.map(name=><option key={name} value={name}>{name}</option>)}
     {unnamed.map(entry=><option key={entry.id} value={entry.id}>{entry.label}</option>)}
   </select></label>
