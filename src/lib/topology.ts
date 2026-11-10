@@ -226,6 +226,22 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
       }
     }
     if (best!==point) return best;
+    // Existing X intersections are valid graph nodes even when neither wall
+    // has an endpoint there. Prefer them over an arbitrary nearby wall axis.
+    const hosts=p.walls.filter(w=>w.id!==id);
+    for(let i=0;i<hosts.length;i++)for(let j=i+1;j<hosts.length;j++){
+      const first=hosts[i],second=hosts[j];
+      const r=sub(first.b,first.a),s=sub(second.b,second.a);
+      const denominator=cross(r,s);
+      if(Math.abs(denominator)<EPS)continue;
+      const delta=sub(second.a,first.a);
+      const t=cross(delta,s)/denominator,u=cross(delta,r)/denominator;
+      if(t<-EPS||t>1+EPS||u<-EPS||u>1+EPS)continue;
+      const intersection={x:first.a.x+t*r.x,y:first.a.y+t*r.y};
+      const gap=distance(point,intersection);
+      if(gap<nearest){nearest=gap;best=intersection;}
+    }
+    if(best!==point)return best;
     for (const wall of p.walls) {
       if (wall.id===id || wall.outer) continue;
       const projection=wallProjection(wall,point);
