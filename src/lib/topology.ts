@@ -234,10 +234,25 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
     }
     return best;
   };
+  // A handle joined to the middle of another partition is a T-junction.
+  // Slide along its host axis rather than detaching when dragged farther
+  // than the ordinary 12 cm snap radius. Shared vertices remain free to move
+  // as a group through the propagation logic below.
+  const keepInteriorTJoint=(oldPoint:Point,proposed:Point):Point=>{
+    if(!linked)return proposed;
+    if(p.walls.some(w=>w.id!==id &&
+      (distance(w.a,oldPoint)<.001||distance(w.b,oldPoint)<.001)))return proposed;
+    const host=p.walls.find(w=>{
+      if(w.id===id||w.outer)return false;
+      const projection=wallProjection(w,oldPoint);
+      return projection.offset>.001&&projection.offset<.999&&distance(projection.point,oldPoint)<.001;
+    });
+    return host?constrain(wallProjection(host,proposed).point):proposed;
+  };
   const movedA=distance(oldA,nextA)>.0001;
   const movedB=distance(oldB,nextB)>.0001;
-  const a=keepExteriorJoint(oldA,constrain(movedA&&!movedB?snapInteriorJoint(nextA):nextA));
-  const b=keepExteriorJoint(oldB,constrain(movedB&&!movedA?snapInteriorJoint(nextB):nextB));
+  const a=keepExteriorJoint(oldA,constrain(movedA&&!movedB?keepInteriorTJoint(oldA,snapInteriorJoint(nextA)):nextA));
+  const b=keepExteriorJoint(oldB,constrain(movedB&&!movedA?keepInteriorTJoint(oldB,snapInteriorJoint(nextB)):nextB));
   if(distance(a,b)<.2)return;
 
   // Prepare all connected endpoint moves before touching the project. Reject a
