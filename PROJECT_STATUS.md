@@ -5,15 +5,15 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 
 ## Estado operativo vigente — entrega de producto 2026-11-11
 
-- Rama `codex/product-release`, base `dc882baaf2e2e9fe7b4881f2259660f5a0a760c1`. Se conserva el trabajo de la auditoría anterior y se amplía con código, recursos autorizados y pruebas; main no se ha sobrescrito.
+- Rama `codex/product-release`, commit de código `29cf67d75d4f782956094bbc0449a349522eb7ed`, base `dc882baaf2e2e9fe7b4881f2259660f5a0a760c1`. [PR #7](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/pull/7). Se conserva el trabajo de la auditoría anterior y se amplía con código, recursos autorizados y pruebas; main no se ha sobrescrito.
 - Implementados: grafo/migración v1 aditiva, arrastre cancelable con historial/redo, zoom sin scroll, grupos, rejilla configurable, imagen calibrada y anclaje; aislamiento/reparación de GLB dañados; biblioteca de tres modelos con origen/licencia y cuatro materiales texturados por superficie; módulos; versiones, cámara, HDRI/paseo y comparación A/B; presupuesto manual CSV y plano imprimible/PDF de presentación.
 - Persistencia: flush al salir solo con cambios pendientes, avisos reales de guardado, JSON portable con deduplicación de activos compartidos y rollback atómico. No se eliminan recursos usados por versiones o historial.
 - Rendimiento: 3D en chunk separado, render bajo demanda, sombras actualizadas por geometría y calidad rápida que simplifica transmisión/sheen. El recorrido de tres modelos juntos pasó de bloqueo por GPU software a unos 8 s en la prueba local aislada.
-- Verificación local actual: **60 unitarias, build (incluye tipos E2E) y 23 E2E completos correctos**. Captura al recrear canvas comprobada además en tres ejecuciones consecutivas en frío. No atribuir CI verde a esta rama hasta disponer de su run exacto.
+- Verificación local actual: **60 unitarias, build (incluye tipos E2E) y 23 E2E completos correctos**. Captura al recrear canvas comprobada además en tres ejecuciones consecutivas en frío. CI del mismo código también correcta: [Test and build 43016376602](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43016376602), `completed/success`; jobs de instalación, unitarias, build y E2E comprobados.
 - Producción local revisada en `http://127.0.0.1:5173/`: catálogo real, texturas, HDRI, versiones, móvil e impresión; cero excepciones y cero errores de consola en el recorrido. Auditoría npm de producción: 0 vulnerabilidades notificadas.
-- CI base `43005276652` y Pages base `43005462273`: `completed/success`; cubren solo `dc882ba`, no esta entrega. **CI nueva pendiente de publicación de la rama/PR.**
+- CI base `43005276652` y Pages base `43005462273`: `completed/success`; cubren solo `dc882ba`, no esta entrega. **CI nueva de código 29cf67d: run 43016376602, success.** PR #7 publicada para revisión; no se ha integrado ni desplegado esta rama en Pages.
 - Criterios y límites explícitos en `PRODUCT_ACCEPTANCE.md`; licencias y presupuesto de recursos en `ASSET_LICENSES.md`. No se afirma CAD/BIM, certificación normativa, render offline ni catálogo comercial exhaustivo. Cuentas/colaboración, cotizaciones automáticas y PDF técnico siguen siendo ampliaciones.
-- **Siguiente tarea exacta:** publicar rama/PR y comprobar Actions del SHA nuevo; registrar SHA, run y conclusión, corregir cualquier fallo real de CI antes de integrar.
+- **Siguiente tarea exacta:** revisar PR #7 e integrar tras revisión; comprobar Pages del SHA integrado y realizar el recorrido de aceptación en la URL pública. Las ampliaciones pendientes conservan su seguimiento en ROADMAP.md.
 
 ## Estado anterior — auditoría local 2026-11-11
 
