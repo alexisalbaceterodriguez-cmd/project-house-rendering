@@ -411,6 +411,19 @@ export function splitWallAtTJunctions(p:Project,id:string):number {
   if(!wall||wall.outer)return 0;
   const length=distance(wall.a,wall.b);
   if(length<.4)return 0;
+  // Candidate cuts are endpoints of other interior walls lying strictly
+  // inside this wall. Deduplicate coincident T-junctions before splitting.
+  const fractions=[...new Set(p.walls
+    .filter(other=>other.id!==id&&!other.outer)
+    .flatMap(other=>[other.a,other.b])
+    .map(point=>{
+      const projection=wallProjection(wall,point);
+      return distance(projection.point,point)<.001 &&
+        projection.offset>.001 && projection.offset<.999
+        ? Number(projection.offset.toFixed(6)) : null;
+    })
+    .filter((fraction):fraction is number=>fraction!==null))]
+    .sort((a,b)=>b-a);
   let right=1,count=0;
   for(const fraction of fractions){
     if((right-fraction)*length<.2 || fraction*length<.2)continue;
