@@ -79,6 +79,22 @@ export async function deleteModelAsset(id:string):Promise<void>{
   return useStore<void>('readwrite',store=>{store.delete(id);});
 }
 
+/** Library removal is all-or-nothing, including metadata. Recheck references after opening IDB. */
+export async function deleteModelResource(id:string,assertUnused:()=>void):Promise<void>{
+  const database=await db();
+  return new Promise((resolve,reject)=>{
+    let tx:IDBTransaction;
+    try{
+      assertUnused();
+      tx=database.transaction([STORE,META_STORE],'readwrite');
+    }catch(error){database.close();reject(error);return;}
+    tx.oncomplete=()=>{database.close();resolve();};
+    tx.onerror=tx.onabort=()=>{database.close();reject(new Error('No se pudo eliminar el recurso. El archivo y sus datos se conservan.'));};
+    try{tx.objectStore(STORE).delete(id);tx.objectStore(META_STORE).delete(id);}
+    catch(error){tx.abort();database.close();reject(error);}
+  });
+}
+
 /** Enumerate reusable local GLB blobs without loading their contents into memory. */
 export async function listModelAssets():Promise<{id:string;size:number;metadata?:ModelMetadata}[]>{
   const models=await useStore<{id:string;size:number;metadata?:ModelMetadata}[]>('readonly',(store,finish,fail)=>{

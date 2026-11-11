@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useEditor } from '../store';
 import { modelCatalog, modelUrl, type LibraryProduct } from '../data/modelCatalog';
 import { materialCatalog, materialUrl } from '../data/materialCatalog';
-import { deleteModelAsset,deleteModelMetadata,getModelAsset,listModelAssets,putModelAsset,putModelMetadata } from '../lib/assets';
+import { getModelAsset,listModelAssets,putModelAsset,putModelMetadata } from '../lib/assets';
+import { deleteUnusedModelResource } from '../lib/modelRetention';
 import { validateGLB } from '../lib/modelValidation';
 import { measureModelDimensions } from '../lib/modelThumbnail';
 import { deleteDesign, listDesigns, saveDesign, type SavedDesign } from '../lib/projectLibrary';
@@ -29,6 +30,7 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
   const [materialTarget,setMaterialTarget]=useState('selection'),[resolution,setResolution]=useState('1920x1080');
   const [width,setWidth]=useState(project.width),[depth,setDepth]=useState(project.depth),[anchor,setAnchor]=useState('nw');
   const [comparison,setComparison]=useState<{base:Project;other:Project;label:string;showing:'A'|'B'}|null>(null);
+  const comparisonRef=useRef(comparison);comparisonRef.current=comparison;
   const [assets,setAssets]=useState<Awaited<ReturnType<typeof listModelAssets>>>([]);
   useEffect(()=>{const element=dialog.current;if(open&&!element?.open){element?.showModal();setMessage('');void refreshVersions();}else if(!open&&element?.open)element.close();},[open]);
   const run=async(work:()=>Promise<void>)=>{setBusy(true);setMessage('');try{await work();}catch(error){setMessage(error instanceof Error?error.message:'No se pudo completar la operación.');}finally{setBusy(false);}};
@@ -150,11 +152,13 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
       {project.referenceImage&&<><label>Ancho real de la imagen (m)<input aria-label="Ancho real de referencia" type="number" min=".1" max="100" step=".01" value={project.referenceImage.width} onChange={e=>{const w=Number(e.target.value);change(p=>{if(p.referenceImage){p.referenceImage.height*=w/p.referenceImage.width;p.referenceImage.width=w;}});}}/></label><label>Opacidad de referencia<input type="range" min="0" max="1" step=".05" value={project.referenceImage.opacity} onChange={e=>change(p=>{if(p.referenceImage)p.referenceImage.opacity=Number(e.target.value);})}/></label><button onClick={()=>change(p=>{delete p.referenceImage;})}>Quitar referencia</button></>}
       <h4>Superficies aproximadas</h4><ul>{project.rooms.map(r=><li key={r.id}>{r.name}: {approximateNetArea(r,project).toFixed(2)} m² descontando espesor, aproximadamente.</li>)}</ul><p className="small-help">Estimación por ejes y espesor. No sustituye medición técnica ni verificación de habitabilidad.</p>
       <h4>Avisos para revisar</h4><ul>{[...projectWarnings(project),...furnitureCollisions(project)].slice(0,40).map((warning,i)=><li key={i}>{warning}</li>)}</ul>
-      <h4>Recursos guardados</h4><p>Los modelos se comparten entre propuestas. Solo se puede retirar un recurso si ningún proyecto guardado ni paso del historial lo utiliza.</p>
+      <h4>Recursos guardados</h4><p>Los modelos se comparten entre propuestas. Solo se puede retirar un recurso si ningún proyecto, respaldo local, versión, comparación o paso del historial lo utiliza.</p>
       {assets.map(asset=><article className="resource-row" key={asset.id}><span>{asset.metadata?.name??asset.id.slice(0,20)} · {(asset.size/1048576).toFixed(2)} MB</span><button disabled={busy} aria-label={`Eliminar recurso ${asset.metadata?.name??asset.id}`} onClick={()=>void run(async()=>{
-        const saved=await listDesigns(),state=useEditor.getState();const designs=[state.project,...state.history,...state.redoStack,...saved.map(v=>v.project)];
-        if(designs.some(p=>p.furniture.some(f=>f.assetId===asset.id)))throw new Error('Este recurso está en uso por el proyecto, una versión o el historial. Consérvalo para evitar pérdidas.');
-        await deleteModelAsset(asset.id);await deleteModelMetadata(asset.id);setAssets(await listModelAssets());setMessage('Recurso eliminado de la biblioteca.');
+        await deleteUnusedModelResource(asset.id,()=>{
+          const state=useEditor.getState(),drag=state.dragCheckpoint,compare=comparisonRef.current;
+          return [state.project,...state.history,...state.redoStack,...(drag?[drag.project,...drag.history,...drag.redoStack]:[]),...(compare?[compare.base,compare.other]:[])];
+        });
+        setAssets(await listModelAssets());setMessage('Recurso eliminado de la biblioteca.');
       })}>Eliminar recurso</button></article>)}
       {item?.kind==='model'&&<label>Reemplazar archivo del objeto seleccionado<input type="file" accept=".glb" aria-label="Reparar modelo seleccionado" onChange={e=>{const file=e.target.files?.[0];if(!file)return;void run(async()=>{
         if(file.size>12*1024*1024)throw new Error('Modelo demasiado grande. Máximo 12 MB.');await validateGLB(file);const assetId=makeId();await putModelAsset(assetId,file);

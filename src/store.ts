@@ -5,8 +5,7 @@ import { demoProject } from './data/defaultProject';
 import { reconcileRooms } from './lib/topology';
 import { buildWallGraph, migrateProject } from './lib/projectSchema';
 import type { CameraView } from './types';
-const KEY = 'atelier-60-project-v1';
-const BACKUP_KEY = `${KEY}-backup`;
+import { PROJECT_KEY as KEY, PROJECT_BACKUP_KEY as BACKUP_KEY } from './lib/localProjectStorage';
 export {isProject} from './lib/validation';
 export const readProject = (): Project => {
   try {

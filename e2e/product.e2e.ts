@@ -99,7 +99,7 @@ test('inserta tres modelos autorizados, reutiliza activos y conserva atribucione
   const count=await page.evaluate(()=>new Promise<number>((resolve,reject)=>{const req=indexedDB.open('atelier60-assets-v1');req.onsuccess=()=>{const db=req.result,tx=db.transaction('models','readonly'),count=tx.objectStore('models').count();count.onsuccess=()=>resolve(count.result);count.onerror=()=>reject(count.error);tx.oncomplete=()=>db.close();};}));expect(count).toBe(3);
   await page.getByRole('button',{name:'Vista 3D',exact:true}).click();await expect(page.locator('.scene-wrap canvas')).toBeVisible();
   await expect(page.locator('.model-unavailable')).toHaveCount(0,{timeout:60_000});expect(errors).toEqual([]);
-  await studio(page,'Plano y revisión');await page.getByRole('button',{name:'Eliminar recurso Sofá de cuero y madera',exact:true}).click();await expect(page.getByText('Este recurso está en uso por el proyecto, una versión o el historial. Consérvalo para evitar pérdidas.',{exact:true})).toBeVisible();
+  await studio(page,'Plano y revisión');await page.getByRole('button',{name:'Eliminar recurso Sofá de cuero y madera',exact:true}).click();await expect(page.getByText('Este recurso está en uso por el proyecto, un respaldo, una versión o el historial. Consérvalo para evitar pérdidas.',{exact:true})).toBeVisible();
 });
 
 test('el estudio permite guardar y recuperar propuestas en pantalla móvil',async({page})=>{
