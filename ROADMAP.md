@@ -1,18 +1,20 @@
 # Roadmap de Project House Rendering
 
-> Última actualización: 8 de noviembre de 2026. Ampliación de catálogo de productos reales y materiales PBR aprobada. El editor es **conceptual**. No sustituye una medición, proyecto de obra ni verificación normativa.
+> Última actualización: 11 de noviembre de 2026. Estado de implementación de `codex/product-release` (PR #7, todavía sin integrar en main). El editor es **conceptual**. No sustituye una medición, proyecto de obra ni verificación normativa.
+
+> **Incremento local 11/11/2026:** rama `codex/product-release` incorpora protección de activos dañados, migración/grafo persistido, cancelación/selección múltiple, rejilla y referencia calibrada, biblioteca de tres modelos autorizados con miniaturas, cuatro materiales texturados, módulos de cocina/baño, HDRI/paseo/cámaras, versiones y comparación A/B. Criterios observables en [PRODUCT_ACCEPTANCE.md](PRODUCT_ACCEPTANCE.md); resultados y CI en [PROJECT_STATUS.md](PROJECT_STATUS.md). Las secciones de planificación posteriores reflejan el alcance completo y no deben interpretarse como ausencia de estas bases. Cotizaciones comerciales automáticas, PDF técnico, colaboración y catálogo comercial extenso siguen pendientes; no se cierran automáticamente todas las fases.
 
 ## Estado de entregas
 
 | Fase | Objetivo | Estado | Criterio de salida |
 | --- | --- | --- | --- |
-| 0. Estabilidad | Validación, GLB en IndexedDB, exportación portable, lockfile, CI y pruebas Playwright | **En curso; CI y E2E básicos operativos** | Faltan casos límite de almacenamiento, pérdidas de activos, cuotas, migraciones y más cobertura |
-| 1. Geometría | Caras cerradas desde intersecciones de tabiques, cálculo por polígonos, cambios de envolvente | **Base implementada** | Falta motor robusto de restricciones, comprobación de espacios útiles y casos geométricos degenerados |
-| 2. Editor | Redimensionar superficie, mover muros y extremos, medidas, avisos geométricos, plano vacío | **Base implementada** | Falta pan/zoom centrado en cursor, atajos, cotas encadenadas y selección múltiple |
-| 3A. Biblioteca universal | Productos y objetos 3D reales, catálogo, variantes y materiales PBR (issue #6) | **Pendiente; importación GLB básica disponible** | Buscar, colocar y reutilizar 3 modelos autorizados, aplicar 4 PBR y guardar sin pérdidas |
-| 3B. Interiorismo modular | Cocinas, baños y electrodomésticos basados en el catálogo 3A (issue #4) | **Pendiente** | Cambiar frentes, encimeras y sanitarios manteniendo medidas y ubicación |
-| 4. Render | PBR/texturas HDRI, luz física, fotografía de alta calidad, modo paseo | **Pendiente** | Tres renders comparables del mismo encuadre sin alterar la geometría |
-| 5. Proyectos | Variantes A/B, presupuestos, exportación PDF, optimización y colaboración | **Pendiente** | Guardar, comparar y restaurar versiones completas |
+| 0. Estabilidad | Validación, GLB en IndexedDB, exportación portable, lockfile, CI y Playwright | **En curso; recuperación y errores cubiertos** | Ampliar coordinación entre pestañas, bloqueos de IndexedDB y pruebas de migraciones históricas |
+| 1. Geometría | Grafo persistido, T/X, división/fusión, recintos y envolvente | **Base implementada** | Restricciones robustas, pasos libres y más casos geométricos degenerados; áreas aún aproximadas |
+| 2. Editor | Arrastre cancelable, zoom en cursor/pan, grupos, rejilla y referencia calibrada | **Base implementada** | Cotas encadenadas y cobertura táctil real; validación de conflictos antes de confirmar |
+| 3A. Biblioteca universal | Modelos autorizados, variantes por superficie y cuatro PBR (issue #6) | **Catálogo inicial implementado** | Ampliar familias/proveedores y optimización de recursos grandes; verificar aceptación en web publicada |
+| 3B. Interiorismo modular | Cocina y lavabo propios con medidas/frentes/encimeras (issue #4) | **Base paramétrica implementada** | Ampliar composición de baños y productos comerciales integrados |
+| 4. Render | PBR/HDRI, cámaras, paseo, calidad rápida/alta y PNG | **Base WebGL implementada** | Más pruebas de GPU y fidelidad de capturas; render offline sigue fuera de la entrega |
+| 5. Proyectos | Versiones locales, A/B, presupuesto CSV e impresión/PDF | **Flujo local implementado** | PDF técnico, cotizaciones automáticas y colaboración; integración y aceptación pública pendientes |
 
 ## Prioridades siguientes
 
@@ -26,37 +28,40 @@
 - [x] Arrastrar tabiques y extremos; mostrar su longitud y avisos geométricos.
 - [x] Añadir `package-lock.json` con npm en un entorno conectado y usar `npm ci`.
 - [x] Integrar Playwright Chromium en CI: creación, arrastre, guardado, importación JSON y persistencia.
-- [ ] Ampliar E2E para recuperación de assets ausentes, errores de cuota, migraciones y compatibilidad de modelos reales.
+- [x] E2E de activos ausentes/corruptos, cuotas, rollback de importación y modelos reales.
+- [x] Proteger activos usados por respaldos locales e historial; retirar archivo y metadatos de forma atómica, con E2E de recuperación/aborto.
+- [ ] Ampliar migraciones históricas y coordinación entre pestañas/bloqueos de IndexedDB.
 - [ ] Más validaciones de colisiones entre muebles, pasos libres y aperturas.
-- [ ] Gestión de assets huérfanos, cuota y recuperación ante pérdida de IndexedDB.
+- [x] Retirada manual de huérfanos y recuperación/reparación de modelos ausentes.
+- [ ] Mostrar cuota disponible y coordinar cambios de biblioteca entre pestañas.
 
 ### P1. Arquitectura del editor
 
 - [ ] Separar el monolito `App.tsx` en módulos de configuración, persistencia y propiedades.
-- [ ] Implementar un grafo de vértices compartidos persistentes (actualmente las uniones se detectan geométricamente).
+- [x] Persistir un grafo derivado de nodos/segmentos con migración aditiva y operaciones explícitas de unión/separación.
 - [ ] Muros no rectos, espesores por cara, acabado por pared y operaciones de corte/ unión.
 - [ ] Garantizar etiquetas de habitaciones estables tras unir, dividir y fusionar recintos complejos.
 - [ ] Previsualizar colisiones antes de confirmar arrastres.
-- [ ] Importación de planos de imagen como referencia, calibrado y trazado.
-- [ ] Estancias y dimensiones útiles: descontar espesores y reportar superficie aproximada.
+- [x] Importación de planos de imagen como referencia y calibrado para trazado manual.
+- [x] Reportar superficie aproximada descontando espesores; no equivale a medición técnica de superficie útil.
 
 ### P2. Interiorismo y realismo
 
 - [ ] Biblioteca general de modelos de fabricantes/productos reales, referencias y licencias, búsqueda, miniaturas y variantes (F3A, issue #6).
-- [ ] Materiales PBR con mapas y escala física aplicables por superficie o submalla, manteniendo geometría (F3A, issue #6).
-- [ ] Módulos de cocina (bajos, altos, columnas, fregadero, encimeras, electrodomésticos).
+- [x] Cuatro materiales PBR con mapas y escala física aplicables por superficie o submalla (F3A, issue #6).
+- [x] Módulos propios de cocina: bajos, altos, columnas, fregadero, encimeras, placa y horno.
 - [ ] Composiciones de baño y gestión de revestimientos horizontales y verticales.
-- [ ] Catálogo GLB reutilizable con metadatos, miniaturas y licencias válidas.
-- [ ] Materiales PBR reales, HDRI, tonemapping y cámaras interiores.
-- [ ] Vista rápida frente a captura de alta calidad; presets de iluminación de día y noche.
-- [ ] Variantes A/B con instantáneas de cámara y de los parámetros de diseño.
+- [x] Catálogo inicial de tres GLB reutilizables con metadatos, miniaturas y licencias.
+- [x] Materiales PBR, HDRI, tonemapping y cámaras guardadas.
+- [x] Calidad rápida/alta y exportación PNG; presets de iluminación de día y noche.
+- [x] Variantes A/B con instantáneas de cámara y de los parámetros de diseño.
 
 
 ## Ampliación aprobada: objetos existentes, materiales y renders (08/11/2026)
 
 **Objetivo de producto:** que Atelier 60 permita diseñar un piso desde cero e incorporar **objetos reales** (muebles de salón/dormitorio, lámparas, baños, cocinas y electrodomésticos), acabados reales y renders comparables sin depender de generar una imagen aislada para cada cambio. Una fotografía comercial por sí sola no equivale a un modelo 3D; para orbitar el objeto hace falta un archivo 3D válido, creado o cedido con permiso. Se mantienen siempre sincronizados el modelo de arquitectura, las vistas 2D/3D y la exportación.
 
-**Estado actual, no confundir con la meta:** el catálogo incluido es paramétrico, ya se importan GLB autónomos de hasta 12 MB y se guardan en IndexedDB con exportación JSON portable. Existen paletas y acabados de color. **Aún no** existe una biblioteca central de modelos comerciales, ingestión autorizada, materiales PBR por superficie ni sistema de renders fotorrealistas.
+**Estado actual, no confundir con la meta:** hay catálogo paramétrico propio y tres GLB autorizados, importación de modelos de hasta 12 MB, IndexedDB y JSON portable, cuatro PBR por superficie/submalla, HDRI, cámaras y propuestas A/B. Sigue pendiente ampliar el catálogo comercial y sus familias; no hay CDN, ingestión automática de fabricantes ni render offline. El detalle siguiente describe el alcance completo, no una lista de funciones ausentes.
 
 ### F3A. Biblioteca universal de recursos (issue [#6](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/6))
 

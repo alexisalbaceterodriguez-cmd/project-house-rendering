@@ -46,6 +46,12 @@ export async function getModelMetadata(id:string):Promise<ModelMetadata|null>{
     tx.onerror=()=>{database.close();reject(tx.error);};
   });
 }
+export async function deleteModelMetadata(id:string):Promise<void>{
+  const database=await db();return new Promise((resolve,reject)=>{
+    const tx=database.transaction(META_STORE,'readwrite');tx.objectStore(META_STORE).delete(id);
+    tx.oncomplete=()=>{database.close();resolve();};tx.onerror=tx.onabort=()=>{database.close();reject(tx.error);};
+  });
+}
 export async function putModelAsset(id:string,blob:Blob):Promise<void>{
   if(!id||blob.size>12*1024*1024)throw Error('El modelo excede los 12 MB permitidos.');
   return useStore<void>('readwrite',store=>{store.put(blob,id);});
@@ -71,6 +77,22 @@ export function dataURLToBlob(input:string):Blob{
 /** Remove assets written during a failed multi-model import. */
 export async function deleteModelAsset(id:string):Promise<void>{
   return useStore<void>('readwrite',store=>{store.delete(id);});
+}
+
+/** Library removal is all-or-nothing, including metadata. Recheck references after opening IDB. */
+export async function deleteModelResource(id:string,assertUnused:()=>void):Promise<void>{
+  const database=await db();
+  return new Promise((resolve,reject)=>{
+    let tx:IDBTransaction;
+    try{
+      assertUnused();
+      tx=database.transaction([STORE,META_STORE],'readwrite');
+    }catch(error){database.close();reject(error);return;}
+    tx.oncomplete=()=>{database.close();resolve();};
+    tx.onerror=tx.onabort=()=>{database.close();reject(new Error('No se pudo eliminar el recurso. El archivo y sus datos se conservan.'));};
+    try{tx.objectStore(STORE).delete(id);tx.objectStore(META_STORE).delete(id);}
+    catch(error){tx.abort();database.close();reject(error);}
+  });
 }
 
 /** Enumerate reusable local GLB blobs without loading their contents into memory. */

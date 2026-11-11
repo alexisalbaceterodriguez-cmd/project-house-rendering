@@ -166,7 +166,7 @@ export function reconcileRooms(p:Project):void {
   for(const [faceIndex,poly] of faces.entries()){
     const original=assignments.get(faceIndex);
     const xs=poly.map(v=>v.x),ys=poly.map(v=>v.y);const x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,d=Math.max(...ys)-y;
-    result.push({id:original?.id??makeId(),name:original?.name??`Estancia ${result.length+1}`,kind:original?.kind??'bedroom',floor:original?.floor??'oak',x,y,w,d,vertices:poly,holes:holes[faceIndex]});
+    result.push({id:original?.id??makeId(),name:original?.name??`Estancia ${result.length+1}`,kind:original?.kind??'bedroom',floor:original?.floor??'oak',...(original?.materialId?{materialId:original.materialId}:{}),x,y,w,d,vertices:poly,holes:holes[faceIndex]});
   }
   p.rooms=result;
 }
@@ -194,7 +194,7 @@ export function resizeProject(p:Project,width:number,depth:number,mode:'scale'|'
 
 /** Move a single wall endpoint or translate a wall while keeping endpoint joints.
  * The envelope is modified only through resizeProject. */
-export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,linked=true) {
+export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,linked=true,magnetic=true) {
   const target=p.walls.find(w=>w.id===id);
   if(!target||target.outer)return;
   const oldA={...target.a},oldB={...target.b};
@@ -214,7 +214,7 @@ export function updateWallGeometry(p:Project,id:string,nextA:Point,nextB:Point,l
   // axis to create an exact T-junction. Do not snap whole-wall translations:
   // those must preserve the user's requested displacement.
   const snapInteriorJoint = (point:Point):Point => {
-    if (!linked) return point;
+    if (!linked||!magnetic) return point;
     // Prefer existing vertices over axes: joining a real endpoint creates
     // one shared node rather than two almost-coincident T connections.
     let best=point,nearest=.12;
@@ -391,7 +391,7 @@ export function splitInteriorWall(p:Project,id:string,fraction=.5):boolean {
   const secondId=makeId();
   const originalEnd={...wall.b};
   wall.b=joint;
-  p.walls.push({id:secondId,a:{...joint},b:originalEnd,thickness:wall.thickness});
+  p.walls.push({...wall,id:secondId,a:{...joint},b:originalEnd});
   for(const opening of openings){
     if(opening.offset<fraction)opening.offset/=fraction;
     else {opening.wallId=secondId;opening.offset=(opening.offset-fraction)/(1-fraction);}

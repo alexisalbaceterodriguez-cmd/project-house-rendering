@@ -1,17 +1,23 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Armchair, ArrowDownToLine, Box, Camera, Check, ChevronDown, CircleHelp, Copy, DoorOpen, Eye, EyeOff, FilePlus2, FolderOpen, Grid2X2, Hammer, House, Image, Layers, LayoutGrid, Maximize2, Move, Paintbrush, PanelRightClose, Plus, Redo2, RotateCcw, RotateCw, Ruler, Save, Settings2, SlidersHorizontal, SplitSquareVertical, Trash2, Undo2, Upload, WandSparkles } from 'lucide-react';
 import Plan2D from './components/Plan2D';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
-import Scene3D from './components/Scene3D';
+import ErrorBoundary from './components/ErrorBoundary';
+import StudioPanel from './components/StudioPanel';
+import PrintSheet from './components/PrintSheet';
+const Scene3D=lazy(()=>import('./components/Scene3D'));
 import { catalog, floors, styles } from './data/catalog';
 import { findProductSource, PRODUCT_CATALOG_VERSION } from './data/productCatalog';
 import { blankProject } from './data/defaultProject';
 import { clamp, download, fileSafe, makeId, wallLength, wallProjection } from './lib/geometry';
 import { projectWarnings, reconcileRooms, resizeProject, roomArea, splitInteriorWall, splitWallAtTJunctions, splitWallsAtCrossing, splitAllWallCrossings, normalizeInteriorIntersections, mergeInteriorWalls, updateWallGeometry } from './lib/topology';
-import { blobToDataURL, dataURLToBlob, deleteModelAsset, getModelAsset, listModelAssets, putModelAsset, putModelMetadata } from './lib/assets';
+import { dataURLToBlob, getModelAsset, listModelAssets, putModelAsset, putModelMetadata } from './lib/assets';
 import { isProject, saveLocal, useEditor } from './store';
 import { measureModelDimensions, renderModelThumbnail } from './lib/modelThumbnail';
+import { validateGLB } from './lib/modelValidation';
+import { hydratePortableProject,portableProject } from './lib/portableProject';
+import { captureCanvas,captureImage } from './lib/sceneCapture';
 import type { FloorFinish, Furniture, Mode, Palette, Project, RoomKind, Selection, Tool } from './types';
 
 type SideTab = 'objects' | 'materials' | 'rooms';
@@ -203,7 +209,7 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
         <div className="style-list">{Object.entries(styles).map(([name,palette])=><button key={name} className="style-item" onClick={()=>applyStyle(name,palette)}><span className="style-swatches">{[palette.walls,palette.wood,palette.accent,palette.textile].map((c,i)=><i key={i} style={{background:c}}/>)}</span><span><strong>{name}</strong><small>Aplicar combinación</small></span><ChevronDown size={14}/></button>)}</div>
         <div className="section-label">ACABADOS DE PAVIMENTO</div>
         <div className="material-list">{Object.entries(floors).map(([key,f])=><button key={key} onClick={()=>change(p=>{p.rooms.forEach(room=>{if(room.kind!=='bathroom')room.floor=key as FloorFinish;});})}><i style={{background:f.color}}/><span>{f.label}</span><Plus size={14}/></button>)}</div>
-        <p className="footnote">Los acabados se simulan mediante materiales y colores. Los catálogos comerciales y texturas PBR llegarían en una fase posterior.</p>
+        <p className="footnote">Abre Estudio para aplicar texturas de madera, cerámica, tejido y pintura a superficies independientes.</p>
       </>}
       {tab==='rooms'&&<>
         <p className="small-help">Selecciona una estancia para modificar el tipo de suelo, el nombre y sus dimensiones conceptuales.</p>
@@ -245,7 +251,7 @@ function PropertyPanel(){
   const remove=()=>{
     if(!selection)return;
     change(p=>{
-      if(selection.type==='furniture')p.furniture=p.furniture.filter(i=>i.id!==selection.id);
+      if(selection.type==='furniture'){const ids=useEditor.getState().selectedFurniture;p.furniture=p.furniture.filter(i=>!ids.includes(i.id));}
       if(selection.type==='room')p.rooms=p.rooms.filter(i=>i.id!==selection.id);
       if(selection.type==='wall'){p.walls=p.walls.filter(i=>i.id!==selection.id);p.openings=p.openings.filter(i=>i.wallId!==selection.id);reconcileRooms(p);}
       if(selection.type==='opening')p.openings=p.openings.filter(i=>i.id!==selection.id);
@@ -307,11 +313,11 @@ function PropertyPanel(){
   </aside>;
 
 }
-function Header({onBlank,onReset,onImport,onExport,onScreenshot,onSvg,toast}:{onBlank:()=>void;onReset:()=>void;onImport:()=>void;onExport:()=>void;onScreenshot:()=>void;onSvg:()=>void;toast:string}){
+function Header({onBlank,onReset,onImport,onExport,onScreenshot,onSvg,toast,saveStatus}:{onBlank:()=>void;onReset:()=>void;onImport:()=>void;onExport:()=>void;onScreenshot:()=>void;onSvg:()=>void;toast:string;saveStatus:'saving'|'saved'|'error'}){
   const {project,change,undo,redo,history,redoStack,mode,setMode}=useEditor();
   return <header className="topbar">
     <div className="brand"><div className="brand-logo"><House size={19}/></div><div className="brand-text"><strong>atelier<span>60</span></strong><small>STUDIO DE INTERIORES</small></div></div>
-    <div className="header-separator"/><div className="project-title"><input aria-label="Nombre del proyecto" value={project.name} onChange={e=>change(p=>{p.name=e.target.value;})}/><span><Check size={12}/> Guardado automático</span></div>
+    <div className="header-separator"/><div className="project-title"><input aria-label="Nombre del proyecto" value={project.name} onChange={e=>change(p=>{p.name=e.target.value;})}/><span role="status"><Check size={12}/>{saveStatus==='saving'?'Guardando…':saveStatus==='saved'?'Guardado en este navegador':'No guardado: exporta una copia'}</span></div>
     <div className="header-center"><button onClick={undo} disabled={!history.length} title="Deshacer (Ctrl+Z)"><Undo2 size={18}/></button><button onClick={redo} disabled={!redoStack.length} title="Rehacer (Ctrl+Mayús+Z)"><Redo2 size={18}/></button><div className="header-separator"/>{([['2d','Plano 2D',<Grid2X2 size={15}/>],['split','Mixto',<SplitSquareVertical size={15}/>],['3d','Vista 3D',<Box size={15}/>]] as [Mode,string,ReactNode][]).map(([m,label,icon])=><button key={m} className={`mode-button ${mode===m?'active':''}`} onClick={()=>setMode(m)} title={label}>{icon}<span>{label}</span></button>)}</div>
     <div className="header-actions"><button onClick={onBlank} className="quiet-btn" title="Crear plano en blanco"><FilePlus2 size={17}/><span>Nuevo</span></button><button onClick={onImport} className="quiet-btn" title="Abrir proyecto JSON"><FolderOpen size={17}/><span>Abrir</span></button><button onClick={onExport} className="quiet-btn" title="Guardar proyecto JSON"><Save size={17}/><span>Exportar</span></button><div className="dropdown"><button onClick={onScreenshot} title="Descargar captura PNG"><Camera size={17}/><span>Imagen</span></button><button onClick={onSvg} title="Descargar plano vectorial SVG"><Image size={16}/></button></div><button onClick={onReset} className="primary-btn" title="Restaurar proyecto de ejemplo"><FilePlus2 size={17}/><span>Ejemplo</span></button></div>
     {toast&&<div className="toast">{toast}</div>}
@@ -327,10 +333,20 @@ function Help({onClose}:{onClose:()=>void}){
 export default function App(){
   const {project,change,load,reset,selection,setSelection,undo,redo,mode}=useEditor();
   const [modelUnits,setModelUnits]=useState<'m'|'cm'|'mm'>('m');
+  const [studioOpen,setStudioOpen]=useState(false);
+  const [saveStatus,setSaveStatus]=useState<'saving'|'saved'|'error'>('saving');
+  const savePending=useRef(false);
   const [toast,setToast]=useState(''); const [help,setHelp]=useState(false); const [topView,setTopView]=useState(false);
   const jsonInput=useRef<HTMLInputElement>(null);const glbInput=useRef<HTMLInputElement>(null);const canvasRef=useRef<HTMLCanvasElement|null>(null);
   const alert=useCallback((msg:string)=>{setToast(msg);setTimeout(()=>setToast(''),4200);},[]);
-  useEffect(()=>{const timer=setTimeout(()=>{if(!saveLocal(project))alert('Almacenamiento lleno: exporta el proyecto JSON para no perderlo.');},700);return()=>clearTimeout(timer);},[project,alert]);
+  useEffect(()=>{
+    // Flush the last debounced edit before reload/navigation or backgrounding.
+    const flush=()=>{if(savePending.current&&saveLocal(useEditor.getState().project))savePending.current=false;};
+    const hidden=()=>{if(document.visibilityState==='hidden')flush();};
+    window.addEventListener('pagehide',flush);document.addEventListener('visibilitychange',hidden);
+    return()=>{window.removeEventListener('pagehide',flush);document.removeEventListener('visibilitychange',hidden);};
+  },[]);
+  useEffect(()=>{savePending.current=true;setSaveStatus('saving');const timer=setTimeout(()=>{const saved=saveLocal(project);savePending.current=!saved;setSaveStatus(saved?'saved':'error');if(!saved)alert('Almacenamiento lleno: exporta el proyecto JSON para no perderlo.');},700);return()=>clearTimeout(timer);},[project,alert]);
   useEffect(()=>{
     // Migrate old browser projects with embedded data URLs to IndexedDB.
     let active=true;
@@ -351,7 +367,7 @@ export default function App(){
     if(target.closest('input, textarea, select, [contenteditable="true"]'))return;
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z') {e.preventDefault();if(e.shiftKey)redo();else undo();}
     if((e.key==='Delete'||e.key==='Backspace')&&selection){e.preventDefault();change(p=>{
-      if(selection.type==='furniture')p.furniture=p.furniture.filter(i=>i.id!==selection.id);
+      if(selection.type==='furniture'){const ids=useEditor.getState().selectedFurniture;p.furniture=p.furniture.filter(i=>!ids.includes(i.id));}
       if(selection.type==='room')p.rooms=p.rooms.filter(i=>i.id!==selection.id);
       if(selection.type==='opening')p.openings=p.openings.filter(i=>i.id!==selection.id);
       if(selection.type==='wall'){p.walls=p.walls.filter(i=>i.id!==selection.id);p.openings=p.openings.filter(i=>i.wallId!==selection.id);reconcileRooms(p);}
@@ -360,38 +376,19 @@ export default function App(){
   };window.addEventListener('keydown',fn);return()=>window.removeEventListener('keydown',fn);},[selection,change,undo,redo,setSelection]);
   const exportJSON=async()=>{
     try{
-      const copy=structuredClone(project);
-      for(const f of copy.furniture){
-        if(f.assetId){const blob=await getModelAsset(f.assetId);if(!blob)throw Error(`Falta el modelo «${f.name}» en este navegador.`);f.modelData=await blobToDataURL(blob);delete f.assetId;}
-      }
+      const copy=await portableProject(project);
       download(`${fileSafe(project.name)||'proyecto'}-atelier60.json`,JSON.stringify(copy,null,2));alert('Proyecto portable exportado con modelos 3D.');
     }catch(err){alert(err instanceof Error?err.message:'No se ha podido exportar el proyecto.');}
   };
   const importJSON=async(e:ChangeEvent<HTMLInputElement>)=>{
     const file=e.target.files?.[0];if(!file)return;
-    const createdAssets:string[]=[];
     try{
       if(file.size>64*1024*1024)throw Error('El archivo supera 64 MB.');
       const content:unknown=JSON.parse(await file.text());
       if(!isProject(content))throw Error('El archivo no contiene un proyecto compatible.');
-      const copy=structuredClone(content);
-      // Non-portable JSON may contain references to browser-local models.
-      // Refuse missing references before replacing a working project.
-      for(const f of copy.furniture){
-        if(f.kind==='model'&&f.assetId&&!f.modelData&&!await getModelAsset(f.assetId)){
-          throw Error(`Falta el modelo «${f.name}» en este navegador. Importa un JSON portable con los modelos incluidos.`);
-        }
-      }
-      for(const f of copy.furniture){
-        if(f.kind==='model'&&f.modelData){
-          const id=makeId();await putModelAsset(id,dataURLToBlob(f.modelData));
-          createdAssets.push(id);f.assetId=id;delete f.modelData;
-        }
-      }
+      const copy=await hydratePortableProject(content);
       reconcileRooms(copy);load(copy);alert('Proyecto cargado correctamente.');
     }catch(err){
-      // A failed import must not leak assets from earlier successful writes.
-      await Promise.allSettled(createdAssets.map(id=>deleteModelAsset(id)));
       alert(err instanceof Error?err.message:'El archivo no es válido.');
     }
     e.target.value='';
@@ -401,15 +398,7 @@ export default function App(){
     if(!file.name.toLowerCase().endsWith('.glb')){alert('Solo se admiten archivos .glb autónomos.');return;}
     if(file.size>12*1024*1024){alert('Modelo demasiado grande. Máximo 12 MB.');return;}
     try{
-      // Reject non-GLB files before persisting an unusable asset or editing the plan.
-      const header=new DataView(await file.slice(0,12).arrayBuffer());
-      if(file.size<20||header.getUint32(0,true)!==0x46546c67||header.getUint32(4,true)!==2||header.getUint32(8,true)!==file.size){
-        throw Error('El archivo no es un GLB 2.0 válido.');
-      }
-      const chunk=new DataView(await file.slice(12,20).arrayBuffer());
-      if(chunk.getUint32(4,true)!==0x4e4f534a||chunk.getUint32(0,true)>file.size-20){
-        throw Error('El modelo GLB no contiene un bloque JSON válido.');
-      }
+      await validateGLB(file);
       // Preserve the native metric footprint; never mutate the GLB or its pivots.
       // Legacy models and malformed bounds still use the editable 1 m fallback.
       let dimensions={w:1,d:1,h:1};
@@ -432,21 +421,32 @@ export default function App(){
       setSelection({type:'furniture',id});alert('Modelo guardado en IndexedDB e importado al proyecto.');
     }catch(err){alert(err instanceof Error?err.message:'No se ha podido guardar el modelo.');}
   };
-  const capture=()=>{const canvas=canvasRef.current;if(mode==='2d'||!canvas){alert('Cambia a 3D o vista mixta para capturar una imagen.');return;}canvas.toBlob(blob=>{if(blob){download(`${fileSafe(project.name)}-render.png`,blob,'image/png');alert('Imagen PNG exportada.');}else alert('No se ha podido capturar el lienzo 3D.');});};
+  const capture=async()=>{
+    if(mode==='2d'){alert('Cambia a 3D o vista mixta para capturar una imagen.');return;}
+    try{
+      const canvas=await captureCanvas();
+      const scale=Math.min(1,3840/canvas.width,3840/canvas.height,Math.sqrt(8_000_000/(canvas.width*canvas.height)));
+      const blob=await captureImage(Math.max(320,Math.floor(canvas.width*scale)),Math.max(240,Math.floor(canvas.height*scale)));
+      download(`${fileSafe(project.name)}-render.png`,blob,'image/png');alert('Imagen PNG exportada.');
+    }catch(error){alert(error instanceof Error?error.message:'No se ha podido capturar el lienzo 3D.');}
+  };
   const exportSVG=()=>{const source=document.querySelector('.plan-svg') as SVGSVGElement|null;if(!source){alert('Cambia a 2D o vista mixta para exportar el plano.');return;}const copy=source.cloneNode(true) as SVGSVGElement;copy.setAttribute('xmlns','http://www.w3.org/2000/svg');download(`${fileSafe(project.name)}-plano.svg`,new XMLSerializer().serializeToString(copy),'image/svg+xml');alert('Plano SVG exportado.');};
   const onBlank=()=>{if(window.confirm('¿Crear una vivienda en blanco? Exporta primero el proyecto actual si quieres conservarlo.')){load(blankProject());alert('Plano vacío creado. Dibuja las paredes en 2D.');}};
   const onReset=()=>{if(window.confirm('¿Restaurar la distribución de ejemplo? El proyecto actual quedará sustituido. Exporta antes un JSON si deseas conservarlo.')){reset();alert('Distribución inicial recuperada.');}};
   return <div className="app-shell">
     <input type="file" accept=".json,application/json" ref={jsonInput} className="file-hidden" onChange={importJSON}/><input type="file" accept=".glb,model/gltf-binary" ref={glbInput} className="file-hidden" onChange={importGLB}/>
-    <Header onBlank={onBlank} onReset={onReset} onImport={()=>jsonInput.current?.click()} onExport={exportJSON} onScreenshot={capture} onSvg={exportSVG} toast={toast}/>
+    <Header onBlank={onBlank} onReset={onReset} onImport={()=>jsonInput.current?.click()} onExport={exportJSON} onScreenshot={capture} onSvg={exportSVG} toast={toast} saveStatus={saveStatus}/>
     <div className="workspace"><Sidebar importModel={()=>glbInput.current?.click()} modelUnits={modelUnits} setModelUnits={setModelUnits}/>
       <main className="editor-area"><div className="workspace-intro"><div><span className="eyebrow">TU ESPACIO, A TU MANERA</span><h1>Diseña cada rincón.</h1><p>Da forma a la distribución, elige acabados y vive el espacio en tres dimensiones.</p></div><div className="project-pill"><span className="live-dot"/><span>PROYECTO ACTIVO</span><strong>{(project.width*project.depth).toFixed(0)} m²</strong></div></div>
         <EditorToolbar/>
-        <div className={`editors mode-${mode}`}>{mode!=='3d'&&<Plan2D/>}{mode!=='2d'&&<div className="scene-host"><Scene3D canvasRef={canvasRef} topView={topView}/><div className="camera-buttons"><button className={!topView?'selected':''} onClick={()=>setTopView(false)}><Box size={14}/> Isométrica</button><button className={topView?'selected':''} onClick={()=>setTopView(true)}><Grid2X2 size={14}/> Cenital</button></div></div>}</div>
-        <div className="workspace-bottom"><div><span className="dot-green"/> Edición en tiempo real <span className="bottom-dot">·</span> Paso de dibujo: 10 cm <span className="bottom-dot">·</span> {projectWarnings(project).length} avisos</div><button onClick={()=>setHelp(true)}><CircleHelp size={15}/> Guía de uso</button></div>
+        <div className={`editors mode-${mode}`}>{mode!=='3d'&&<Plan2D/>}{mode!=='2d'&&<div className="scene-host"><ErrorBoundary fallback={<div role="alert" className="scene-loading">La vista 3D no pudo iniciarse. El plano y tus datos siguen disponibles. Prueba otro navegador o activa la aceleración gráfica.</div>}><Suspense fallback={<div className="scene-loading">Preparando vista 3D…</div>}><Scene3D canvasRef={canvasRef} topView={topView}/></Suspense></ErrorBoundary><div className="camera-buttons"><button className={!topView?'selected':''} onClick={()=>setTopView(false)}><Box size={14}/> Isométrica</button><button className={topView?'selected':''} onClick={()=>setTopView(true)}><Grid2X2 size={14}/> Cenital</button></div></div>}</div>
+        <div className="workspace-bottom"><div><span className="dot-green"/> Edición en tiempo real <span className="bottom-dot">·</span> Paso de dibujo: {(project.editor?.grid??.1)*100} cm <span className="bottom-dot">·</span> {projectWarnings(project).length} avisos</div><button onClick={()=>setHelp(true)}><CircleHelp size={15}/> Guía de uso</button></div>
       </main>
       <PropertyPanel/>
     </div>
+    <button type="button" className="studio-launch" onClick={()=>setStudioOpen(true)}>Estudio · modelos, acabados y versiones</button>
+    <PrintSheet/>
+    <StudioPanel open={studioOpen} onClose={()=>setStudioOpen(false)}/>
     {help&&<Help onClose={()=>setHelp(false)}/>}
   </div>;
 }

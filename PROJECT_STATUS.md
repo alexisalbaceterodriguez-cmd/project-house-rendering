@@ -1,9 +1,41 @@
 # Atelier 60 — Estado persistente
 
-Última revisión: 2026-11-08 (Europe/Madrid).
+Última revisión: 2026-11-11 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Estado operativo vigente (2026-11-08, primer E2E Chromium validado)
+## Estado operativo vigente — retención segura de modelos 2026-11-11
+
+- **Unidad F0 implementada:** el borrado manual de recursos protege ahora ambos guardados de localStorage (principal y respaldo), además del proyecto activo, versiones, comparación A/B, undo/redo y los estados recuperables al cancelar un arrastre. Antes podía eliminarse un GLB usado solo por el respaldo, dejando incompleta una recuperación posterior.
+- Archivo GLB y metadatos se retiran en una sola transacción IndexedDB. Una operación abortada conserva ambos; si un guardado es ilegible o no se pueden comprobar las referencias, se bloquea la limpieza. Las referencias vivas y los guardados se releen tras abrir IndexedDB, justo antes de retirar el recurso.
+- **Código:** `eca76de01e6de3eadf68da82225301fce0aa12ef`, rama `codex/product-release`, [PR #7](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/pull/7). Base local anterior `464978f96dc3c849ce5dff00a818fe3cd364eade`; main remoto comprobado en `dc882baaf2e2e9fe7b4881f2259660f5a0a760c1`. Sin integración ni despliegue de esta rama.
+- **Verificación local:** 72 unitarias, build TypeScript/Vite y 27 E2E Chromium correctos. Cuatro E2E nuevos: recuperación/exportación de un modelo usado solo por el respaldo, rollback de archivo/metadatos tras abortar el borrado, bloqueo por respaldo ilegible y protección del modelo usado solo por redo. Doce unitarias nuevas cubren referencias, lecturas denegadas, datos corruptos y cambios durante la espera de IndexedDB.
+- **CI del nuevo código:** [Test and build 43020782024](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43020782024), SHA exacto `eca76de01e6de3eadf68da82225301fce0aa12ef`, `completed/success`; job `130523157891` con instalación, unitarias, build y E2E correctos. La CI exacta del estado previo `464978f` también se comprobó: run `43016791553`, `completed/success`. El commit posterior de bitácora modifica únicamente PROJECT_STATUS.md y PROJECT_MEMORY.md; el run citado acredita el commit de código.
+- **Auditoría de pendientes:** ROADMAP.md ya distingue bases implementadas de ampliaciones: F0 con bloqueos/coordinación de pestañas aún pendientes; F1 con restricciones/encuentros degenerados y pasos libres; F2 con cotas encadenadas y cobertura táctil real; F3A/F3B con más familias comerciales/baños; F4 con más cobertura de GPU; F5 con PDF técnico, cotización automática y colaboración. Ninguna fase se cierra por esta corrección.
+- **Siguiente tarea exacta de código:** gestionar `onversionchange` y aperturas `onblocked` en las bases IndexedDB de activos/versiones, cerrando conexiones y mostrando un error recuperable; añadir E2E con dos pestañas. La retención actual no garantiza exclusión mutua de operaciones entre pestañas.
+- **Publicación pendiente:** revisión e integración de PR #7; después comprobar CI/Pages del SHA integrado y recorrer la URL pública.
+
+## Estado anterior — entrega de producto 2026-11-11
+
+- Rama `codex/product-release`, commit de código `29cf67d75d4f782956094bbc0449a349522eb7ed`, base `dc882baaf2e2e9fe7b4881f2259660f5a0a760c1`. [PR #7](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/pull/7). Se conserva el trabajo de la auditoría anterior y se amplía con código, recursos autorizados y pruebas; main no se ha sobrescrito.
+- Implementados: grafo/migración v1 aditiva, arrastre cancelable con historial/redo, zoom sin scroll, grupos, rejilla configurable, imagen calibrada y anclaje; aislamiento/reparación de GLB dañados; biblioteca de tres modelos con origen/licencia y cuatro materiales texturados por superficie; módulos; versiones, cámara, HDRI/paseo y comparación A/B; presupuesto manual CSV y plano imprimible/PDF de presentación.
+- Persistencia: flush al salir solo con cambios pendientes, avisos reales de guardado, JSON portable con deduplicación de activos compartidos y rollback atómico. No se eliminan recursos usados por versiones o historial.
+- Rendimiento: 3D en chunk separado, render bajo demanda, sombras actualizadas por geometría y calidad rápida que simplifica transmisión/sheen. El recorrido de tres modelos juntos pasó de bloqueo por GPU software a unos 8 s en la prueba local aislada.
+- Verificación local actual: **60 unitarias, build (incluye tipos E2E) y 23 E2E completos correctos**. Captura al recrear canvas comprobada además en tres ejecuciones consecutivas en frío. CI del mismo código también correcta: [Test and build 43016376602](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43016376602), `completed/success`; jobs de instalación, unitarias, build y E2E comprobados.
+- Producción local revisada en `http://127.0.0.1:5173/`: catálogo real, texturas, HDRI, versiones, móvil e impresión; cero excepciones y cero errores de consola en el recorrido. Auditoría npm de producción: 0 vulnerabilidades notificadas.
+- CI base `43005276652` y Pages base `43005462273`: `completed/success`; cubren solo `dc882ba`, no esta entrega. **CI nueva de código 29cf67d: run 43016376602, success.** PR #7 publicada para revisión; no se ha integrado ni desplegado esta rama en Pages.
+- Criterios y límites explícitos en `PRODUCT_ACCEPTANCE.md`; licencias y presupuesto de recursos en `ASSET_LICENSES.md`. No se afirma CAD/BIM, certificación normativa, render offline ni catálogo comercial exhaustivo. Cuentas/colaboración, cotizaciones automáticas y PDF técnico siguen siendo ampliaciones.
+- **Siguiente tarea exacta:** revisar PR #7 e integrar tras revisión; comprobar Pages del SHA integrado y realizar el recorrido de aceptación en la URL pública. Las ampliaciones pendientes conservan su seguimiento en ROADMAP.md.
+
+## Estado anterior — auditoría local 2026-11-11
+
+- **Base:** `dc882baaf2e2e9fe7b4881f2259660f5a0a760c1`, coincide con main remoto. CI [43005276652](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43005276652) y Pages [43005462273](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43005462273): `completed/success`; jobs CI comprobados.
+- **Local Windows:** instalación correcta; base pasa 37 unitarias, build y 9 E2E. Tras correcciones: **42 unitarias, build y 13 E2E correctos**. Producción comprobada en `http://127.0.0.1:5173/`, con vista mixta/3D y exportación PNG real.
+- **Corregido:** GLB ilegibles aceptados por JSON/importación directa podían dejar la interfaz en blanco; ahora se valida contenido antes de guardar. Acciones de muros recortadas: ahora admiten varias filas. Incluye regresiones de navegador y cinco unitarias de topología reciente.
+- **Producto:** F0/F1/F2 abiertas. F3A tiene biblioteca GLB local y acabados por superficie como bases; catálogo comercial, texturas PBR completas, módulos y render/versiones pendientes. Véase [LOCAL_AUDIT.md](LOCAL_AUDIT.md).
+- **Entrega:** cambios locales sin commit ni push; sin run nuevo. Los runs citados validan exclusivamente el SHA base.
+- **Siguiente tarea exacta:** aislar fallos 3D por objeto; E2E que corrompa un GLB ya guardado en IndexedDB y compruebe que recarga, plano y retirada del objeto siguen funcionando. Otros pendientes: listener de rueda no pasivo y división del bundle de 1,37 MB.
+
+## Estado operativo anterior (2026-11-08, primer E2E Chromium validado)
 
 **F0 en curso, pero lockfile, CI reproducible e infraestructura E2E ya funcionan.** La ejecución [Test and build #42467419830](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42467419830) en `f449e59` terminó **success** con 37 pruebas unitarias, build y recorrido Playwright de Chromium. Repositorio en Node 22, `npm ci`, runner `ubuntu-24.04` (Playwright 1.56.1 no acepta ubuntu-26.04).
 

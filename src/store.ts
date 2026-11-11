@@ -3,8 +3,9 @@ import type { Project, Selection, Tool, Mode } from './types';
 import { isProject } from './lib/validation';
 import { demoProject } from './data/defaultProject';
 import { reconcileRooms } from './lib/topology';
-const KEY = 'atelier-60-project-v1';
-const BACKUP_KEY = `${KEY}-backup`;
+import { buildWallGraph, migrateProject } from './lib/projectSchema';
+import type { CameraView } from './types';
+import { PROJECT_KEY as KEY, PROJECT_BACKUP_KEY as BACKUP_KEY } from './lib/localProjectStorage';
 export {isProject} from './lib/validation';
 export const readProject = (): Project => {
   try {
@@ -29,11 +30,11 @@ export const readProject = (): Project => {
             reconcileRooms(data);
           }
         }
-        return data;
+        return migrateProject(data);
       }
     }
   } catch { /* private browsing or invalid file: start with template */ }
-  const fresh=structuredClone(demoProject);reconcileRooms(fresh);return fresh;
+  const fresh=structuredClone(demoProject);reconcileRooms(fresh);return migrateProject(fresh);
 };
 type Store = {
   project: Project; selection: Selection; tool: Tool; mode: Mode; wallsVisible: boolean; cutaway: boolean;
@@ -42,34 +43,45 @@ type Store = {
   setWallsVisible: (v: boolean) => void; setCutaway: (v: boolean) => void;
   change: (updater: (p: Project) => void, record?: boolean) => void;
   checkpoint: () => void; undo: () => void; redo: () => void;
+  cancelDrag: () => void; commitDrag:()=>void; dragCheckpoint:{project:Project;history:Project[];redoStack:Project[]}|null; liveCamera: CameraView | null; setLiveCamera:(camera:CameraView)=>void;
+  selectedFurniture:string[];setFurnitureGroup:(ids:string[])=>void;
+  cameraLocked:boolean;setCameraLocked:(locked:boolean)=>void;
   load: (project: Project) => void; reset: () => void;
 };
 export const useEditor = create<Store>((set, get) => ({
   project: readProject(), selection: null, tool: 'select', mode: 'split', wallsVisible: true, cutaway: true,
   history: [], redoStack: [],
-  setSelection: selection => set({ selection }), setTool: tool => set({ tool }), setMode: mode => set({ mode }),
+  liveCamera:null,dragCheckpoint:null,setLiveCamera:liveCamera=>set({liveCamera}),
+  selectedFurniture:[],setFurnitureGroup:ids=>set(s=>({selectedFurniture:ids.filter(id=>s.project.furniture.some(f=>f.id===id)),selection:ids.length?{type:'furniture',id:ids[ids.length-1]}:null})),
+  cameraLocked:false,setCameraLocked:cameraLocked=>set({cameraLocked}),
+  setSelection: selection => set(s=>({ selection,selectedFurniture:selection?.type==='furniture'?(s.selectedFurniture.includes(selection.id)?s.selectedFurniture:[selection.id]):[] })), setTool: tool => set({ tool }), setMode: mode => set({ mode }),
   setWallsVisible: wallsVisible => set({ wallsVisible }), setCutaway: cutaway => set({ cutaway }),
-  checkpoint: () => set(s => ({ history: [...s.history.slice(-39), structuredClone(s.project)], redoStack: [] })),
+  checkpoint: () => set(s => ({dragCheckpoint:{project:s.project,history:s.history,redoStack:s.redoStack}, history: [...s.history.slice(-39), structuredClone(s.project)], redoStack: [] })),
+  cancelDrag: () => set(s=>s.dragCheckpoint?{...s.dragCheckpoint,dragCheckpoint:null}:s),
+  commitDrag:()=>set(s=>s.dragCheckpoint&&JSON.stringify(s.project)===JSON.stringify(s.dragCheckpoint.project)?{...s.dragCheckpoint,dragCheckpoint:null}:{dragCheckpoint:null}),
   change: (updater, record = true) => {
     const previous = get().project;
     const next = structuredClone(previous);
     updater(next);
     // A malformed edit must not enter the live state or the undo history.
     // This also prevents autosave from repeatedly failing on invalid geometry.
-    if (!isProject(next)) return;
+    // The graph still describes the previous geometry until this transaction
+    // commits; validate domain data first, then regenerate its references.
+    if (!isProject({...next,graph:undefined})) return;
+    next.schemaRevision=1;next.graph=buildWallGraph({...next,graph:previous.graph});
     set(s => ({ project: next, history: record ? [...s.history.slice(-39), previous] : s.history, redoStack: record ? [] : s.redoStack }));
   },
-  undo: () => set(s => s.history.length ? ({ project: s.history[s.history.length - 1], history: s.history.slice(0, -1), redoStack: [s.project, ...s.redoStack].slice(0, 40), selection: null }) : s),
-  redo: () => set(s => s.redoStack.length ? ({ project: s.redoStack[0], history: [...s.history, s.project].slice(-40), redoStack: s.redoStack.slice(1), selection: null }) : s),
+  undo: () => set(s => s.history.length ? ({ project: s.history[s.history.length - 1], history: s.history.slice(0, -1), redoStack: [s.project, ...s.redoStack].slice(0, 40), selection: null,selectedFurniture:[],dragCheckpoint:null }) : s),
+  redo: () => set(s => s.redoStack.length ? ({ project: s.redoStack[0], history: [...s.history, s.project].slice(-40), redoStack: s.redoStack.slice(1), selection: null,selectedFurniture:[],dragCheckpoint:null }) : s),
   // Imported objects must not retain a mutable reference into the editor state.
   // A caller changing its parsed JSON later must not silently alter the plan.
   load: project => {
     // TypeScript types do not validate imported JSON at runtime. Never replace
     // a working project with malformed data passed by another caller.
     if (!isProject(project)) return;
-    set({ project: structuredClone(project), history: [], redoStack: [], selection: null, tool: 'select' });
+    set({ project: migrateProject(project), history: [], redoStack: [], selection: null, selectedFurniture:[],dragCheckpoint:null,cameraLocked:false, tool: 'select' });
   },
-  reset: () => {const fresh=structuredClone(demoProject);reconcileRooms(fresh);set({ project: fresh, history: [], redoStack: [], selection: null, tool: 'select' });},
+  reset: () => {const fresh=structuredClone(demoProject);reconcileRooms(fresh);set({ project: migrateProject(fresh), history: [], redoStack: [], selection: null,selectedFurniture:[],dragCheckpoint:null, tool: 'select' });},
 }));
 export function saveLocal(project: Project): boolean {
   if (!isProject(project)) return false;

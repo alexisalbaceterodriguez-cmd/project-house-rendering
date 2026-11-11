@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { floors } from '../data/catalog';
 import { clamp, distance, makeId, snap, wallProjection } from '../lib/geometry';
 import { roomLabelPoint, projectWarnings, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
 import { useEditor } from '../store';
+import { furnitureCollisions } from '../lib/diagnostics';
 import type { Furniture, Point, Wall } from '../types';
 
 function iconFor(item: Furniture) {
@@ -35,9 +36,9 @@ function snapToWallJoint(point: Point, walls: Wall[]): Point {
   return nearest ? { ...nearest } : point;
 }
 export default function Plan2D() {
-  const { project, tool, selection, setSelection, setTool, change, checkpoint } = useEditor();
+  const { project, tool, selection, setSelection, setTool, change, checkpoint,selectedFurniture,setFurnitureGroup } = useEditor();
   const svg = useRef<SVGSVGElement>(null);
-  type Drag = {type:'furniture';id:string;dx:number;dy:number}|{type:'wall';id:string;start:Point;a:Point;b:Point;handle:'a'|'b'|'move';rooms:typeof project.rooms};
+  type Drag = {type:'furniture';id:string;dx:number;dy:number;group?:{id:string;x:number;y:number}[];start:Point}|{type:'wall';id:string;start:Point;a:Point;b:Point;handle:'a'|'b'|'move';rooms:typeof project.rooms};
   const drag = useRef<Drag | null>(null);
   const pan = useRef<{ pointerId: number; clientX: number; clientY: number; scaleX: number; scaleY: number; center: Point } | null>(null);
   const spaceHeld = useRef(false);
@@ -60,8 +61,7 @@ export default function Plan2D() {
         setSpacePanning(false);
         setStartWall(null);
         setPointer(null);
-        // Do not abort an active geometry drag: its preview is already in the store.
-        // Escape cancels unfinished wall/room drawing without changing the project.
+        if(drag.current){useEditor.getState().cancelDrag();drag.current=null;setAlignment(null);setSpacing([]);}
       }
     };
     const up = (event: KeyboardEvent) => {
@@ -82,8 +82,9 @@ export default function Plan2D() {
   const [spacing, setSpacing] = useState<{ axis: 'x' | 'y'; from: number; to: number; cross: number; metres: number }[]>([]);
   const [zoom, setZoom] = useState(1);
   const [viewCenter, setViewCenter] = useState<Point | null>(null);
+  useEffect(()=>{const fit=()=>{setZoom(1);setViewCenter(null);};window.addEventListener('atelier60:fit-plan',fit);return()=>window.removeEventListener('atelier60:fit-plan',fit);},[]);
   // Keep the world-space point beneath the cursor fixed while zooming.
-  const zoomAt = (nextZoom: number, clientX?: number, clientY?: number) => {
+  const zoomAt = useCallback((nextZoom: number, clientX?: number, clientY?: number) => {
     const next = clamp(nextZoom, 1, 4);
     const currentCenter = viewCenter ?? { x: project.width / 2, y: project.depth / 2 };
     if (clientX !== undefined && clientY !== undefined && svg.current) {
@@ -98,16 +99,18 @@ export default function Plan2D() {
       }
     }
     setZoom(next);
-  };
-  const onWheel = (event: WheelEvent<SVGSVGElement>) => {
-    event.preventDefault();
-    zoomAt(zoom * (event.deltaY < 0 ? 1.15 : 1 / 1.15), event.clientX, event.clientY);
-  };
+  },[zoom,viewCenter,project.width,project.depth]);
+  useEffect(()=>{
+    const element=svg.current;
+    const onWheel=(event:WheelEvent)=>{event.preventDefault();zoomAt(zoom*(event.deltaY<0?1.15:1/1.15),event.clientX,event.clientY);};
+    element?.addEventListener('wheel',onWheel,{passive:false});
+    return()=>element?.removeEventListener('wheel',onWheel);
+  },[zoom,zoomAt]);
   const pt = (e: PointerEvent<SVGSVGElement | SVGElement>): Point => {
     const matrix = svg.current?.getScreenCTM();
     if (!matrix) return {x:0,y:0};
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
-    return { x: clamp(snap(p.x), 0, project.width), y: clamp(snap(p.y), 0, project.depth) };
+    return { x: clamp(snap(p.x,project.editor?.grid??.1), 0, project.width), y: clamp(snap(p.y,project.editor?.grid??.1), 0, project.depth) };
   };
   // Middle-button panning works above walls, furniture and room labels without editing them.
   const onPanStart = (e: PointerEvent<SVGSVGElement>) => {
@@ -127,13 +130,13 @@ export default function Plan2D() {
   const onBackground = (e: PointerEvent<SVGSVGElement>) => {
     if (pan.current || spaceHeld.current) return;
     if (e.target !== svg.current && (e.target as Element).getAttribute('data-floor') !== 'true') return;
-    const p = tool === 'wall' ? snapToWallJoint(pt(e), project.walls) : pt(e);
+    const p = tool === 'wall'&&project.editor?.magnet!==false ? snapToWallJoint(pt(e), project.walls) : pt(e);
     if (tool === 'wall') {
       if (!startWall) setStartWall(p);
       else {
         const endpoint = { ...p };
         const magneticJoint = project.walls.some(w => distance(endpoint,w.a)<.001 || distance(endpoint,w.b)<.001 || distance(endpoint,wallProjection(w,endpoint).point)<.001);
-        if (!magneticJoint) {
+        if (!magneticJoint&&project.editor?.orthogonal!==false) {
           if (Math.abs(endpoint.x - startWall.x) < .35) endpoint.x = startWall.x;
           if (Math.abs(endpoint.y - startWall.y) < .35) endpoint.y = startWall.y;
         }
@@ -313,10 +316,11 @@ export default function Plan2D() {
   const onItemDown=(e:PointerEvent<SVGGElement>,item:Furniture)=>{
     if(tool!=='select')return;
     e.stopPropagation();
+    if(e.shiftKey){setFurnitureGroup(selectedFurniture.includes(item.id)?selectedFurniture.filter(id=>id!==item.id):[...selectedFurniture,item.id]);return;}
     setAlignment(null);
     setSpacing([]);
     setSelection({type:'furniture',id:item.id}); checkpoint();
-    const point=pt(e);drag.current={type:'furniture',id:item.id,dx:point.x-item.x,dy:point.y-item.y};
+    const point=pt(e);drag.current={type:'furniture',id:item.id,dx:point.x-item.x,dy:point.y-item.y,start:point,group:selectedFurniture.includes(item.id)&&selectedFurniture.length>1?project.furniture.filter(f=>selectedFurniture.includes(f.id)).map(({id,x,y})=>({id,x,y})):undefined};
     svg.current?.setPointerCapture(e.pointerId);
   };
   const onMove=(e:PointerEvent<SVGSVGElement>)=>{
@@ -329,9 +333,16 @@ export default function Plan2D() {
       });
       return;
     }
-    const p=pt(e);setPointer(tool==='wall' ? snapToWallJoint(p,project.walls) : p);
+    const p=pt(e);setPointer(tool==='wall'&&project.editor?.magnet!==false ? snapToWallJoint(p,project.walls) : p);
     if(drag.current){
       if(drag.current.type==='furniture'){
+        const groupDrag=drag.current;
+        if(groupDrag.group){
+          const bounds=groupDrag.group.map(original=>{const f=project.furniture.find(f=>f.id===original.id)!;const a=f.rotation*Math.PI/180;return {...original,hx:(Math.abs(Math.cos(a))*f.w+Math.abs(Math.sin(a))*f.d)/2,hy:(Math.abs(Math.sin(a))*f.w+Math.abs(Math.cos(a))*f.d)/2};});
+          const dx=clamp(p.x-groupDrag.start.x,Math.max(...bounds.map(f=>f.hx-f.x)),Math.min(...bounds.map(f=>project.width-f.hx-f.x)));
+          const dy=clamp(p.y-groupDrag.start.y,Math.max(...bounds.map(f=>f.hy-f.y)),Math.min(...bounds.map(f=>project.depth-f.hy-f.y)));
+          change(next=>{for(const original of groupDrag.group!){const item=next.furniture.find(f=>f.id===original.id);if(item){item.x=original.x+dx;item.y=original.y+dy;}}},false);return;
+        }
         const {id,dx,dy}=drag.current;
         change(project=>{const f=project.furniture.find(i=>i.id===id);if(f){
           const angle=f.rotation*Math.PI/180;const hx=(Math.abs(Math.cos(angle))*f.w+Math.abs(Math.sin(angle))*f.d)/2;
@@ -364,8 +375,8 @@ export default function Plan2D() {
           };
           const nearestX=nearest('x');
           const nearestY=nearest('y');
-          const x=clamp(nearestX?nearestX.value:snap(rawX),hx,Math.max(hx,project.width-hx));
-          const y=clamp(nearestY?nearestY.value:snap(rawY),hy,Math.max(hy,project.depth-hy));
+          const x=clamp(project.editor?.magnet!==false&&nearestX?nearestX.value:snap(rawX,project.editor?.grid??.1),hx,Math.max(hx,project.width-hx));
+          const y=clamp(project.editor?.magnet!==false&&nearestY?nearestY.value:snap(rawY,project.editor?.grid??.1),hy,Math.max(hy,project.depth-hy));
           f.x=x;f.y=y;
           // Show the nearest clear horizontal/vertical gap to another object.
           // Rotated furniture uses its visible axis-aligned footprint.
@@ -401,25 +412,28 @@ export default function Plan2D() {
         }},false);
       }else{
         const move=drag.current;const dx=p.x-move.start.x,dy=p.y-move.start.y;
-        const a=move.handle==='b'?move.a:{x:snap(move.a.x+dx),y:snap(move.a.y+dy)};
-        const b=move.handle==='a'?move.b:{x:snap(move.b.x+dx),y:snap(move.b.y+dy)};
+        const a=move.handle==='b'?move.a:{x:snap(move.a.x+dx,project.editor?.grid??.1),y:snap(move.a.y+dy,project.editor?.grid??.1)};
+        const b=move.handle==='a'?move.b:{x:snap(move.b.x+dx,project.editor?.grid??.1),y:snap(move.b.y+dy,project.editor?.grid??.1)};
         const anchor=(v:Point):Point=>{
           const other=project.walls.filter(w=>w.id!==move.id).flatMap(w=>[w.a,w.b]);
           const nearest=other.reduce<{p:Point;d:number}|null>((best,q)=>{const d=distance(v,q);return d<.22&&(!best||d<best.d)?{p:q,d}:best;},null);
           return nearest?{...nearest.p}:v;
         };
-        const aa=move.handle==='move'?a:anchor(a),bb=move.handle==='move'?b:anchor(b);
-        change(project=>{updateWallGeometry(project,move.id,aa,bb);project.rooms=structuredClone(move.rooms);reconcileRooms(project);},false);
+        const aa=move.handle==='move'||project.editor?.magnet===false?a:anchor(a),bb=move.handle==='move'||project.editor?.magnet===false?b:anchor(b);
+        change(project=>{updateWallGeometry(project,move.id,aa,bb,true,project.editor?.magnet!==false);project.rooms=structuredClone(move.rooms);reconcileRooms(project);},false);
       }
     }
   };
   const onDragEnd=(e:PointerEvent<SVGSVGElement>)=>{
     if (pan.current?.pointerId === e.pointerId) pan.current=null;
+    if(drag.current)useEditor.getState().commitDrag();
     drag.current=null;
     setAlignment(null);
     setSpacing([]);
   };
   const warnings=projectWarnings(project);
+  const movingName=drag.current?.type==='furniture'?project.furniture.find(f=>f.id===drag.current?.id)?.name:undefined;
+  const previewCollisions=movingName?furnitureCollisions(project).filter(warning=>warning.includes(`«${movingName}»`)).slice(0,2):[];
   const roomPath=(room:typeof project.rooms[number])=>{
     const ring=(points:Point[])=>`M ${points.map(p=>`${p.x} ${p.y}`).join(' L ')} Z`;
     return [ring(roomVertices(room)),...(room.holes??[]).map(ring)].join(' ');
@@ -428,10 +442,12 @@ export default function Plan2D() {
   const center=viewCenter ?? {x:project.width/2,y:project.depth/2};
   const x0=center.x-spanX/2,y0=center.y-spanY/2;
   return <div className="plan-wrap">
+    {previewCollisions.length>0&&<div className="collision-preview" role="status">{previewCollisions.join(' ')} Escape cancela el movimiento.</div>}
     <div className="plan-topline"><span><span className="live-dot"/> PLANO EDITABLE</span><span>{project.width.toFixed(1)} × {project.depth.toFixed(1)} m · {(project.width*project.depth).toFixed(0)} m²</span></div>
-    <svg ref={svg} className="plan-svg" onWheel={onWheel} onPointerDownCapture={onPanStart} onAuxClick={e=>e.preventDefault()} style={{cursor:spacePanning?'grab':undefined}} viewBox={`${x0-.7} ${y0-.7} ${spanX+1.4} ${spanY+1.4}`} onPointerDown={onBackground} onPointerMove={onMove} onPointerUp={onDragEnd} onLostPointerCapture={onDragEnd} aria-label="Editor de plano 2D">
+    <svg ref={svg} className="plan-svg" onPointerDownCapture={onPanStart} onAuxClick={e=>e.preventDefault()} style={{cursor:spacePanning?'grab':undefined}} viewBox={`${x0-.7} ${y0-.7} ${spanX+1.4} ${spanY+1.4}`} onPointerDown={onBackground} onPointerMove={onMove} onPointerUp={onDragEnd} onLostPointerCapture={onDragEnd} aria-label="Editor de plano 2D">
       <defs><pattern id="floor-grid" width=".5" height=".5" patternUnits="userSpaceOnUse"><path d="M .5 0 L 0 0 0 .5" fill="none" stroke="#c8c4bd" strokeWidth=".013"/></pattern></defs>
       <rect data-floor="true" x="0" y="0" width={project.width} height={project.depth} fill="#f8f7f4"/>
+      {project.referenceImage&&<image href={project.referenceImage.data} x="0" y="0" width={project.referenceImage.width} height={project.referenceImage.height} opacity={project.referenceImage.opacity} pointerEvents="none"/>}
       {project.rooms.map(room=><g key={room.id} onPointerDown={e=>{if(tool==='select'){e.stopPropagation();setSelection({type:'room',id:room.id});}}}>
         <path data-floor="true" d={roomPath(room)} fillRule="evenodd" fill={floors[room.floor]?.color ?? '#e0d2bd'} opacity=".56"/>
         <text x={roomLabelPoint(room).x} y={roomLabelPoint(room).y} className="room-title" fontSize=".2" textAnchor="middle" opacity=".52">{room.name} ({roomArea(room).toFixed(1)}m²)</text>
@@ -455,7 +471,7 @@ export default function Plan2D() {
       })}
       {project.furniture.map(item=><g key={item.id} transform={`translate(${item.x} ${item.y}) rotate(${item.rotation})`} onPointerDown={e=>onItemDown(e,item)} className="plan-furniture">
         {iconFor(item)}
-        {selection?.type==='furniture'&&selection.id===item.id&&<rect x={-item.w/2-.06} y={-item.d/2-.06} width={item.w+.12} height={item.d+.12} stroke="#34765b" strokeWidth=".045" fill="none" strokeDasharray=".09 .05" rx=".04"/>}
+        {selectedFurniture.includes(item.id)&&<rect x={-item.w/2-.06} y={-item.d/2-.06} width={item.w+.12} height={item.d+.12} stroke="#34765b" strokeWidth=".045" fill="none" strokeDasharray=".09 .05" rx=".04"/>}
       </g>)}
        {alignment?.x !== undefined && <line x1={alignment.x} y1="0" x2={alignment.x} y2={project.depth} stroke="#198c9b" strokeWidth=".025" strokeDasharray=".12 .09" pointerEvents="none"/>}
        {alignment?.y !== undefined && <line x1="0" y1={alignment.y} x2={project.width} y2={alignment.y} stroke="#198c9b" strokeWidth=".025" strokeDasharray=".12 .09" pointerEvents="none"/>}
