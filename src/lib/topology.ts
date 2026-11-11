@@ -401,6 +401,27 @@ export function splitInteriorWall(p:Project,id:string,fraction=.5):boolean {
 }
 
 /**
+ * Split a selected partition at every existing interior T-junction.
+ * Work from the far end toward the start so the original wall ID remains
+ * stable and openings continue to be remapped by splitInteriorWall.
+ * Junctions too close to an endpoint, another cut or an opening are skipped.
+ */
+export function splitWallAtTJunctions(p:Project,id:string):number {
+  const wall=p.walls.find(w=>w.id===id);
+  if(!wall||wall.outer)return 0;
+  const length=distance(wall.a,wall.b);
+  if(length<.4)return 0;
+  let right=1,count=0;
+  for(const fraction of fractions){
+    if((right-fraction)*length<.2 || fraction*length<.2)continue;
+    if(p.openings.some(opening=>opening.wallId===id &&
+      Math.abs(opening.offset*right-fraction)*length<opening.width/2+.05))continue;
+    if(splitInteriorWall(p,id,fraction/right)){count++;right=fraction;}
+  }
+  return count;
+}
+
+/**
  * Merge two consecutive, collinear interior segments. The selected wall keeps
  * its ID, while openings from both walls are mapped to the new axis.
  * Junctions used by a third wall are deliberately not removed.
