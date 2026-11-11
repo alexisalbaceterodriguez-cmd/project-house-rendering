@@ -3,7 +3,18 @@
 Última revisión: 2026-11-11 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Estado operativo vigente — entrega de producto 2026-11-11
+## Estado operativo vigente — retención segura de modelos 2026-11-11
+
+- **Unidad F0 implementada:** el borrado manual de recursos protege ahora ambos guardados de localStorage (principal y respaldo), además del proyecto activo, versiones, comparación A/B, undo/redo y los estados recuperables al cancelar un arrastre. Antes podía eliminarse un GLB usado solo por el respaldo, dejando incompleta una recuperación posterior.
+- Archivo GLB y metadatos se retiran en una sola transacción IndexedDB. Una operación abortada conserva ambos; si un guardado es ilegible o no se pueden comprobar las referencias, se bloquea la limpieza. Las referencias vivas y los guardados se releen tras abrir IndexedDB, justo antes de retirar el recurso.
+- **Código:** `eca76de01e6de3eadf68da82225301fce0aa12ef`, rama `codex/product-release`, [PR #7](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/pull/7). Base local anterior `464978f96dc3c849ce5dff00a818fe3cd364eade`; main remoto comprobado en `dc882baaf2e2e9fe7b4881f2259660f5a0a760c1`. Sin integración ni despliegue de esta rama.
+- **Verificación local:** 72 unitarias, build TypeScript/Vite y 27 E2E Chromium correctos. Cuatro E2E nuevos: recuperación/exportación de un modelo usado solo por el respaldo, rollback de archivo/metadatos tras abortar el borrado, bloqueo por respaldo ilegible y protección del modelo usado solo por redo. Doce unitarias nuevas cubren referencias, lecturas denegadas, datos corruptos y cambios durante la espera de IndexedDB.
+- **CI del nuevo código:** [Test and build 43020782024](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43020782024), SHA exacto `eca76de01e6de3eadf68da82225301fce0aa12ef`, `completed/success`; job `130523157891` con instalación, unitarias, build y E2E correctos. La CI exacta del estado previo `464978f` también se comprobó: run `43016791553`, `completed/success`. El commit posterior de bitácora modifica únicamente PROJECT_STATUS.md y PROJECT_MEMORY.md; el run citado acredita el commit de código.
+- **Auditoría de pendientes:** ROADMAP.md ya distingue bases implementadas de ampliaciones: F0 con bloqueos/coordinación de pestañas aún pendientes; F1 con restricciones/encuentros degenerados y pasos libres; F2 con cotas encadenadas y cobertura táctil real; F3A/F3B con más familias comerciales/baños; F4 con más cobertura de GPU; F5 con PDF técnico, cotización automática y colaboración. Ninguna fase se cierra por esta corrección.
+- **Siguiente tarea exacta de código:** gestionar `onversionchange` y aperturas `onblocked` en las bases IndexedDB de activos/versiones, cerrando conexiones y mostrando un error recuperable; añadir E2E con dos pestañas. La retención actual no garantiza exclusión mutua de operaciones entre pestañas.
+- **Publicación pendiente:** revisión e integración de PR #7; después comprobar CI/Pages del SHA integrado y recorrer la URL pública.
+
+## Estado anterior — entrega de producto 2026-11-11
 
 - Rama `codex/product-release`, commit de código `29cf67d75d4f782956094bbc0449a349522eb7ed`, base `dc882baaf2e2e9fe7b4881f2259660f5a0a760c1`. [PR #7](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/pull/7). Se conserva el trabajo de la auditoría anterior y se amplía con código, recursos autorizados y pruebas; main no se ha sobrescrito.
 - Implementados: grafo/migración v1 aditiva, arrastre cancelable con historial/redo, zoom sin scroll, grupos, rejilla configurable, imagen calibrada y anclaje; aislamiento/reparación de GLB dañados; biblioteca de tres modelos con origen/licencia y cuatro materiales texturados por superficie; módulos; versiones, cámara, HDRI/paseo y comparación A/B; presupuesto manual CSV y plano imprimible/PDF de presentación.
