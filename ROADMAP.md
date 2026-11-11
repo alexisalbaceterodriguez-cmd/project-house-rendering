@@ -2,6 +2,8 @@
 
 > Última actualización: 8 de noviembre de 2026. Ampliación de catálogo de productos reales y materiales PBR aprobada. El editor es **conceptual**. No sustituye una medición, proyecto de obra ni verificación normativa.
 
+> **Incremento local 11/11/2026:** rama `codex/product-release` incorpora protección de activos dañados, migración/grafo persistido, cancelación/selección múltiple, rejilla y referencia calibrada, biblioteca de tres modelos autorizados con miniaturas, cuatro materiales texturados, módulos de cocina/baño, HDRI/paseo/cámaras, versiones y comparación A/B. Criterios observables en [PRODUCT_ACCEPTANCE.md](PRODUCT_ACCEPTANCE.md); resultados y CI en [PROJECT_STATUS.md](PROJECT_STATUS.md). Las secciones de planificación posteriores reflejan el alcance completo y no deben interpretarse como ausencia de estas bases. Presupuestación, PDF técnico, colaboración y catálogo comercial extenso siguen pendientes; no se cierran automáticamente todas las fases.
+
 ## Estado de entregas
 
 | Fase | Objetivo | Estado | Criterio de salida |

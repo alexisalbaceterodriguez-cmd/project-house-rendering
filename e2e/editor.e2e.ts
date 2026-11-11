@@ -190,7 +190,7 @@ test('conserva un modelo GLB en IndexedDB y en un JSON portable', async ({ page 
   await expect.poll(async () => page.evaluate(() => {
     const raw = localStorage.getItem('atelier-60-project-v1');
     const data = raw && JSON.parse(raw) as { furniture: Array<{ kind: string; assetId?: string }> };
-    return !!data?.furniture.some(f => f.kind === 'model' && !!f.assetId);
+    return !!data && data.furniture.some(f => f.kind === 'model' && !!f.assetId);
   })).toBe(true);
   expect(stored?.modelData).toBeUndefined();
 
@@ -244,7 +244,7 @@ test('impide exportar un JSON incompleto si falta un modelo en IndexedDB', async
   await expect.poll(async () => page.evaluate(() => {
     const raw = localStorage.getItem('atelier-60-project-v1');
     const project = raw && JSON.parse(raw) as { furniture: Array<{ assetId?: string }> };
-    return !!project?.furniture.some(f => f.assetId);
+    return !!project && project.furniture.some(f => f.assetId);
   })).toBe(true);
 
   // Simulate browser storage eviction without changing the project geometry.
@@ -353,7 +353,17 @@ test('revierte activos escritos si falla el segundo GLB de una importación JSON
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar' }).click();
   const original = JSON.parse((await readFile(await (await downloadPromise).path())).toString('utf8'));
-  const modelData = 'data:model/gltf-binary;base64,' + Buffer.from('example').toString('base64');
+  // Reach the second IndexedDB write with actual, parseable GLB payloads.
+  const json = Buffer.from(JSON.stringify({ asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [] }], nodes: [] }));
+  const padded = Buffer.concat([json, Buffer.alloc((4 - json.length % 4) % 4, 0x20)]);
+  const glb = Buffer.alloc(20 + padded.length);
+  glb.writeUInt32LE(0x46546c67, 0);
+  glb.writeUInt32LE(2, 4);
+  glb.writeUInt32LE(glb.length, 8);
+  glb.writeUInt32LE(padded.length, 12);
+  glb.writeUInt32LE(0x4e4f534a, 16);
+  padded.copy(glb, 20);
+  const modelData = 'data:model/gltf-binary;base64,' + glb.toString('base64');
   original.furniture = [1, 2].map(n => ({
     id: 'import-model-' + n, kind: 'model', name: 'Modelo ' + n,
     x: 1 + n, y: 1, w: 1, d: 1, h: 1, rotation: 0,

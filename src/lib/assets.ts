@@ -46,6 +46,12 @@ export async function getModelMetadata(id:string):Promise<ModelMetadata|null>{
     tx.onerror=()=>{database.close();reject(tx.error);};
   });
 }
+export async function deleteModelMetadata(id:string):Promise<void>{
+  const database=await db();return new Promise((resolve,reject)=>{
+    const tx=database.transaction(META_STORE,'readwrite');tx.objectStore(META_STORE).delete(id);
+    tx.oncomplete=()=>{database.close();resolve();};tx.onerror=tx.onabort=()=>{database.close();reject(tx.error);};
+  });
+}
 export async function putModelAsset(id:string,blob:Blob):Promise<void>{
   if(!id||blob.size>12*1024*1024)throw Error('El modelo excede los 12 MB permitidos.');
   return useStore<void>('readwrite',store=>{store.put(blob,id);});

@@ -1,102 +1,82 @@
-# Project House Rendering | Atelier 60
+# Atelier 60
 
-Editor web 2D + 3D para diseñar viviendas, distribución y acabados. Este repositorio contiene el código fuente de la aplicación **Atelier 60**.
+Editor local de viviendas en 2D y 3D. Permite crear una planta, distribuir objetos, asignar acabados, preparar propuestas y exportar imágenes comparables. El ejemplo de 10 × 6 m es una plantilla, no una restricción de tamaño.
 
-Aplicación web editable para diseñar distribuciones y visualizar viviendas en 2D y 3D. El proyecto de demostración es un **rectángulo de 10 × 6 metros (60 m²)**, con tres dormitorios, dos baños, cocina abierta y estilo nórdico. Es una **propuesta conceptual**, no un plano técnico ni una obra ejecutable. Las dimensiones 15 × 12 m serían 180 m², no 60 m².
+## Ejecutar
 
-## Inicio rápido
-
-Requisitos: Node.js **20.19+ o 22.12+** y npm.
+Node 22.12+ y npm; CI usa Node 22.
 
 ```bash
-npm install
+npm ci
+npx playwright install chromium
 npm run dev
 ```
 
-Abre la URL local que muestre Vite (normalmente http://localhost:5173).
-
-Para producción:
+Abrir la URL indicada por Vite. Producción local:
 
 ```bash
 npm run build
-npm run preview
+npm run preview -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-## Funciones incluidas
+La aplicación React está en la raíz. `standalone.html` es un prototipo antiguo con JSON incompatible.
 
-- **Editor SVG 2D:** arrastrar muebles, seleccionar muros y estancias, dibujar muros y rectángulos, añadir puertas y ventanas en muros.
-- **Escena 3D en WebGL:** cámara orbital y cenital, sombras, vista de corte de muros, huecos reales de puertas y ventanas, mobiliario paramétrico.
-- **Catálogo de objetos:** sofá, mesas, sillas, camas, armarios, cocina lineal, isla, electrodomésticos, sanitarios, plantas e iluminación.
-- **Modelos GLB locales:** importación de ficheros autónomos hasta 6 MB, colocación y escalado conceptual. Para guardar el diseño con modelos, exporta su JSON (incluye sus datos incrustados).
-- **Personalización:** cinco materiales de pavimento y un acabado adicional, paletas nórdica, japandi, mediterránea e industrial, colores y tamaños individuales.
-- **Historial:** deshacer y rehacer hasta 40 pasos. Guardado local automático, importación y exportación JSON, PNG desde la escena y SVG del plano.
-- **Sin backend ni cuenta:** todos los datos quedan en el navegador. No se envían diseños a servidores.
+## Diseñar
 
-## Uso rápido
+- **Nuevo** crea una envolvente editable. Configura ancho, fondo y altura; escala la distribución o conserva sus medidas. Estudio permite elegir la esquina de anclaje.
+- **Tabique / Estancia** dibujan cerramientos. Puertas y ventanas se insertan sobre muros. El plano y la escena usan la misma geometría.
+- Arrastra paredes y extremos; divide y fusiona segmentos o normaliza intersecciones T/X. En **Estudio → Plano y revisión** puedes editar longitud, ángulo y separación de una unión.
+- Usa rueda para ampliar, botón central o Espacio para desplazar. Escape revierte el arrastre en curso. Mayús + clic selecciona varios muebles; puedes mover y duplicar el grupo.
+- Configura paso de rejilla, magnetismo y ortogonalidad. Importa una imagen de referencia y calibra su ancho real.
+- Consulta superficies aproximadas y avisos de solapamientos. Las áreas desde ejes y el descuento de espesor son estimaciones.
 
-1. Usa **Plano 2D** o **Mixto** para editar la distribución. Haz clic en un mueble y arrástralo.
-2. Con **Tabique**, selecciona dos puntos. Con **Puerta** o **Ventana**, haz clic sobre una línea de muro.
-3. Usa **Estancia** para añadir una habitación rectangular. Edita acabados por estancia en el panel de propiedades.
-4. En **Objetos**, añade muebles y cambia sus dimensiones, posición, giro y color.
-5. Pulsa **Imagen** para guardar un PNG de la escena; **Exportar** guarda un JSON recuperable desde **Abrir**.
+## Modelos y acabados
 
-## Arquitectura
+**Estudio → Modelos** incluye butaca, sofá escaneado y lámpara autorizados, con miniaturas, procedencia y licencia. No se inventan fabricantes ni referencias: la butaca es un modelo de referencia; la lámpara representa un producto identificado.
 
-```
-src/
-  App.tsx                 Interfaz, propiedades, catálogo y importación/exportación
-  components/
-    Plan2D.tsx            Planta SVG editable con eventos de puntero
-    Scene3D.tsx           Geometría paramétrica Three.js + R3F
-  data/
-    catalog.ts            Modelos y catálogo de acabados
-    defaultProject.ts     Demostración 10 × 6 m
-  lib/geometry.ts         Proyecciones, segmentos de muro y huecos
-  store.ts                Estado Zustand, historial y validación
-  types.ts                Esquema del proyecto
-  __tests__/              Pruebas de geometría y proyecto
-```
+Importa GLB autónomos de hasta 12 MB. Su contenido se comprueba antes de guardarlo. Los modelos se almacenan en IndexedDB y se reutilizan entre proyectos. Si un archivo guardado falta o se corrompe, aparece un marcador y el editor sigue disponible. Puedes reparar el archivo del objeto seleccionado o retirarlo.
 
-## Límites conocidos (importantes)
+**Estudio → Acabados** ofrece madera, cerámica, tejido y enlucido con mapas de color, normal y rugosidad. Aplica el acabado a una estancia, pared u objeto. Para una parte del GLB, selecciona su superficie en Propiedades o con Mayús + clic en 3D. Las instancias conservan sus acabados de forma independiente.
 
-1. **No es CAD/BIM.** Las superficies de estancia son rectangulares y no se calculan por intersección de tabiques. Editar una habitación no desplaza automáticamente los muros.
-2. **No hay cálculo estructural, de normativa, instalaciones ni colisiones**. La precisión es conceptual; debe verificarse antes de una reforma.
-3. El motor 3D es **en tiempo real**, no un trazador de rayos fotorrealista. Usa geometrías simplificadas en el catálogo; para ver modelos comerciales reales se necesitan archivos GLB con sus licencias.
-4. Los modelos GLB se guardan como datos incrustados en el JSON. El almacenamiento automático de navegador puede agotarse con modelos grandes: exporta JSON con frecuencia.
-5. Los suelos se simulan con colores y líneas; no se incorporan texturas PBR comerciales por defecto.
-6. Las habitaciones del ejemplo son deliberadamente compactas: en 60 m² con 3 dormitorios y 2 baños hay compromisos significativos de ergonomía. Comprueba dimensiones mínimas aplicables con un profesional.
+**Cocina y baño** añade módulos propios de medidas normalizadas: bajos, altos, columnas, fregadero, placa, horno y lavabo. Configura frentes, encimeras y tiradores; combina estos módulos con los sanitarios y modelos de la biblioteca.
 
-## Próxima fase sugerida
+Fuentes, atribuciones, tamaños y licencias: [ASSET_LICENSES.md](ASSET_LICENSES.md).
 
-- Editor de vértices y paredes con cotas acotadas y snap inteligente.
-- Cálculo automático de polígonos de habitación, conectividad y detección de colisiones.
-- Biblioteca de modelos GLB con gestión de activos y licencias, IndexedDB para assets grandes.
-- Texturas PBR con HDRI, modo paseo, luces configurables y renderizado offline de alta calidad.
-- Exportaciones DXF/IFC/GLTF si se requiere interoperabilidad técnica.
+## Guardar y comparar
 
-## Calidad y automatización
+- Autoguardado en localStorage, copia de recuperación y guardado pendiente al salir de la pestaña. El encabezado muestra si se ha guardado o si hace falta exportar.
+- **Exportar** crea un JSON portable con los modelos. Los recursos compartidos se incluyen una sola vez; se conserva el formato anterior para modelos únicos. Máximo 64 MB por archivo.
+- **Estudio → Versiones** guarda propuestas completas en IndexedDB. Al restaurar una versión se guarda primero una copia del estado actual.
+- La comparación A/B exige geometría coincidente y mantiene cámara y luz mientras cambian los acabados. Puedes exportar ambos PNG y recuperar después las propuestas.
+- Un recurso no puede borrarse de la biblioteca mientras lo utilice un proyecto guardado o el historial.
+
+**Plano y revisión** permite indicar precios por objeto y exportar un presupuesto CSV. También prepara un plano de presentación para imprimir o guardar en PDF desde el navegador.
+
+Los datos pertenecen a este navegador. No hay cuentas ni sincronización: borrar sus datos puede eliminar proyectos y modelos. Conserva copias JSON fuera del navegador.
+
+## Imágenes y recorrido
+
+En **Imagen y cámara**, elige día, noche o estudio HDRI; exposición y calidad. Guarda el encuadre para recuperarlo con el proyecto. PNG configurable hasta 3840 px y 8 millones de píxeles.
+
+La calidad rápida simplifica materiales físicos costosos y renderiza bajo demanda. Alta conserva efectos más exigentes; su rendimiento depende de la GPU. El modo paseo utiliza WASD o flechas y limita el movimiento con paredes/puertas. Escape libera el ratón.
+
+Es render físico WebGL en tiempo real; no es trazado de rayos offline.
+
+## Validar
 
 ```bash
 npm run test
 npm run build
-npm run test:e2e  # instala primero Chromium: npx playwright install --with-deps chromium
+npm run test:e2e -- --workers=1
+npm audit --omit=dev
 ```
 
-GitHub Actions ejecuta pruebas unitarias, compilación y pruebas E2E de navegador Chromium en cada push y pull request mediante `.github/workflows/ci.yml`. El runner es `ubuntu-24.04` para ser compatible con Playwright 1.56.1. El despliegue en GitHub Pages está preparado en `.github/workflows/pages.yml`, pero se ejecuta **manualmente** para evitar errores hasta que Pages esté activado. Para publicar: entra en `Settings → Pages`, selecciona **GitHub Actions** como origen de despliegue y, después, ejecuta `Actions → Deploy to GitHub Pages → Run workflow`. No requiere tokens adicionales.
+Build comprueba TypeScript de aplicación y E2E. GitHub Actions ejecuta instalación reproducible, unitarias, build y Chromium en Ubuntu 24.04. Pages publica el SHA de main que acaba de superar CI; no publica ramas de trabajo.
 
-La instalación con `npm ci`, las 37 pruebas unitarias, la compilación de producción y el primer E2E Chromium fueron verificados en [GitHub Actions, ejecución 42467419830](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42467419830). Esta verificación cubre operaciones básicas, no todas las posibilidades ni una revisión manual de diseño.
+Criterios y límites: [PRODUCT_ACCEPTANCE.md](PRODUCT_ACCEPTANCE.md). Estado, SHA y ejecuciones exactas: [PROJECT_STATUS.md](PROJECT_STATUS.md). Auditoría inicial: [LOCAL_AUDIT.md](LOCAL_AUDIT.md).
 
-## Estructura del repositorio
+## Alcance
 
-La aplicación React/Vite vive en la **raíz del repositorio**. `standalone.html` es un prototipo legacy autónomo que funciona sin npm; no es la versión avanzada.
+Herramienta conceptual de diseño e interiorismo, no CAD/BIM ni proyecto técnico. Perímetro exterior rectangular. Sin cálculo estructural, instalaciones ni verificación normativa. Las circulaciones y superficies requieren revisión profesional antes de ejecutar una reforma.
 
-
-Tecnologías: React 19, TypeScript, Vite 7, Zustand 5, Three.js, React Three Fiber 9, Drei 10.
-
-## Licencia
-
-Código de demostración creado para la planificación personal de interiores. Los modelos externos que se importen siguen sus respectivas licencias.
-
-## Versión inmediata sin npm
-
-`standalone.html` contiene un **prototipo anterior independiente**, ejecutable con doble clic en Chrome/Edge. Su 3D es ilustrativo y no usa WebGL, GLB ni los componentes React de esta versión. Sirve para experimentar mientras se instalan las dependencias de la aplicación completa. Los archivos JSON de ambas versiones no son intercambiables.
+La biblioteca es inicial, no un catálogo exhaustivo de fabricantes. Los precios son manuales; no hay cotizaciones comerciales automáticas, PDF técnico, cuentas o colaboración en servidor. Las ampliaciones siguen registradas en [ROADMAP.md](ROADMAP.md); no se consideran cerradas por tener una compilación correcta.

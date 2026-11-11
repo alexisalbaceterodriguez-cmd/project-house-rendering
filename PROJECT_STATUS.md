@@ -1,9 +1,30 @@
 # Atelier 60 — Estado persistente
 
-Última revisión: 2026-11-08 (Europe/Madrid).
+Última revisión: 2026-11-11 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Estado operativo vigente (2026-11-08, primer E2E Chromium validado)
+## Estado operativo vigente — entrega de producto 2026-11-11
+
+- Rama `codex/product-release`, base `dc882baaf2e2e9fe7b4881f2259660f5a0a760c1`. Se conserva el trabajo de la auditoría anterior y se amplía con código, recursos autorizados y pruebas; main no se ha sobrescrito.
+- Implementados: grafo/migración v1 aditiva, arrastre cancelable con historial/redo, zoom sin scroll, grupos, rejilla configurable, imagen calibrada y anclaje; aislamiento/reparación de GLB dañados; biblioteca de tres modelos con origen/licencia y cuatro materiales texturados por superficie; módulos; versiones, cámara, HDRI/paseo y comparación A/B; presupuesto manual CSV y plano imprimible/PDF de presentación.
+- Persistencia: flush al salir solo con cambios pendientes, avisos reales de guardado, JSON portable con deduplicación de activos compartidos y rollback atómico. No se eliminan recursos usados por versiones o historial.
+- Rendimiento: 3D en chunk separado, render bajo demanda, sombras actualizadas por geometría y calidad rápida que simplifica transmisión/sheen. El recorrido de tres modelos juntos pasó de bloqueo por GPU software a unos 8 s en la prueba local aislada.
+- Verificación local actual: **60 unitarias, build (incluye tipos E2E) y 23 E2E completos correctos**. Captura al recrear canvas comprobada además en tres ejecuciones consecutivas en frío. No atribuir CI verde a esta rama hasta disponer de su run exacto.
+- Producción local revisada en `http://127.0.0.1:5173/`: catálogo real, texturas, HDRI, versiones, móvil e impresión; cero excepciones y cero errores de consola en el recorrido. Auditoría npm de producción: 0 vulnerabilidades notificadas.
+- CI base `43005276652` y Pages base `43005462273`: `completed/success`; cubren solo `dc882ba`, no esta entrega. **CI nueva pendiente de publicación de la rama/PR.**
+- Criterios y límites explícitos en `PRODUCT_ACCEPTANCE.md`; licencias y presupuesto de recursos en `ASSET_LICENSES.md`. No se afirma CAD/BIM, certificación normativa, render offline ni catálogo comercial exhaustivo. Cuentas/colaboración, cotizaciones automáticas y PDF técnico siguen siendo ampliaciones.
+- **Siguiente tarea exacta:** publicar rama/PR y comprobar Actions del SHA nuevo; registrar SHA, run y conclusión, corregir cualquier fallo real de CI antes de integrar.
+
+## Estado anterior — auditoría local 2026-11-11
+
+- **Base:** `dc882baaf2e2e9fe7b4881f2259660f5a0a760c1`, coincide con main remoto. CI [43005276652](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43005276652) y Pages [43005462273](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43005462273): `completed/success`; jobs CI comprobados.
+- **Local Windows:** instalación correcta; base pasa 37 unitarias, build y 9 E2E. Tras correcciones: **42 unitarias, build y 13 E2E correctos**. Producción comprobada en `http://127.0.0.1:5173/`, con vista mixta/3D y exportación PNG real.
+- **Corregido:** GLB ilegibles aceptados por JSON/importación directa podían dejar la interfaz en blanco; ahora se valida contenido antes de guardar. Acciones de muros recortadas: ahora admiten varias filas. Incluye regresiones de navegador y cinco unitarias de topología reciente.
+- **Producto:** F0/F1/F2 abiertas. F3A tiene biblioteca GLB local y acabados por superficie como bases; catálogo comercial, texturas PBR completas, módulos y render/versiones pendientes. Véase [LOCAL_AUDIT.md](LOCAL_AUDIT.md).
+- **Entrega:** cambios locales sin commit ni push; sin run nuevo. Los runs citados validan exclusivamente el SHA base.
+- **Siguiente tarea exacta:** aislar fallos 3D por objeto; E2E que corrompa un GLB ya guardado en IndexedDB y compruebe que recarga, plano y retirada del objeto siguen funcionando. Otros pendientes: listener de rueda no pasivo y división del bundle de 1,37 MB.
+
+## Estado operativo anterior (2026-11-08, primer E2E Chromium validado)
 
 **F0 en curso, pero lockfile, CI reproducible e infraestructura E2E ya funcionan.** La ejecución [Test and build #42467419830](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/42467419830) en `f449e59` terminó **success** con 37 pruebas unitarias, build y recorrido Playwright de Chromium. Repositorio en Node 22, `npm ci`, runner `ubuntu-24.04` (Playwright 1.56.1 no acepta ubuntu-26.04).
 

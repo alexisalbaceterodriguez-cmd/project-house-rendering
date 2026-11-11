@@ -6,6 +6,21 @@ afterEach(() => {
   vi.resetModules();
 });
 
+describe('Transacciones de arrastre y grafo persistido',()=>{
+  it('Escape recupera también el redo que existía antes del arrastre',async()=>{
+    vi.stubGlobal('localStorage',storageMock());const {useEditor}=await import('../store');
+    useEditor.getState().load(structuredClone(demoProject));useEditor.getState().change(p=>{p.name='Otra propuesta';});useEditor.getState().undo();
+    const before=useEditor.getState();useEditor.getState().checkpoint();useEditor.getState().change(p=>{p.furniture[0].x+=1;},false);useEditor.getState().cancelDrag();
+    expect(useEditor.getState().project).toEqual(before.project);expect(useEditor.getState().history).toEqual(before.history);expect(useEditor.getState().redoStack).toEqual(before.redoStack);
+  });
+  it('borrar un muro actualiza sus referencias del grafo y admite undo',async()=>{
+    vi.stubGlobal('localStorage',storageMock());const {useEditor}=await import('../store');useEditor.getState().load(structuredClone(demoProject));
+    const id='bed-top';useEditor.getState().change(p=>{p.walls=p.walls.filter(w=>w.id!==id);p.openings=p.openings.filter(o=>o.wallId!==id);});
+    expect(useEditor.getState().project.walls.some(w=>w.id===id)).toBe(false);expect(useEditor.getState().project.graph!.edges.some(e=>e.wallId===id)).toBe(false);
+    useEditor.getState().undo();expect(useEditor.getState().project.walls.some(w=>w.id===id)).toBe(true);
+  });
+});
+
 function storageMock(initial?: string) {
   const values = new Map<string, string>();
   if (initial !== undefined) values.set('atelier-60-project-v1', initial);
