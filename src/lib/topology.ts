@@ -569,6 +569,33 @@ export function projectWarnings(p:Project):string[] {
     if(o.offset*len-o.width/2<.05||o.offset*len+o.width/2>len-.05)issues.push(`Abertura «${o.id}» excede su tabique`);
     if(o.sill+o.height>p.wallHeight+.01)issues.push(`Abertura «${o.id}» supera la altura de la pared`);
   }
+  // Room diagnostics use the same polygon footprints as the 2D and 3D floors.
+  // They are advisory: an unfinished plan may intentionally have open rooms.
+  const footprint=p.width*p.depth;
+  let covered=0;
+  for(const room of p.rooms){
+    const polygon=roomVertices(room);
+    const gross=polygonArea(polygon);
+    const holes=(room.holes??[]).reduce((sum,hole)=>sum+polygonArea(hole),0);
+    if(!Number.isFinite(gross)||gross<.1||holes>gross+.01){
+      issues.push(`Estancia «${room.name}» tiene una superficie inválida`);
+      continue;
+    }
+    if(polygon.some(v=>!Number.isFinite(v.x)||!Number.isFinite(v.y)||
+      v.x<-.01||v.y<-.01||v.x>p.width+.01||v.y>p.depth+.01)){
+      issues.push(`Estancia «${room.name}» sobresale de la planta`);
+    }
+    if((room.holes??[]).some(hole=>hole.length<3||
+      hole.some(vertex=>!pointInPolygon(vertex,polygon)))){
+      issues.push(`Estancia «${room.name}» contiene un hueco fuera de su contorno`);
+    }
+    covered+=Math.max(0,gross-holes);
+  }
+  // Double-counted floors indicate overlapping/incorrect room boundaries.
+  // Leave deliberately unpartitioned space alone; a blank project is valid.
+  if(covered>footprint+.05){
+    issues.push(`Las estancias suman ${covered.toFixed(2)} m², más que la planta de ${footprint.toFixed(2)} m²; revisa solapes o huecos`);
+  }
   for(const f of p.furniture){
     const angle=f.rotation*Math.PI/180;
     const hx=(Math.abs(Math.cos(angle))*f.w+Math.abs(Math.sin(angle))*f.d)/2;
