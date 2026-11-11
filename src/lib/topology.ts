@@ -435,6 +435,34 @@ export function splitWallAtTJunctions(p:Project,id:string):number {
 }
 
 /**
+ * Split two interior partitions at a proper X crossing. Validate both cuts
+ * before mutating either wall, so an opening on one side cannot leave a
+ * half-split crossing. Each original wall keeps its first-segment ID.
+ */
+export function splitWallsAtCrossing(p:Project,firstId:string,secondId:string):boolean {
+  const first=p.walls.find(w=>w.id===firstId);
+  const second=p.walls.find(w=>w.id===secondId);
+  if(!first||!second||first===second||first.outer||second.outer)return false;
+  const r=sub(first.b,first.a),s=sub(second.b,second.a);
+  const den=cross(r,s);
+  if(Math.abs(den)<EPS)return false;
+  const delta=sub(second.a,first.a);
+  const t=cross(delta,s)/den,u=cross(delta,r)/den;
+  const canCut=(wall:Wall,fraction:number)=>{
+    const length=distance(wall.a,wall.b);
+    return fraction>0&&fraction<1&&length*fraction>=.2&&length*(1-fraction)>=.2&&
+      !p.openings.some(o=>o.wallId===wall.id&&
+        Math.abs(o.offset-fraction)*length<o.width/2+.05);
+  };
+  if(!canCut(first,t)||!canCut(second,u))return false;
+  // Both checks above are pure; the split helper only rejects these same
+  // conditions and remaps the openings on each segment.
+  splitInteriorWall(p,firstId,t);
+  splitInteriorWall(p,secondId,u);
+  return true;
+}
+
+/**
  * Merge two consecutive, collinear interior segments. The selected wall keeps
  * its ID, while openings from both walls are mapped to the new axis.
  * Junctions used by a third wall are deliberately not removed.
