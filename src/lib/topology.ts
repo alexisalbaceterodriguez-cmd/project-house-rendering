@@ -563,6 +563,38 @@ export function projectWarnings(p:Project):string[] {
     if(distance(w.a,w.b)<.2)issues.push(`Tabique «${w.id}» demasiado corto`);
     if([w.a,w.b].some(v=>v.x<-.001||v.y<-.001||v.x>p.width+.001||v.y>p.depth+.001))issues.push(`Tabique «${w.id}» fuera de la planta`);
   }
+  // Near-miss joints can leave a room visually closed while its boundary
+  // remains topologically open. Report them without moving geometry: a small
+  // intentional clearance must never be silently snapped away.
+  // Only inspect interior endpoints and distinct wall axes; exact joints are
+  // already connected. Deduplicate warnings at the same endpoint.
+  const nearJointKeys=new Set<string>();
+  const interior=p.walls.filter(w=>!w.outer);
+  for(const source of interior){
+    for(const [index,endpoint] of [source.a,source.b].entries()){
+      let nearest:{wallId:string;gap:number}|undefined;
+      for(const target of p.walls){
+        if(target.id===source.id)continue;
+        const projection=wallProjection(target,endpoint);
+        const gap=distance(projection.point,endpoint);
+        // Require an interior projection, or a nearby endpoint of the other
+        // wall. Ignore exact contacts and gaps larger than the snap radius.
+        const endpointGap=Math.min(distance(endpoint,target.a),distance(endpoint,target.b));
+        const candidateGap=projection.offset>.001&&projection.offset<.999
+          ? Math.min(gap,endpointGap):endpointGap;
+        if(candidateGap>.002&&candidateGap<=.12&&
+          (!nearest||candidateGap<nearest.gap))
+          nearest={wallId:target.id,gap:candidateGap};
+      }
+      if(nearest){
+        const key=`${source.id}:${index}`;
+        if(!nearJointKeys.has(key)){
+          nearJointKeys.add(key);
+          issues.push(`Posible unión abierta en «${source.id}» (extremo ${index+1}): separación de ${(nearest.gap*100).toFixed(1)} cm respecto a «${nearest.wallId}». Revisa antes de ajustar.`);
+        }
+      }
+    }
+  }
   for(const o of p.openings){
     const wall=p.walls.find(w=>w.id===o.wallId);if(!wall){issues.push('Abertura sin tabique');continue;}
     const len=distance(wall.a,wall.b);
