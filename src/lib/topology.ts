@@ -489,6 +489,29 @@ export function splitAllWallCrossings(p:Project):number {
 }
 
 /**
+ * Normalize all safe T junctions and X crossings in one editor transaction.
+ * A fresh scan is necessary after X splits because they introduce new wall IDs.
+ * Unsafe cuts remain unchanged; repeated passes stop once geometry stabilizes.
+ */
+export function normalizeInteriorIntersections(p:Project):{tJunctions:number;xCrossings:number} {
+  let tJunctions=0,xCrossings=0;
+  // Each accepted cut adds a segment. Cap passes for malformed/imported plans.
+  const limit=Math.min(500,Math.max(20,p.walls.length*p.walls.length));
+  for(let pass=0;pass<limit;pass++){
+    let changed=false;
+    // Snapshot IDs: splitting adds new walls and must not invalidate iteration.
+    for(const id of p.walls.filter(w=>!w.outer).map(w=>w.id)){
+      const cuts=splitWallAtTJunctions(p,id);
+      if(cuts){tJunctions+=cuts;changed=true;}
+    }
+    const crosses=splitAllWallCrossings(p);
+    if(crosses){xCrossings+=crosses;changed=true;}
+    if(!changed)break;
+  }
+  return {tJunctions,xCrossings};
+}
+
+/**
  * Merge two consecutive, collinear interior segments. The selected wall keeps
  * its ID, while openings from both walls are mapped to the new axis.
  * Junctions used by a third wall are deliberately not removed.
