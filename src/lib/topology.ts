@@ -462,6 +462,32 @@ export function splitWallsAtCrossing(p:Project,firstId:string,secondId:string):b
   return true;
 }
 
+
+/**
+ * Normalize every safe interior X crossing in one undoable editor operation.
+ * Re-scan after each split because new wall IDs and offsets are created.
+ * Blocked crossings (openings or short segments) are left untouched.
+ */
+export function splitAllWallCrossings(p:Project):number {
+  let count=0;
+  // Each successful operation adds two walls, so a bounded scan prevents
+  // pathological input from monopolizing the UI thread.
+  const limit=Math.min(500,Math.max(20,p.walls.length*p.walls.length));
+  for(let step=0;step<limit;step++){
+    let changed=false;
+    const interior=p.walls.filter(w=>!w.outer);
+    for(let i=0;i<interior.length&&!changed;i++){
+      for(let j=i+1;j<interior.length;j++){
+        if(splitWallsAtCrossing(p,interior[i].id,interior[j].id)){
+          count++;changed=true;break;
+        }
+      }
+    }
+    if(!changed)break;
+  }
+  return count;
+}
+
 /**
  * Merge two consecutive, collinear interior segments. The selected wall keeps
  * its ID, while openings from both walls are mapped to the new axis.
