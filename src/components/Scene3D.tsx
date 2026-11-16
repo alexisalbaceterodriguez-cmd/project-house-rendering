@@ -13,6 +13,7 @@ import ErrorBoundary from './ErrorBoundary';
 import PbrSurface, { usePbrMaps } from './PbrSurface';
 import { registerCapture } from '../lib/sceneCapture';
 import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '../lib/studioRender';
+import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 const SurfaceContext=createContext<string|undefined>(undefined);
 
 function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string}) {
@@ -262,7 +263,8 @@ function CaptureRig({exposure,high}:{exposure:number;high:boolean}){
   useEffect(()=>{gl.toneMappingExposure=exposure;gl.transmissionResolutionScale=high?1:.25;invalidate();},[gl,exposure,high,invalidate]);
   useEffect(()=>{
     const unregister=registerCapture(gl.domElement,async(width,height)=>{
-      if(active)throw new Error('Espera a que terminen de cargar los modelos y texturas antes de exportar.');
+      const references=(useEditor.getState().project.materials??[]).flatMap(material=>Object.values(material.maps??{}));
+      if(active||textureMapsPending(references))throw new Error('Espera a que terminen de cargar los modelos y texturas antes de exportar.');
       const size=gl.getSize(new THREE.Vector2()),ratio=gl.getPixelRatio();
       const perspective=camera as THREE.PerspectiveCamera,aspect=perspective.aspect;
       const overlays:THREE.Object3D[]=[];scene.traverse(object=>{if(object.userData.editorOverlay&&object.visible){overlays.push(object);object.visible=false;}});
@@ -323,6 +325,7 @@ function WalkRig({project}:{project:Project}){
   });return <PointerLockControls makeDefault selector=".scene-wrap canvas"/>;
 }
 export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefObject<HTMLCanvasElement|null>;topView?:boolean}){
+  useTextureLibraryRevision();
   const {project,selection,setSelection,wallsVisible,cutaway,cameraLocked}=useEditor();
   const {active}=useProgress();
   const render=project.render??{lighting:'day',exposure:1,quality:'draft'};const high=render.quality==='high';
@@ -330,7 +333,7 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
   const center=subject?objectCamera(subject).target:[project.width/2,0,project.depth/2];
   const span=subject?Math.max(subject.w,subject.d,subject.h,2):Math.max(project.width,project.depth);
   const ground=subject?(subject.modelElevation??0)-.012:-.009;
-  return <div className="scene-wrap" aria-busy={active}>
+  return <div className="scene-wrap" aria-busy={active||textureMapsPending((project.materials??[]).flatMap(material=>Object.values(material.maps??{})))}>
     <div className="scene-topline"><span><span className="live-dot"/> VISTA 3D EN TIEMPO REAL</span><span>Arrastra para orbitar · Rueda para zoom · Mayús+clic: material GLB</span></div>
     <Canvas frameloop="demand" shadows dpr={high?[1,2]:[1,1.3]} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
       <color attach="background" args={[studio?(render.studio??defaultStudio).background:'#f4f3ef']}/>

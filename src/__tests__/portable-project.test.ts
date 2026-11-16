@@ -20,4 +20,11 @@ describe('JSON portable sin duplicar bytes de modelos compartidos',()=>{
     const portable=await portableProject(p,assets),target=storage();let count=0;const put=target.put;target.put=async(id,blob)=>{if(++count===2)throw new Error('quota');await put(id,blob);};
     await expect(hydratePortableProject(portable,target)).rejects.toThrow('quota');expect(target.blobs.size).toBe(0);
   });
+  it('retira los GLB recién importados si falla después el guardado atómico de materiales',async()=>{
+    const project=blankProject(),target=storage();
+    project.furniture.push({id:'model',kind:'model',name:'Modelo',x:2,y:2,w:1,d:1,h:1,rotation:0,color:'#ffffff',modelData:await target.encode(model())});
+    project.materials=[{id:'custom:paint',name:'Pintura propia',category:'Pintura',color:'#ffffff',scale:1,roughness:.8,metalness:0,normalStrength:1,source:'Propio',license:'Propia'}];
+    await expect(hydratePortableProject(project,target,{get:async()=>null,commit:async()=>{throw new Error('material quota');}})).rejects.toThrow('material quota');
+    expect(target.blobs.size).toBe(0);expect(project.furniture[0].modelData).toMatch(/^data:/);
+  });
 });
