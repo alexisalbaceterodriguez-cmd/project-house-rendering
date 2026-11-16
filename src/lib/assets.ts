@@ -1,56 +1,37 @@
 /** Browser-local model blobs, deliberately separate from project JSON/history. */
+import { openBrowserDatabase } from './browserDatabase';
 const DATABASE='atelier60-assets-v1';
 const STORE='models';
 const META_STORE='model-metadata';
 export type ModelMetadata={name:string;source?:string;license?:string;w?:number;d?:number;h?:number;thumbnail?:string};
-function db():Promise<IDBDatabase>{
-  return new Promise((resolve,reject)=>{
-    if(typeof indexedDB==='undefined'){reject(new Error('Este navegador no permite guardar modelos 3D.'));return;}
-    const request=indexedDB.open(DATABASE,2);
-    request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STORE))request.result.createObjectStore(STORE);if(!request.result.objectStoreNames.contains(META_STORE))request.result.createObjectStore(META_STORE);};
-    request.onsuccess=()=>resolve(request.result);
-    request.onerror=()=>reject(request.error??new Error('No se puede abrir IndexedDB.'));
-  });
-}
-async function useStore<T>(mode:IDBTransactionMode,work:(store:IDBObjectStore,finish:(v:T)=>void,fail:(e:unknown)=>void)=>void):Promise<T>{
+const db=()=>openBrowserDatabase({name:DATABASE,version:2,upgrade:database=>{
+  if(!database.objectStoreNames.contains(STORE))database.createObjectStore(STORE);
+  if(!database.objectStoreNames.contains(META_STORE))database.createObjectStore(META_STORE);
+}});
+async function useStore<T>(mode:IDBTransactionMode,work:(store:IDBObjectStore,finish:(v:T)=>void,fail:(e:unknown)=>void)=>void,storeName=STORE):Promise<T>{
   const database=await db();
   return new Promise<T>((resolve,reject)=>{
-    const tx=database.transaction(STORE,mode);
+    let tx:IDBTransaction;
+    try{tx=database.transaction(storeName,mode);}catch(error){database.close();reject(error);return;}
     let answer=undefined as T;let settled=false;
     const fail=(e:unknown)=>{if(!settled){settled=true;const error=e instanceof Error?e:new Error('Error al guardar el modelo.');reject(error.name==='QuotaExceededError'?new Error('Almacenamiento de modelos 3D lleno. Libera espacio del navegador o exporta una copia del proyecto.'):error);}};
-    try{work(tx.objectStore(STORE),v=>{answer=v;},fail);}catch(e){fail(e);}
     tx.oncomplete=()=>{if(!settled){settled=true;resolve(answer); }database.close();};
     tx.onerror=()=>{fail(tx.error);database.close();};
     tx.onabort=()=>{fail(tx.error);database.close();};
+    try{work(tx.objectStore(storeName),v=>{answer=v;},fail);}catch(e){fail(e);tx.abort();}
   });
 }
 /** Metadata survives removal of an instance and is independent of project JSON. */
 export async function putModelMetadata(id:string,metadata:ModelMetadata):Promise<void>{
-  const database=await db();
-  return new Promise((resolve,reject)=>{
-    const tx=database.transaction(META_STORE,'readwrite');
-    tx.objectStore(META_STORE).put(metadata,id);
-    tx.oncomplete=()=>{database.close();resolve();};
-    tx.onerror=()=>{database.close();reject(tx.error);};
-    tx.onabort=()=>{database.close();reject(tx.error);};
-  });
+  return useStore<void>('readwrite',store=>{store.put(metadata,id);},META_STORE);
 }
 export async function getModelMetadata(id:string):Promise<ModelMetadata|null>{
-  const database=await db();
-  return new Promise((resolve,reject)=>{
-    const tx=database.transaction(META_STORE,'readonly');
-    const request=tx.objectStore(META_STORE).get(id);
-    let result:ModelMetadata|null=null;
-    request.onsuccess=()=>{result=request.result??null;};
-    tx.oncomplete=()=>{database.close();resolve(result);};
-    tx.onerror=()=>{database.close();reject(tx.error);};
-  });
+  return useStore<ModelMetadata|null>('readonly',(store,finish)=>{
+    const request=store.get(id);request.onsuccess=()=>finish(request.result??null);
+  },META_STORE);
 }
 export async function deleteModelMetadata(id:string):Promise<void>{
-  const database=await db();return new Promise((resolve,reject)=>{
-    const tx=database.transaction(META_STORE,'readwrite');tx.objectStore(META_STORE).delete(id);
-    tx.oncomplete=()=>{database.close();resolve();};tx.onerror=tx.onabort=()=>{database.close();reject(tx.error);};
-  });
+  return useStore<void>('readwrite',store=>{store.delete(id);},META_STORE);
 }
 export async function putModelAsset(id:string,blob:Blob):Promise<void>{
   if(!id||blob.size>12*1024*1024)throw Error('El modelo excede los 12 MB permitidos.');

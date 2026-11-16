@@ -1,6 +1,6 @@
 # Roadmap de Project House Rendering
 
-> Última actualización: 11 de noviembre de 2026. Estado de implementación de `codex/product-release` (PR #7, todavía sin integrar en main). El editor es **conceptual**. No sustituye una medición, proyecto de obra ni verificación normativa.
+> Última actualización: 16 de noviembre de 2026. PR #7 integrada en main (`6fd3372`); incremento F0 de conexiones y bloqueos IndexedDB en `codex/indexeddb-lifecycle`. El editor es **conceptual**. No sustituye una medición, proyecto de obra ni verificación normativa.
 
 > **Incremento local 11/11/2026:** rama `codex/product-release` incorpora protección de activos dañados, migración/grafo persistido, cancelación/selección múltiple, rejilla y referencia calibrada, biblioteca de tres modelos autorizados con miniaturas, cuatro materiales texturados, módulos de cocina/baño, HDRI/paseo/cámaras, versiones y comparación A/B. Criterios observables en [PRODUCT_ACCEPTANCE.md](PRODUCT_ACCEPTANCE.md); resultados y CI en [PROJECT_STATUS.md](PROJECT_STATUS.md). Las secciones de planificación posteriores reflejan el alcance completo y no deben interpretarse como ausencia de estas bases. Cotizaciones comerciales automáticas, PDF técnico, colaboración y catálogo comercial extenso siguen pendientes; no se cierran automáticamente todas las fases.
 
@@ -8,7 +8,7 @@
 
 | Fase | Objetivo | Estado | Criterio de salida |
 | --- | --- | --- | --- |
-| 0. Estabilidad | Validación, GLB en IndexedDB, exportación portable, lockfile, CI y Playwright | **En curso; recuperación y errores cubiertos** | Ampliar coordinación entre pestañas, bloqueos de IndexedDB y pruebas de migraciones históricas |
+| 0. Estabilidad | Validación, GLB en IndexedDB, exportación portable, lockfile, CI y Playwright | **En curso; recuperación, errores y bloqueos cubiertos** | Exclusión mutua entre pestañas y pruebas de migraciones históricas |
 | 1. Geometría | Grafo persistido, T/X, división/fusión, recintos y envolvente | **Base implementada** | Restricciones robustas, pasos libres y más casos geométricos degenerados; áreas aún aproximadas |
 | 2. Editor | Arrastre cancelable, zoom en cursor/pan, grupos, rejilla y referencia calibrada | **Base implementada** | Cotas encadenadas y cobertura táctil real; validación de conflictos antes de confirmar |
 | 3A. Biblioteca universal | Modelos autorizados, variantes por superficie y cuatro PBR (issue #6) | **Catálogo inicial implementado** | Ampliar familias/proveedores y optimización de recursos grandes; verificar aceptación en web publicada |
@@ -30,7 +30,8 @@
 - [x] Integrar Playwright Chromium en CI: creación, arrastre, guardado, importación JSON y persistencia.
 - [x] E2E de activos ausentes/corruptos, cuotas, rollback de importación y modelos reales.
 - [x] Proteger activos usados por respaldos locales e historial; retirar archivo y metadatos de forma atómica, con E2E de recuperación/aborto.
-- [ ] Ampliar migraciones históricas y coordinación entre pestañas/bloqueos de IndexedDB.
+- [x] Cerrar conexiones IndexedDB en `versionchange`, avisar de bloqueos y limitar aperturas en cola; abortar migraciones abandonadas y comprobar reintentos con dos pestañas.
+- [ ] Ampliar migraciones históricas y exclusión mutua de guardado/limpieza entre pestañas.
 - [ ] Más validaciones de colisiones entre muebles, pasos libres y aperturas.
 - [x] Retirada manual de huérfanos y recuperación/reparación de modelos ausentes.
 - [ ] Mostrar cuota disponible y coordinar cambios de biblioteca entre pestañas.

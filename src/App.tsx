@@ -147,10 +147,10 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
     try{
       await putModelMetadata(editingModel,{name:modelDraft.name.trim(),source:modelDraft.source.trim()||undefined,license:modelDraft.license.trim()||undefined,thumbnail:modelThumbnail,...Object.fromEntries((['w','d','h'] as const).filter(k=>modelDraft[k]!=='').map(k=>[k,Number(modelDraft[k])]))});
       await refreshModels();setEditingModel(null);
-    }catch{setLibraryError('No se han podido guardar los datos del modelo.');}
+    }catch(error){setLibraryError(error instanceof Error?error.message:'No se han podido guardar los datos del modelo.');}
     finally{setSavingModel(false);}
   };
-  const refreshModels=async()=>{try{setLocalModels(await listModelAssets());setLibraryError('');}catch{setLibraryError('No se ha podido abrir la biblioteca local.');}};
+  const refreshModels=async()=>{try{setLocalModels(await listModelAssets());setLibraryError('');}catch(error){setLibraryError(error instanceof Error?error.message:'No se ha podido abrir la biblioteca local.');}};
   useEffect(()=>{void refreshModels();},[]);
   const { project,change,setSelection,setTool,setMode }=useEditor();
   const groups=['Todos',...new Set(catalog.map(item=>item.category))];
@@ -173,7 +173,7 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
       const id=makeId();
       change(p=>p.furniture.push({id,kind:'model',name:modelMetadata?.name??existing?.name??'Modelo GLB guardado',x:p.width/2,y:p.depth/2,w:modelMetadata?.w??existing?.w??1,d:modelMetadata?.d??existing?.d??1,h:modelMetadata?.h??existing?.h??1,rotation:0,color:existing?.color??'#e2e2df',assetId}));
       setSelection({type:'furniture',id});setTool('select');setMode('split');
-    }catch{setLibraryError('No se ha podido recuperar el modelo.');}
+    }catch(error){setLibraryError(error instanceof Error?error.message:'No se ha podido recuperar el modelo.');}
   };
   const applyStyle=(name:string,palette:Palette)=>change(p=>{p.palette={...palette};p.furniture=p.furniture.map(f=>({...f,color:f.kind==='sofa'?palette.textile:f.kind==='chair'||f.kind==='table'?palette.wood:f.color}));});
   return <aside className="sidebar">
