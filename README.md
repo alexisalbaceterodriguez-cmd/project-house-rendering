@@ -63,7 +63,11 @@ Los datos pertenecen a este navegador. No hay cuentas ni sincronización: borrar
 
 ## Imágenes y recorrido
 
-En **Imagen y cámara**, elige día, noche o estudio HDRI; exposición y calidad. Guarda el encuadre para recuperarlo con el proyecto. PNG configurable hasta 3840 px y 8 millones de píxeles.
+En **Imagen y cámara**, elige día, noche o estudio HDRI; exposición y calidad. **Preparar estudio del objeto seleccionado** aísla la pieza sobre una base continua sin modificar el plano. También puedes mostrar la escena completa. Regula luz principal, relleno, contraluz, dirección, tono y fondo; todo viaja en JSON y versiones. A/B conserva el mismo estudio y encuadre.
+
+El taller de materiales añade respuestas físicas de vidrio (transmisión), barniz (capa brillante) y tejido (brillo de fibras), aplicables por superficie o submalla. Elige calidad **Alta** para conservar estos efectos.
+
+Guarda el encuadre para recuperarlo con el proyecto. PNG configurable hasta **3840 × 2160 (4K UHD)**, dentro del límite de 8,3 millones de píxeles y de la GPU. La captura conserva la calidad elegida, compila los materiales antes de renderizar y oculta las ayudas de selección. Si falla, restaura el tamaño del visor y permite reintentar a menor resolución.
 
 La calidad rápida simplifica materiales físicos costosos y renderiza bajo demanda. Alta conserva efectos más exigentes; su rendimiento depende de la GPU. El modo paseo utiliza WASD o flechas y limita el movimiento con paredes/puertas. Escape libera el ratón.
 

@@ -21,7 +21,7 @@
 ## Prioridades siguientes
 
 1. Completar y revisar el taller de recursos: solicitudes concretas de nuevos diseños, importación de materiales de alta resolución y guardado de texturas fuera de localStorage.
-2. Mejorar render de producto: iluminación de estudio, contactos/sombras, materiales físicos avanzados, salida de alta resolución y revisión visual de escenas de referencia.
+2. Render de producto: `codex/studio-render` incorpora luces de estudio regulables, aislamiento de objeto, vidrio/barniz/tejido y PNG UHD. Referencias iniciales revisadas; quedan sombras más suaves, materiales calibrados y mayor cobertura de GPU para acreditar calidad final.
 3. Completar el flujo de edición, biblioteca, versiones y exportación y resolver fallos reales que afecten a esa entrega. Evitar convertir cada pendiente de infraestructura en una barrera para el avance visual.
 
 ### P0. Proteger datos y garantizar edición

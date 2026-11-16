@@ -18,6 +18,7 @@ import BudgetTools from './BudgetTools';
 import MaterialWorkshop from './MaterialWorkshop';
 import ObjectWorkshop from './ObjectWorkshop';
 import { assignMaterial, type MaterialTarget } from '../lib/projectMaterials';
+import { defaultStudio, objectCamera, studioSubject } from '../lib/studioRender';
 
 type Tab='models'|'materials'|'modules'|'versions'|'render'|'tools';
 const tabs:[Tab,string][]=[['models','Modelos'],['materials','Acabados'],['modules','Cocina y baño'],['versions','Versiones'],['render','Imagen y cámara'],['tools','Plano y revisión']];
@@ -42,6 +43,8 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
   const item=selection?.type==='furniture'?project.furniture.find(f=>f.id===selection.id):undefined;
   const render=project.render??defaultRender;
   const updateRender=(patch:Partial<RenderSettings>)=>change(p=>{p.render={...(p.render??defaultRender),...patch};});
+  const studio=render.studio??defaultStudio;
+  const updateStudio=(patch:Partial<typeof studio>)=>updateRender({studio:{...studio,...patch}});
   const insertProduct=(product:LibraryProduct)=>run(async()=>{
     const assetId=`catalog-v1:${product.id}`;
     let blob=await getModelAsset(assetId);
@@ -124,17 +127,30 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
     {tab==='render'&&<>
       <h3>Imagen y cámara</h3><p>Visualización física en tiempo real con texturas, sombras y ambiente HDRI. La calidad depende de la GPU y del modelo.</p>
       <label>Iluminación<select aria-label="Iluminación" value={render.lighting} onChange={e=>updateRender({lighting:e.target.value as RenderSettings['lighting']})}><option value="day">Día</option><option value="night">Noche cálida</option><option value="studio">Estudio HDRI</option></select></label>
+      {render.lighting==='studio'&&<section className="resource-workshop" aria-label="Iluminación de estudio">
+        <h4>Estudio de producto y escena</h4>
+        <label>Contenido<select aria-label="Contenido del estudio" value={studio.subjectId??''} onChange={e=>{
+          const subject=project.furniture.find(f=>f.id===e.target.value);
+          updateRender({studio:{...studio,subjectId:subject?.id},camera:subject?objectCamera(subject):undefined,walk:false});setMode('3d');
+        }}><option value="">Escena completa</option>{project.furniture.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
+        {studio.subjectId&&!studioSubject(project)&&<p role="status">El objeto de estudio ya no existe. Se muestra la escena completa; elige otro objeto.</p>}
+        {(['key','fill','rim'] as const).map((key,index)=><label key={key}>{['Luz principal','Luz de relleno','Contraluz'][index]} · {studio[key].toFixed(1)}<input aria-label={['Luz principal','Luz de relleno','Contraluz'][index]} type="range" min={0} max={8} step={.1} value={studio[key]} onChange={e=>updateStudio({[key]:Number(e.target.value)})}/></label>)}
+        <label>Dirección de luz · {studio.azimuth}°<input aria-label="Dirección de luz" type="range" min={-180} max={180} step={5} value={studio.azimuth} onChange={e=>updateStudio({azimuth:Number(e.target.value)})}/></label>
+        <label>Tono de luz<select aria-label="Tono de luz" value={studio.warmth} onChange={e=>updateStudio({warmth:e.target.value as typeof studio.warmth})}><option value="neutral">Neutro</option><option value="warm">Cálido</option><option value="cool">Frío</option></select></label>
+        <label>Fondo y base<input aria-label="Fondo de estudio" type="color" value={studio.background} onChange={e=>updateStudio({background:e.target.value})}/></label>
+        <p className="small-help">Aislar un objeto conserva el plano. Luces, fondo y objeto se guardan con el proyecto y sus versiones. A/B mantiene este mismo estudio.</p>
+      </section>}
       <label>Exposición<input type="range" aria-label="Exposición" min="0.2" max="3" step="0.1" value={render.exposure} onChange={e=>updateRender({exposure:Number(e.target.value)})}/></label>
       <label>Calidad<select aria-label="Calidad 3D" value={render.quality} onChange={e=>updateRender({quality:e.target.value as RenderSettings['quality']})}><option value="draft">Rápida</option><option value="high">Alta</option></select></label>
       <button onClick={()=>{setMode('3d');setMessage('Vista 3D abierta. Cierra este panel para ajustar la cámara.');}}>Abrir vista 3D</button>
       {item&&<button onClick={()=>{
-        const distance=Math.max(2.2,Math.max(item.w,item.d,item.h)*2),target:[number,number,number]=[item.x,item.h*.45+(item.modelElevation??0),item.y];
-        updateRender({camera:{position:[target[0]+distance*.65,target[1]+distance*.45,target[2]+distance*.75],target},walk:false});
+        updateRender({camera:objectCamera(item),walk:false});
         setMode('3d');setMessage('Objeto encuadrado. Cierra Estudio para verlo o exportar una imagen.');
       }}>Encuadrar objeto seleccionado</button>}
+      {item&&<button onClick={()=>{updateRender({lighting:'studio',quality:'high',studio:{...studio,subjectId:item.id},camera:objectCamera(item),walk:false});setMode('3d');setMessage('Estudio preparado con el objeto seleccionado. Ajusta las luces o cierra el panel para orbitar.');}}>Preparar estudio del objeto seleccionado</button>}
       <button disabled={!liveCamera} onClick={()=>{if(liveCamera){updateRender({camera:structuredClone(liveCamera),walk:false});setMessage('Encuadre guardado en el proyecto y sus versiones.');}}}>Guardar encuadre actual</button><button disabled={!render.camera} onClick={()=>{updateRender({camera:undefined,walk:false});setMessage('Cámara automática restaurada.');}}>Restablecer cámara</button>
-      <button onClick={()=>{updateRender({walk:!render.walk});setMode('3d');setMessage(!render.walk?'Cierra el panel y haz clic en 3D. WASD o flechas para caminar; Escape libera el ratón.':'Cámara orbital activada.');}}>{render.walk?'Salir del paseo':'Recorrer en primera persona'}</button>
-      <label>Resolución PNG<select aria-label="Resolución de imagen" value={resolution} onChange={e=>setResolution(e.target.value)}><option value="1280x720">1280 × 720</option><option value="1920x1080">1920 × 1080</option><option value="2560x1440">2560 × 1440</option><option value="3840x2000">3840 × 2000</option></select></label><button className="primary-btn" disabled={busy} onClick={()=>void exportRender()}>Exportar imagen PNG</button>
+      <button disabled={!!studioSubject(project)} onClick={()=>{updateRender({walk:!render.walk});setMode('3d');setMessage(!render.walk?'Cierra el panel y haz clic en 3D. WASD o flechas para caminar; Escape libera el ratón.':'Cámara orbital activada.');}}>{render.walk?'Salir del paseo':'Recorrer en primera persona'}</button>
+      <label>Resolución PNG<select aria-label="Resolución de imagen" value={resolution} onChange={e=>setResolution(e.target.value)}><option value="1280x720">1280 × 720</option><option value="1920x1080">1920 × 1080</option><option value="2560x1440">2560 × 1440</option><option value="3840x2160">3840 × 2160 · 4K UHD</option></select></label><p className="small-help">La imagen usa la calidad elegida y el encuadre actual, sin ayudas de selección. Elige Alta para vidrio, barniz y tejido; si la GPU no admite la resolución, reduce el tamaño.</p><button className="primary-btn" disabled={busy} onClick={()=>void exportRender()}>Exportar imagen PNG</button>
     </>}
     {tab==='tools'&&<>
       <h3>Precisión y revisión del plano</h3><p>Mayús + clic selecciona varios muebles; arrastra el grupo. Escape revierte el arrastre completo. Rueda amplía el plano; botón central o Espacio desplaza.</p>

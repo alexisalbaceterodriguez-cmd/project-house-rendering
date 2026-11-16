@@ -12,7 +12,8 @@ export function validCustomMaterials(value:unknown): value is CustomMaterial[] {
     if (!material || typeof material !== 'object' || !/^custom:[a-zA-Z0-9-]{1,100}$/.test(material.id)
       || ids.has(material.id) || !['name','category','source','license'].every(key => typeof material[key] === 'string' && material[key].length <= 2000)
       || !material.name.trim() || material.name.length > 180 || !/^#[a-fA-F0-9]{6}$/.test(material.color)
-      || !finite(material.scale,.02,20) || !finite(material.roughness,0,1) || !finite(material.metalness,0,1) || !finite(material.normalStrength,0,3)) return false;
+      || !finite(material.scale,.02,20) || !finite(material.roughness,0,1) || !finite(material.metalness,0,1) || !finite(material.normalStrength,0,3)
+      || (material.finish!==undefined&&!['standard','glass','varnish','fabric'].includes(material.finish))) return false;
     ids.add(material.id);
     if (material.maps !== undefined) {
       if (!material.maps || typeof material.maps !== 'object' || Array.isArray(material.maps)) return false;
