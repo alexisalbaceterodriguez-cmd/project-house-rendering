@@ -22,6 +22,7 @@ export function isProject(a:unknown):a is Project{
     const r=a.render;
     if(!object(r)||!['day','night','studio'].includes(r.lighting as string)||!num(r.exposure,.2,3)||!['draft','high'].includes(r.quality as string)||(r.walk!==undefined&&typeof r.walk!=='boolean'))return false;
     if(r.camera!==undefined&&(!object(r.camera)||!vector(r.camera.position)||!vector(r.camera.target)))return false;
+    if(r.studio!==undefined){const s=r.studio;if(!object(s)||!num(s.key,0,8)||!num(s.fill,0,8)||!num(s.rim,0,8)||!num(s.azimuth,-180,180)||!['neutral','warm','cool'].includes(s.warmth as string)||!color(s.background)||(s.subjectId!==undefined&&!str(s.subjectId)))return false;}
   }
   if(a.referenceImage!==undefined){const r=a.referenceImage;if(!object(r)||typeof r.data!=='string'||r.data.length>8*1024*1024||!/^data:image\/(png|jpeg|webp);base64,/.test(r.data)||!num(r.width,.1,200)||!num(r.height,.1,200)||!num(r.opacity,0,1))return false;}
   if(!object(a)||a.version!==1||!str(a.id)||!(typeof a.name==='string'&&a.name.length<=180)||!num(a.width,2,100)||!num(a.depth,2,100)||!num(a.wallHeight,1.8,6))return false;

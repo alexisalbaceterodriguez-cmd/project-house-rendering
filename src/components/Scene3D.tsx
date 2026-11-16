@@ -1,6 +1,6 @@
 import { createContext, Suspense, useContext, useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, useGLTF } from '@react-three/drei';
+import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, useGLTF, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { floors } from '../data/catalog';
@@ -12,10 +12,12 @@ import type { Furniture, Opening, Project, Wall } from '../types';
 import ErrorBoundary from './ErrorBoundary';
 import PbrSurface, { usePbrMaps } from './PbrSurface';
 import { registerCapture } from '../lib/sceneCapture';
+import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '../lib/studioRender';
 const SurfaceContext=createContext<string|undefined>(undefined);
 
 function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
+  const high=useEditor(state=>state.project.render?.quality==='high');
   const geometry=useMemo(()=>{
     const g=new THREE.BoxGeometry(...size);const uv=g.attributes.uv,normal=g.attributes.normal,pos=g.attributes.position;
     for(let i=0;i<uv.count;i++){
@@ -26,7 +28,7 @@ function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId}:{
   },[...size]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh castShadow={material!=='glass'} receiveShadow position={position}>
-    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:<meshStandardMaterial color={color} roughness={material==='metal'?.28:material==='glass'?.08:.8} metalness={material==='metal'?.7:0} transparent={opacity<1||material==='glass'} opacity={material==='glass'?.38:opacity} depthWrite={material!=='glass'} />}
+    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:<meshStandardMaterial color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} transparent={opacity<1} opacity={opacity}/>}
   </mesh>;
 }
 function FloorSurface({room}:{room:Project['rooms'][number]}){
@@ -59,7 +61,7 @@ function WallModel({wall,project,cutaway,selected}:{wall:Wall;project:Project;cu
   const openings=project.openings.filter(o=>o.wallId===wall.id);
   const parts=wallParts(wall,openings,height);
   return <group position={[wall.a.x,0,wall.a.y]} rotation={[0,-angle,0]}>
-    {parts.map((p,i)=><Box key={i} position={[(p.from+p.to)/2,(p.bottom+p.top)/2,0]} size={[p.to-p.from,p.top-p.bottom,wall.thickness]} finishId={wall.materialId} color={selected?'#b7cbbe':project.palette.walls}/>)}
+    {parts.map((p,i)=><group key={i}><Box position={[(p.from+p.to)/2,(p.bottom+p.top)/2,0]} size={[p.to-p.from,p.top-p.bottom,wall.thickness]} finishId={wall.materialId} color={project.palette.walls}/>{selected&&<mesh userData={{editorOverlay:true}} position={[(p.from+p.to)/2,(p.bottom+p.top)/2,0]}><boxGeometry args={[p.to-p.from+.005,p.top-p.bottom+.005,wall.thickness+.005]}/><meshBasicMaterial color="#2b9071" wireframe/></mesh>}</group>)}
     {!cutaway&&openings.map(o=><OpeningModel key={o.id} opening={o} length={len} thickness={wall.thickness}/>)}
   </group>;
 }
@@ -127,15 +129,19 @@ function ImportedModel({url,item,selected}:{url:string;item:Furniture;selected:b
             const highlighted=selected && item.modelFinish?.materialName===`@mesh:${currentMesh}:slot:${slot}`;
             const simplified=!high&&original instanceof THREE.MeshPhysicalMaterial;
             if(!finish && !highlighted&&!simplified)return original;
-            const material=simplified?new THREE.MeshStandardMaterial().copy(original):original.clone();
+            const maps=finish?.materialId?pbrMaps.get(finish.materialId):undefined;
+            const material=maps&&original instanceof THREE.MeshStandardMaterial?new THREE.MeshPhysicalMaterial():simplified?new THREE.MeshStandardMaterial().copy(original):original.clone();
+            if(maps&&original instanceof THREE.MeshStandardMaterial){
+              if(original instanceof THREE.MeshPhysicalMaterial)(material as THREE.MeshPhysicalMaterial).copy(original);
+              else THREE.MeshStandardMaterial.prototype.copy.call(material,original);
+            }
             material.userData={...material.userData,atelierOwned:true};
             if(material instanceof THREE.MeshStandardMaterial){
               if(finish){material.color.set(finish.color);material.roughness=finish.roughness;material.metalness=finish.metalness;
-                const maps=finish.materialId?pbrMaps.get(finish.materialId):undefined;
                 if(maps){Object.assign(material,maps);}
               }
               // Visual feedback is transient: never serialize it or mutate cached GLTF materials.
-              if(highlighted){material.emissive.set('#2b9071');material.emissiveIntensity=0.22;}
+              if(highlighted){material.userData.editorEmissive={color:material.emissive.clone(),intensity:material.emissiveIntensity};material.emissive.set('#2b9071');material.emissiveIntensity=0.22;}
             }
             return material;
           };
@@ -233,7 +239,7 @@ function CameraRig({project,top}:{project:Project;top:boolean}){
   const {camera,controls}=useThree();
   const saved=project.render?.camera;
   useEffect(()=>{
-    if(project.render?.walk){const p=project.rooms[0]?roomLabelPoint(project.rooms[0]):{x:project.width/2,y:project.depth/2};camera.position.set(p.x,1.6,p.y);camera.lookAt(p.x,1.6,p.y-1);}
+    if(project.render?.walk&&!studioSubject(project)){const p=project.rooms[0]?roomLabelPoint(project.rooms[0]):{x:project.width/2,y:project.depth/2};camera.position.set(p.x,1.6,p.y);camera.lookAt(p.x,1.6,p.y-1);}
     else if(saved&&!top){camera.position.fromArray(saved.position);camera.lookAt(...saved.target);}
     else{camera.position.set(project.width/2+(top?0:project.width*.65),top?Math.max(project.width,project.depth)*1.9:Math.max(project.width,project.depth)*1.05,project.depth/2+(top?.001:project.depth*1.3));camera.lookAt(project.width/2,0,project.depth/2);}
     camera.updateProjectionMatrix();
@@ -252,19 +258,45 @@ function CameraRig({project,top}:{project:Project;top:boolean}){
 }
 function CaptureRig({exposure,high}:{exposure:number;high:boolean}){
   const {gl,scene,camera,invalidate}=useThree();
-  useEffect(()=>{gl.toneMappingExposure=exposure;gl.transmissionResolutionScale=high?.5:.25;invalidate();},[gl,exposure,high,invalidate]);
+  const {active}=useProgress();
+  useEffect(()=>{gl.toneMappingExposure=exposure;gl.transmissionResolutionScale=high?1:.25;invalidate();},[gl,exposure,high,invalidate]);
   useEffect(()=>{
     const unregister=registerCapture(gl.domElement,async(width,height)=>{
+      if(active)throw new Error('Espera a que terminen de cargar los modelos y texturas antes de exportar.');
       const size=gl.getSize(new THREE.Vector2()),ratio=gl.getPixelRatio();
       const perspective=camera as THREE.PerspectiveCamera,aspect=perspective.aspect;
       const overlays:THREE.Object3D[]=[];scene.traverse(object=>{if(object.userData.editorOverlay&&object.visible){overlays.push(object);object.visible=false;}});
+      const highlighted=new Set<THREE.MeshStandardMaterial>();
+      scene.traverse(object=>{if(object instanceof THREE.Mesh)for(const material of Array.isArray(object.material)?object.material:[object.material])if(material.userData.editorEmissive)highlighted.add(material);});
+      const emissives=[...highlighted].map(material=>({material,color:material.emissive.clone(),intensity:material.emissiveIntensity}));
       try{
-        const max=gl.capabilities.maxTextureSize;if(width>max||height>max)throw new Error('Esta GPU no admite esa resolución. Prueba 1920 × 1080.');
-        gl.setPixelRatio(1);gl.setSize(width,height,false);perspective.aspect=width/height;perspective.updateProjectionMatrix();gl.render(scene,camera);
+        const max=gl.capabilities.maxTextureSize,viewport=gl.getContext().getParameter(gl.getContext().MAX_VIEWPORT_DIMS) as Int32Array;
+        if(width>Math.min(max,viewport[0])||height>Math.min(max,viewport[1]))throw new Error('Esta GPU no admite esa resolución. Prueba 1920 × 1080.');
+        for(const material of highlighted){const original=material.userData.editorEmissive;material.emissive.copy(original.color);material.emissiveIntensity=original.intensity;}
+        gl.setPixelRatio(1);gl.setSize(width,height,false);perspective.aspect=width/height;perspective.updateProjectionMatrix();
+        await gl.compileAsync(scene,camera);gl.shadowMap.needsUpdate=true;gl.render(scene,camera);
         return await new Promise<Blob>((resolve,reject)=>gl.domElement.toBlob(blob=>blob?resolve(blob):reject(new Error('La GPU no pudo crear la imagen.')),'image/png'));
-      }finally{overlays.forEach(object=>{object.visible=true;});gl.setPixelRatio(ratio);gl.setSize(size.x,size.y,false);perspective.aspect=aspect;perspective.updateProjectionMatrix();invalidate();}
+      }finally{overlays.forEach(object=>{object.visible=true;});for(const {material,color,intensity} of emissives){material.emissive.copy(color);material.emissiveIntensity=intensity;}gl.setPixelRatio(ratio);gl.setSize(size.x,size.y,false);perspective.aspect=aspect;perspective.updateProjectionMatrix();invalidate();}
     });return unregister;
-  },[gl,scene,camera,invalidate]);return null;
+  },[gl,scene,camera,invalidate,active]);return null;
+}
+function StudioLights({project,subject,high}:{project:Project;subject?:Furniture;high:boolean}){
+  const settings=project.render?.studio??defaultStudio;
+  const center=subject?objectCamera(subject).target:[project.width/2,1,project.depth/2];
+  const span=subject?Math.max(subject.w,subject.d,subject.h,2):Math.max(project.width,project.depth);
+  const target=useMemo(()=>new THREE.Object3D(),[]);
+  target.position.set(center[0],center[1],center[2]);
+  const angle=settings.azimuth*Math.PI/180;
+  const key:[number,number,number]=[center[0]+Math.sin(angle)*span,center[1]+span*1.5,center[2]+Math.cos(angle)*span];
+  const color=settings.warmth==='warm'?'#ffe0b5':settings.warmth==='cool'?'#ccddff':'#fff5eb';
+  return <>
+    <primitive object={target}/>
+    <ambientLight intensity={.12}/>
+    <directionalLight target={target} position={key} intensity={settings.key} color={color} castShadow shadow-mapSize={[high?2048:1024,high?2048:1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} shadow-camera-far={span*6} shadow-normalBias={.025} shadow-bias={-.0001}/>
+    <directionalLight target={target} position={[center[0]-span,center[1]+span*.5,center[2]+span*.7]} intensity={settings.fill} color="#e0ebff"/>
+    <directionalLight target={target} position={[center[0]+span*.7,center[1]+span,center[2]-span]} intensity={settings.rim} color="#fff2e0"/>
+    <ErrorBoundary fallback={null}><Suspense fallback={null}><Environment files={`${import.meta.env.BASE_URL}environment/studio.hdr`} environmentIntensity={.45}/></Suspense></ErrorBoundary>
+  </>;
 }
 function WalkRig({project}:{project:Project}){
   const {camera,invalidate}=useThree();const pressed=useMemo(()=>new Set<string>(),[]);
@@ -292,25 +324,33 @@ function WalkRig({project}:{project:Project}){
 }
 export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefObject<HTMLCanvasElement|null>;topView?:boolean}){
   const {project,selection,setSelection,wallsVisible,cutaway,cameraLocked}=useEditor();
+  const {active}=useProgress();
   const render=project.render??{lighting:'day',exposure:1,quality:'draft'};const high=render.quality==='high';
-  return <div className="scene-wrap">
+  const studio=render.lighting==='studio',subject=studioSubject(project);
+  const center=subject?objectCamera(subject).target:[project.width/2,0,project.depth/2];
+  const span=subject?Math.max(subject.w,subject.d,subject.h,2):Math.max(project.width,project.depth);
+  const ground=subject?(subject.modelElevation??0)-.012:-.009;
+  return <div className="scene-wrap" aria-busy={active}>
     <div className="scene-topline"><span><span className="live-dot"/> VISTA 3D EN TIEMPO REAL</span><span>Arrastra para orbitar · Rueda para zoom · Mayús+clic: material GLB</span></div>
     <Canvas frameloop="demand" shadows dpr={high?[1,2]:[1,1.3]} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
-      <color attach="background" args={['#f4f3ef']}/>
+      <color attach="background" args={[studio?(render.studio??defaultStudio).background:'#f4f3ef']}/>
+      {studio?<StudioLights project={project} subject={subject} high={high}/>:<>
       <ambientLight intensity={render.lighting==='night'?.12:.65}/>
       <hemisphereLight intensity={render.lighting==='night'?.18:.6} groundColor="#ccc8bd" color="#e7f1ff"/>
       <directionalLight castShadow position={[-5,13,7]} intensity={render.lighting==='night'?.2:2.3} color={render.lighting==='night'?'#a8bfff':'#fff5e8'} shadow-mapSize-width={high?2048:1024} shadow-mapSize-height={high?2048:1024} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} shadow-bias={-.0001}/>
       {render.lighting==='night'&&<pointLight position={[project.width/2,2.3,project.depth/2]} intensity={35} color="#ffd6a3" decay={2}/>}
-      {render.lighting==='studio'&&<Suspense fallback={null}><Environment files={`${import.meta.env.BASE_URL}environment/studio.hdr`} environmentIntensity={.6}/></Suspense>}
+      </>}
       <CaptureRig exposure={render.exposure} high={high}/>
       <CameraRig project={project} top={!cameraLocked&&topView}/>
-      {render.walk?<WalkRig project={project}/>:<OrbitControls makeDefault target={project.render?.camera?.target??[project.width/2,.05,project.depth/2]} enableRotate={!cameraLocked} enableZoom={!cameraLocked} enablePan={!cameraLocked} enableDamping dampingFactor={.08} minDistance={2} maxDistance={500} maxPolarAngle={Math.PI*.495}/>}
-      <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[project.width/2,-.1,project.depth/2]}><planeGeometry args={[project.width+50,project.depth+50]}/><meshStandardMaterial color="#ebeae5" roughness={1}/></mesh>
+      {render.walk&&!subject?<WalkRig project={project}/>:<OrbitControls makeDefault target={project.render?.camera?.target??[project.width/2,.05,project.depth/2]} enableRotate={!cameraLocked} enableZoom={!cameraLocked} enablePan={!cameraLocked} enableDamping dampingFactor={.08} minDistance={.4} maxDistance={500} maxPolarAngle={Math.PI*.495}/>}
+      <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[center[0],subject?ground:-.1,center[2]]}><planeGeometry args={subject?[span*8+50,span*8+50]:[project.width+50,project.depth+50]}/><meshStandardMaterial color={studio?(render.studio??defaultStudio).background:'#ebeae5'} roughness={studio?.85:1}/></mesh>
+      {!subject&&<>
       {project.rooms.map(room=><FloorSurface key={room.id} room={room}/>)}
       <Box position={[project.width/2,-.065,project.depth/2]} size={[project.width,.10,project.depth]} color="#d4c7b5"/>
       {wallsVisible&&project.walls.map(w=><WallModel key={w.id} wall={w} project={project} cutaway={cutaway} selected={selection?.type==='wall'&&selection.id===w.id}/>)}
-      {project.furniture.map(item=><ObjectModel key={item.id} item={item} project={project} selected={selection?.type==='furniture'&&selection.id===item.id} onSelect={()=>setSelection({type:'furniture',id:item.id})}/>)}
-      <ContactShadows key={JSON.stringify([project.wallHeight,wallsVisible,cutaway,project.walls,project.furniture.map(f=>[f.id,f.x,f.y,f.rotation,f.w,f.d,f.h,f.modelElevation,f.modelUpAxis,f.module?.family])])} frames={1} position={[project.width/2,-.009,project.depth/2]} scale={Math.max(project.width,project.depth)*2} opacity={.22} blur={3.5} far={16}/>
+      </>}
+      {(subject?[subject]:project.furniture).map(item=><ObjectModel key={item.id} item={item} project={project} selected={selection?.type==='furniture'&&selection.id===item.id} onSelect={()=>setSelection({type:'furniture',id:item.id})}/>)}
+      <ContactShadows key={JSON.stringify([subject?.id,project.wallHeight,wallsVisible,cutaway,project.walls,project.furniture.map(f=>[f.id,f.x,f.y,f.rotation,f.w,f.d,f.h,f.modelElevation,f.modelUpAxis,f.module?.family])])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={studio?.35:.22} blur={studio?2.5:3.5} far={subject?span*2:16}/>
     </Canvas>
     <div className="scene-footer"><span className="scene-legend"><span className="legend-square"/> Modelo paramétrico · escala métrica</span><span>WebGL</span></div>
   </div>;

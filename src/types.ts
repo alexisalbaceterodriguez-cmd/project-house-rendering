@@ -9,13 +9,15 @@ export type ModelFinish = { color: string; roughness: number; metalness: number;
 export type Furniture = { id: string; kind: FurnitureKind; name: string; x: number; y: number; w: number; d: number; h: number; rotation: number; color: string; unitPrice?: number; assetId?: string; productId?: string; productSource?: ProductAttribution; materialId?: string; module?: ModuleSettings; modelData?: string; modelUpAxis?: 'Y' | 'Z' | 'X'; modelElevation?: number; modelOffsetX?: number; modelOffsetZ?: number; modelFinish?: ModelFinish; modelFinishes?: ModelFinish[] };
 export type Palette = { walls: string; accent: string; wood: string; textile: string; metal: string };
 export type CameraView = { position: [number, number, number]; target: [number, number, number] };
-export type RenderSettings = { lighting: 'day' | 'night' | 'studio'; exposure: number; quality: 'draft' | 'high'; camera?: CameraView; walk?: boolean };
+export type StudioSettings = { subjectId?:string; key:number; fill:number; rim:number; azimuth:number; warmth:'neutral'|'warm'|'cool'; background:string };
+export type RenderSettings = { lighting: 'day' | 'night' | 'studio'; exposure: number; quality: 'draft' | 'high'; camera?: CameraView; walk?: boolean; studio?:StudioSettings };
 export type ModuleSettings = { family: 'base' | 'wall' | 'column' | 'sink' | 'hob' | 'oven' | 'vanity'; front: string; worktop: string; handles: 'bar' | 'none' };
 export type ProductAttribution = { manufacturer:string; reference:string; source:string; license:string; attribution:string };
 export type EditorSettings = { grid:number; magnet:boolean; orthogonal:boolean };
 export type PortableResource = { id:string; data:string };
 export type CustomMaterial = {
   id:string; name:string; category:string; color:string; scale:number; roughness:number; metalness:number; normalStrength:number;
+  finish?:'standard'|'glass'|'varnish'|'fabric';
   maps?: { color?:string; normal?:string; roughness?:string }; source:string; license:string;
 };
 export type WallGraph = { revision: 1; nodes: { id: string; x: number; y: number }[]; edges: { wallId: string; from: string; to: string }[] };

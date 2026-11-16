@@ -3,6 +3,7 @@ import { useEditor } from '../store';
 import type { CustomMaterial } from '../types';
 import { assignMaterial, prepareMaterialMap, validCustomMaterials, type MaterialTarget } from '../lib/projectMaterials';
 import { createMaterialMaps, type TexturePattern } from '../lib/proceduralTextures';
+import { finishPresets } from '../lib/studioRender';
 
 const defaults={name:'Mi material',category:'Personalizado',color:'#c5ad8c',scale:1,roughness:.65,metalness:0,normalStrength:1,source:'Creado en Atelier 60',license:'Creación propia'};
 export default function MaterialWorkshop({target,onMessage}:{target:MaterialTarget;onMessage:(message:string)=>void}) {
@@ -31,6 +32,7 @@ export default function MaterialWorkshop({target,onMessage}:{target:MaterialTarg
     <h4>Crea tu material</h4><p>Combina color y propiedades físicas, genera una textura o incorpora tus mapas PBR. Se guardan con el proyecto y viajan en su JSON.</p>
     <div className="workshop-grid">
       <label>Nombre del material<input aria-label="Nombre del material" value={draft.name} maxLength={180} onChange={event=>patch({name:event.target.value})}/></label>
+      <label>Respuesta física<select aria-label="Respuesta física del material" value={draft.finish??'standard'} onChange={event=>{const finish=event.target.value as keyof typeof finishPresets;patch({finish,...finishPresets[finish]});}}><option value="standard">Mate / metal</option><option value="glass">Vidrio</option><option value="varnish">Barniz</option><option value="fabric">Tejido</option></select></label>
       <label>Textura<select aria-label="Patrón del material" value={pattern} onChange={event=>setPattern(event.target.value as typeof pattern)}><option value="none">Color o mapas propios</option><option value="wood">Veta de madera</option><option value="marble">Mármol veteado</option><option value="fabric">Tejido</option><option value="terrazzo">Terrazo</option><option value="concrete">Hormigón</option></select></label>
       <label>Color base<input type="color" aria-label="Color base del material" value={draft.color} onChange={event=>patch({color:event.target.value})}/></label>
       <label>Repetición (m)<input type="number" aria-label="Repetición del material" min={.02} max={20} step={.01} value={draft.scale} onChange={event=>patch({scale:Number(event.target.value)})}/></label>
@@ -46,7 +48,7 @@ export default function MaterialWorkshop({target,onMessage}:{target:MaterialTarg
     </details>
     <button className="primary-btn" disabled={busy} onClick={()=>create(true)}>Crear y aplicar material</button>
     <button disabled={busy} onClick={()=>create(false)}>Guardar material sin aplicar</button>
-    <p className="small-help">Los patrones generan mapas sintéticos. Para reproducir un acabado concreto, incorpora sus texturas. Una nueva creación conserva los materiales que ya usan otros objetos.</p>
+    <p className="small-help">Vidrio, barniz y tejido usan transmisión, capa brillante y brillo de fibras en calidad Alta. En Rápida se simplifican. Los patrones generan mapas sintéticos; incorpora texturas para reproducir un acabado concreto.</p>
     {!!project.materials?.length&&<><h4>Materiales de este proyecto</h4><div className="studio-materials">{project.materials.map(material=><article className="custom-material-card" key={material.id}>
       {material.maps?.color?<img src={material.maps.color} alt={material.name}/>:<div className="material-swatch" style={{background:material.color}}/>}
       <strong>{material.name}</strong><small>{material.license} · {material.scale} m · rugosidad {material.roughness.toFixed(2)}</small>
