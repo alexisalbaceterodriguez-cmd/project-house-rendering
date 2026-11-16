@@ -34,8 +34,8 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
   const [assets,setAssets]=useState<Awaited<ReturnType<typeof listModelAssets>>>([]);
   useEffect(()=>{const element=dialog.current;if(open&&!element?.open){element?.showModal();setMessage('');void refreshVersions();}else if(!open&&element?.open)element.close();},[open]);
   const run=async(work:()=>Promise<void>)=>{setBusy(true);setMessage('');try{await work();}catch(error){setMessage(error instanceof Error?error.message:'No se pudo completar la operación.');}finally{setBusy(false);}};
-  useEffect(()=>{if(open&&tab==='tools'){let active=true;void listModelAssets().then(result=>{if(active)setAssets(result);}).catch(()=>{if(active)setMessage('No se pudieron leer los recursos locales.');});return()=>{active=false;};}},[open,tab]);
-  const refreshVersions=async()=>{try{setVersions(await listDesigns());}catch{setMessage('No se puede abrir la biblioteca de versiones. Exporta una copia JSON.');}};
+  useEffect(()=>{if(open&&tab==='tools'){let active=true;void listModelAssets().then(result=>{if(active)setAssets(result);}).catch(error=>{if(active)setMessage(error instanceof Error?error.message:'No se pudieron leer los recursos locales.');});return()=>{active=false;};}},[open,tab]);
+  const refreshVersions=async()=>{try{setVersions(await listDesigns());}catch(error){setMessage(error instanceof Error?error.message:'No se puede abrir la biblioteca de versiones. Exporta una copia JSON.');}};
   const item=selection?.type==='furniture'?project.furniture.find(f=>f.id===selection.id):undefined;
   const render=project.render??defaultRender;
   const updateRender=(patch:Partial<RenderSettings>)=>change(p=>{p.render={...(p.render??defaultRender),...patch};});

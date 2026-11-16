@@ -1,9 +1,19 @@
 # Atelier 60 — Estado persistente
 
-Última revisión: 2026-11-11 (Europe/Madrid).
+Última revisión: 2026-11-16, 19:45 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Estado operativo vigente — retención segura de modelos 2026-11-11
+## Estado operativo vigente — conexiones IndexedDB entre pestañas 2026-11-16
+
+- **Unidad F0 completada:** se retoma el trabajo local pendiente de `codex/indexeddb-lifecycle`. Activos y versiones usan `src/lib/browserDatabase.ts`: cierre en `onversionchange`, aviso recuperable en `onblocked`, límite de 10 segundos para aperturas en cola y mensaje específico si la base pertenece a una versión posterior. No cambia el esquema ni degrada bases futuras.
+- Las solicitudes rechazadas abortan cualquier migración que llegue después del bloqueo/timeout y cierran resultados tardíos; nunca continúan guardando tras anunciar el fallo. Las transacciones cierran conexiones también si no llegan a crearse o si falla su preparación. Sidebar y Estudio conservan los mensajes recuperables.
+- **Código:** `8165021156c150b3299adb04f6d8bace1779c636`, rama `codex/indexeddb-lifecycle`, [PR #8 en borrador](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/pull/8). Base y main remoto comprobados en `6fd3372d0e530ce9d45ca2c5a2cd7e9433a39532`; PR #7 ya está integrada. Este incremento no está integrado ni desplegado.
+- **Verificación local:** `npm ci --no-audit --no-fund`, 81 unitarias, build TypeScript/Vite y suite completa de 31 E2E Chromium correctos (2,1 minutos). Cuatro E2E nuevos con dos pestañas: actualización cooperativa de modelos, bloqueo/importación/reintento sin migración tardía, rechazo de esquema futuro sin perder versiones y apertura en cola con reintento sin guardado tardío. Nueve unitarias nuevas comprueban cierre, errores, timeout y resultados tardíos.
+- **CI del código:** [Test and build 43931457024](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43931457024), SHA exacto `8165021156c150b3299adb04f6d8bace1779c636`, `completed/success`; job `133524659922` comprobado: instalación, unitarias, build y E2E correctos. La base integrada tiene CI [43022668281](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43022668281) y Pages [43023029905](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/43023029905) `completed/success`; job CI `130529463247` comprobado. El commit posterior de bitácora modifica solo PROJECT_STATUS.md y PROJECT_MEMORY.md; el run citado acredita el código.
+- **Límites:** no hay exclusión mutua del autoguardado o de limpieza entre pestañas. Quedan migraciones históricas adicionales y aceptación manual de la web publicada. Build conserva el aviso conocido de chunks superiores a 500 kB. Ninguna fase se cierra por esta corrección.
+- **Siguiente tarea exacta:** detectar conflictos de localStorage entre dos pestañas antes del autoguardado, conservar la edición local y ofrecer exportación/recarga explícitas sin sobrescritura silenciosa; añadir E2E de dos pestañas editando la misma clave. Después ampliar migraciones históricas y coordinar limpieza de recursos con operaciones de otras pestañas.
+
+## Estado anterior — retención segura de modelos 2026-11-11
 
 - **Unidad F0 implementada:** el borrado manual de recursos protege ahora ambos guardados de localStorage (principal y respaldo), además del proyecto activo, versiones, comparación A/B, undo/redo y los estados recuperables al cancelar un arrastre. Antes podía eliminarse un GLB usado solo por el respaldo, dejando incompleta una recuperación posterior.
 - Archivo GLB y metadatos se retiran en una sola transacción IndexedDB. Una operación abortada conserva ambos; si un guardado es ilegible o no se pueden comprobar las referencias, se bloquea la limpieza. Las referencias vivas y los guardados se releen tras abrir IndexedDB, justo antes de retirar el recurso.

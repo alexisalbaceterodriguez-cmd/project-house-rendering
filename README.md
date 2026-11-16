@@ -47,6 +47,7 @@ Fuentes, atribuciones, tamaños y licencias: [ASSET_LICENSES.md](ASSET_LICENSES.
 - Autoguardado en localStorage, copia de recuperación y guardado pendiente al salir de la pestaña. El encabezado muestra si se ha guardado o si hace falta exportar.
 - **Exportar** crea un JSON portable con los modelos. Los recursos compartidos se incluyen una sola vez; se conserva el formato anterior para modelos únicos. Máximo 64 MB por archivo.
 - **Estudio → Versiones** guarda propuestas completas en IndexedDB. Al restaurar una versión se guarda primero una copia del estado actual.
+- Las conexiones de modelos y versiones se cierran cuando otra pestaña necesita actualizar la base. Si una pestaña antigua bloquea el acceso, aparece un aviso y la espera termina en un máximo de 10 segundos; ciérrala y reintenta. Una apertura abandonada no aplica migraciones ni guardados tardíos. Los datos de una versión más reciente no se degradan.
 - La comparación A/B exige geometría coincidente y mantiene cámara y luz mientras cambian los acabados. Puedes exportar ambos PNG y recuperar después las propuestas.
 - Un recurso no puede borrarse de la biblioteca mientras lo utilice el proyecto activo, cualquiera de los dos guardados locales, una versión, una comparación o el historial (incluido rehacer y cancelar un arrastre). Si no se pueden comprobar los guardados, se conserva el recurso. Archivo y metadatos se eliminan juntos o se conservan juntos si falla el borrado.
 
