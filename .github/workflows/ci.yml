@@ -3,8 +3,15 @@ name: Test and build
 on:
   push:
     branches: [main]
+    paths-ignore: ['**/*.md']
   pull_request:
+    paths-ignore: ['**/*.md']
   workflow_dispatch:
+    inputs:
+      full_e2e:
+        description: 'Ejecutar toda la suite de navegador'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -25,7 +32,11 @@ jobs:
         run: npm run build
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run browser end-to-end tests
+      - name: Run browser smoke tests
+        if: github.event_name != 'push' && !inputs.full_e2e
+        run: npm run test:smoke
+      - name: Run full browser suite before publishing
+        if: github.event_name == 'push' || inputs.full_e2e
         run: npm run test:e2e
       - name: Upload Playwright diagnostics on failure
         if: failure()

@@ -38,6 +38,12 @@ Importa GLB autónomos de hasta 12 MB. Su contenido se comprueba antes de guarda
 
 **Estudio → Acabados** ofrece madera, cerámica, tejido y enlucido con mapas de color, normal y rugosidad. Aplica el acabado a una estancia, pared u objeto. Para una parte del GLB, selecciona su superficie en Propiedades o con Mayús + clic en 3D. Las instancias conservan sus acabados de forma independiente.
 
+El **taller de materiales** permite crear acabados propios con color, rugosidad, metalicidad, escala y relieve. Genera patrones sintéticos de madera, mármol, tejido, terrazo u hormigón, o incorpora mapas PNG/JPEG/WebP propios de color, normal OpenGL y rugosidad. Los mapas se optimizan a 1024 px y se incluyen en el JSON del proyecto; las variantes A/B y versiones conservan sus definiciones. Máximo 64 materiales y 4 MB de mapas por proyecto; conservar copias JSON si el navegador avisa de falta de espacio.
+
+En **Estudio → Modelos**, el **taller de objetos** crea sofás tapizados, aparadores acanalados, mesas y lámparas con medidas y colores propios, bordes redondeados y piezas con materiales independientes. Genera GLB reutilizables en la biblioteca local, compatibles con selección, duplicación, historial y exportación portable. Se pueden integrar otras formas mediante importación GLB y ampliar el generador con nuevos diseños bajo petición. Estos diseños son originales, no réplicas certificadas de productos comerciales.
+
+**Imagen y cámara → Encuadrar objeto seleccionado** prepara una vista cercana que se guarda con el proyecto y se utiliza al exportar PNG.
+
 **Cocina y baño** añade módulos propios de medidas normalizadas: bajos, altos, columnas, fregadero, placa, horno y lavabo. Configura frentes, encimeras y tiradores; combina estos módulos con los sanitarios y modelos de la biblioteca.
 
 Fuentes, atribuciones, tamaños y licencias: [ASSET_LICENSES.md](ASSET_LICENSES.md).
@@ -68,11 +74,12 @@ Es render físico WebGL en tiempo real; no es trazado de rayos offline.
 ```bash
 npm run test
 npm run build
+npm run test:smoke
 npm run test:e2e -- --workers=1
 npm audit --omit=dev
 ```
 
-Build comprueba TypeScript de aplicación y E2E. GitHub Actions ejecuta instalación reproducible, unitarias, build y Chromium en Ubuntu 24.04. Pages publica el SHA de main que acaba de superar CI; no publica ramas de trabajo.
+Durante desarrollo, usar unitarias focalizadas, build y smoke del flujo modificado, una vez por bloque. La suite completa se reserva para publicación o diagnóstico. Build comprueba TypeScript de aplicación y E2E. GitHub Actions ejecuta instalación reproducible, unitarias, build y smoke Chromium en PR; en pushes de código a main ejecuta todos los E2E. La ejecución manual ofrece `full_e2e`. Pages publica el SHA de main que acaba de superar CI; no publica ramas de trabajo.
 
 Criterios y límites: [PRODUCT_ACCEPTANCE.md](PRODUCT_ACCEPTANCE.md). Estado, SHA y ejecuciones exactas: [PROJECT_STATUS.md](PROJECT_STATUS.md). Auditoría inicial: [LOCAL_AUDIT.md](LOCAL_AUDIT.md).
 

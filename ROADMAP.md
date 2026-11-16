@@ -2,6 +2,8 @@
 
 > Última actualización: 16 de noviembre de 2026. PR #7 integrada en main (`6fd3372`); incremento F0 de conexiones y bloqueos IndexedDB en `codex/indexeddb-lifecycle`. El editor es **conceptual**. No sustituye una medición, proyecto de obra ni verificación normativa.
 
+> **Objetivo de producto actualizado por el usuario (16/11):** aplicación de renders potente y terminada, con objetos de gran realismo y creación e integración de nuevos materiales/objetos bajo petición. Priorizar esa entrega frente a ampliaciones indefinidas de infraestructura. Pruebas básicas por bloque, con cobertura completa al publicar. Incremento `codex/resource-workshop`: materiales PBR propios y portables, patrones sintéticos o mapas importados, cuatro generadores GLB originales y encuadre de objeto. Este incremento no equivale todavía a render fotorrealista final ni a generación universal de objetos.
+
 > **Incremento local 11/11/2026:** rama `codex/product-release` incorpora protección de activos dañados, migración/grafo persistido, cancelación/selección múltiple, rejilla y referencia calibrada, biblioteca de tres modelos autorizados con miniaturas, cuatro materiales texturados, módulos de cocina/baño, HDRI/paseo/cámaras, versiones y comparación A/B. Criterios observables en [PRODUCT_ACCEPTANCE.md](PRODUCT_ACCEPTANCE.md); resultados y CI en [PROJECT_STATUS.md](PROJECT_STATUS.md). Las secciones de planificación posteriores reflejan el alcance completo y no deben interpretarse como ausencia de estas bases. Cotizaciones comerciales automáticas, PDF técnico, colaboración y catálogo comercial extenso siguen pendientes; no se cierran automáticamente todas las fases.
 
 ## Estado de entregas
@@ -17,6 +19,10 @@
 | 5. Proyectos | Versiones locales, A/B, presupuesto CSV e impresión/PDF | **Flujo local implementado** | PDF técnico, cotizaciones automáticas y colaboración; integración y aceptación pública pendientes |
 
 ## Prioridades siguientes
+
+1. Completar y revisar el taller de recursos: solicitudes concretas de nuevos diseños, importación de materiales de alta resolución y guardado de texturas fuera de localStorage.
+2. Mejorar render de producto: iluminación de estudio, contactos/sombras, materiales físicos avanzados, salida de alta resolución y revisión visual de escenas de referencia.
+3. Completar el flujo de edición, biblioteca, versiones y exportación y resolver fallos reales que afecten a esa entrega. Evitar convertir cada pendiente de infraestructura en una barrera para el avance visual.
 
 ### P0. Proteger datos y garantizar edición
 

@@ -2,6 +2,13 @@
 
 Este repositorio desarrolla **Atelier 60**, un editor web de viviendas en 2D y 3D con React/TypeScript/Vite/Zustand/Three.js. El ejemplo inicial de 10 × 6 m no restringe el tamaño de proyectos nuevos.
 
+## Directriz del usuario vigente — 16/11/2026
+
+- Objetivo de entrega: aplicación de renders potente y terminada, con objetos de gran realismo y capacidad de crear e integrar nuevos materiales y objetos según las peticiones del usuario. Priorizar avances de producto, calidad visual y flujo de creación de recursos; no encadenar ampliaciones de infraestructura mientras se pospone ese resultado. Atender primero cualquier fallo real que amenace datos o edición.
+- Validación durante desarrollo: pruebas básicas por bloque funcional (unitarias focalizadas, build y un recorrido smoke relevante). Repetir solo lo afectado por fallos o cambios posteriores; no ejecutar ni esperar la suite completa tras cada cambio. No reinstalar dependencias cuando no cambian.
+- CI de PR: unitarias, build y smoke. Suite E2E completa al publicar código en main o por ejecución manual. Los cambios solo de Markdown no vuelven a disparar esa CI. No atribuir a un smoke cobertura de toda la aplicación.
+- Registrar límites reales: la creación de recursos propios y la importación de GLB/PBR son bases del flujo solicitado; no afirmar que cualquier objeto ya se genera con fidelidad fotográfica ni que el producto está finalizado hasta cumplir los criterios de entrega.
+
 ## Leer antes de actuar (orden obligatorio)
 
 1. **`AUTOMATION_RUNBOOK.md`**: procedimiento operativo, diagnóstico de CI, salidas alternativas si falla el entorno y prioridades actualizadas. Aplicar en cada sesión.

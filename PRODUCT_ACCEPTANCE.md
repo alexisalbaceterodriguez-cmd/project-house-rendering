@@ -2,6 +2,12 @@
 
 Fecha: 11/11/2026. Rama de trabajo: `codex/product-release`.
 
+## Ampliación de entrega solicitada el 16/11/2026
+
+La meta pasa a una aplicación de renders potente y terminada, con objetos de gran realismo y creación e integración de recursos según peticiones concretas. Para darla por terminada faltan, como mínimo: escenas de referencia con materiales/iluminación revisados visualmente; encuadres cercanos y exportaciones de calidad; incorporar un objeto y un material nuevos solicitados fuera de los presets y recuperarlos sin pérdidas; flujo completo de biblioteca/edición/versiones usable; y publicación comprobada. El taller actual aporta cuatro diseños originales, cinco patrones y mapas PBR importables, no generación universal automática ni fidelidad fotográfica garantizada.
+
+Pruebas durante desarrollo: comprobaciones focalizadas y smoke por bloque. La suite completa queda para publicar en main o para fallos/riesgos que la justifiquen; no se repite tras cada ajuste ni tras cambios de bitácora.
+
 La aplicación está destinada al diseño conceptual de interiores. Una entrega válida debe preservar los datos, completar los recorridos siguientes y dejar claros los límites de precisión y render. Una compilación correcta por sí sola no acredita estos criterios.
 
 ## Recorrido de producto implementado

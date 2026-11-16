@@ -15,6 +15,9 @@ import { projectWarnings, resizeProject } from '../lib/topology';
 import type { ModuleSettings, Project, RenderSettings } from '../types';
 import WallEditingTools from './WallEditingTools';
 import BudgetTools from './BudgetTools';
+import MaterialWorkshop from './MaterialWorkshop';
+import ObjectWorkshop from './ObjectWorkshop';
+import { assignMaterial, type MaterialTarget } from '../lib/projectMaterials';
 
 type Tab='models'|'materials'|'modules'|'versions'|'render'|'tools';
 const tabs:[Tab,string][]=[['models','Modelos'],['materials','Acabados'],['modules','Cocina y baño'],['versions','Versiones'],['render','Imagen y cámara'],['tools','Plano y revisión']];
@@ -27,7 +30,7 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
   const [versions,setVersions]=useState<SavedDesign[]>([]),[versionName,setVersionName]=useState(''),[variantId,setVariantId]=useState('');
   const [front,setFront]=useState('#ece7dd'),[worktop,setWorktop]=useState('wood'),[moduleWidth,setModuleWidth]=useState(.6);
   const [handles,setHandles]=useState<ModuleSettings['handles']>('bar');
-  const [materialTarget,setMaterialTarget]=useState('selection'),[resolution,setResolution]=useState('1920x1080');
+  const [materialTarget,setMaterialTarget]=useState<MaterialTarget>('selection'),[resolution,setResolution]=useState('1920x1080');
   const [width,setWidth]=useState(project.width),[depth,setDepth]=useState(project.depth),[anchor,setAnchor]=useState('nw');
   const [comparison,setComparison]=useState<{base:Project;other:Project;label:string;showing:'A'|'B'}|null>(null);
   const comparisonRef=useRef(comparison);comparisonRef.current=comparison;
@@ -51,20 +54,8 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
     setSelection({type:'furniture',id});setMessage(`${product.name} añadido a escala. Puedes moverlo en el plano.`);
   });
   const applyMaterial=(id:string)=>{
-    if(materialTarget==='selection'&&!selection){setMessage('Selecciona primero una estancia, pared u objeto en el plano.');return;}
-    change(p=>{
-      if(materialTarget==='floors'){p.rooms.forEach(r=>{r.materialId=id||undefined;});return;}
-      if(materialTarget==='walls'){p.walls.forEach(w=>{w.materialId=id||undefined;});return;}
-      if(selection?.type==='room'){const r=p.rooms.find(r=>r.id===selection.id);if(r)r.materialId=id||undefined;}
-      if(selection?.type==='wall'){const w=p.walls.find(w=>w.id===selection.id);if(w)w.materialId=id||undefined;}
-      if(selection?.type==='furniture'){
-        const f=p.furniture.find(f=>f.id===selection.id);if(!f)return;
-        if(f.kind==='model'){
-          if(!id){if(f.modelFinish)delete f.modelFinish.materialId;}
-          else f.modelFinish={...(f.modelFinish??{color:'#ffffff',roughness:.8,metalness:0}),materialId:id};
-        }else f.materialId=id||undefined;
-      }
-    });setMessage('Acabado aplicado. Deshacer recupera el anterior.');
+    try{change(project=>assignMaterial(project,id,materialTarget,selection));setMessage('Acabado aplicado. Deshacer recupera el anterior.');}
+    catch(error){setMessage((error as Error).message);}
   };
   const addModule=(kind:ModuleSettings['family'],name:string)=>{
     const id=makeId(),h=kind==='wall'?.72:kind==='column'?2.1:.88,d=kind==='wall'?.35:.6;
@@ -96,6 +87,7 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
     {message&&<p className="studio-message" role="status">{message}</p>}
     <div className="studio-body" aria-busy={busy}>
     {tab==='models'&&<>
+      <ObjectWorkshop onMessage={setMessage}/>
       <h3>Modelos 3D incluidos</h3><p>Recursos autorizados, con medidas del archivo original. Al insertarlos quedan disponibles en tu biblioteca local.</p>
       <label>Buscar modelos<input aria-label="Buscar modelos incluidos" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Sofá, butaca, lámpara…"/></label>
       <label>Familia<select value={family} onChange={e=>setFamily(e.target.value)}>{['Todos',...new Set(modelCatalog.map(p=>p.family))].map(f=><option key={f}>{f}</option>)}</select></label>
@@ -105,17 +97,18 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
     </>}
     {tab==='materials'&&<>
       <h3>Acabados con textura</h3><p>Color, relieve y rugosidad reales. Cambios independientes, a escala métrica y con historial.</p>
-      <label>Aplicar acabado a<select aria-label="Destino del acabado" value={materialTarget} onChange={e=>setMaterialTarget(e.target.value)}><option value="selection">Selección actual{selection?` · ${selection.type==='room'?'estancia':selection.type==='wall'?'pared':'objeto'}`:''}</option><option value="floors">Todos los suelos</option><option value="walls">Todas las paredes</option></select></label>
+      <label>Aplicar acabado a<select aria-label="Destino del acabado" value={materialTarget} onChange={e=>setMaterialTarget(e.target.value as MaterialTarget)}><option value="selection">Selección actual{selection?` · ${selection.type==='room'?'estancia':selection.type==='wall'?'pared':'objeto'}`:''}</option><option value="floors">Todos los suelos</option><option value="walls">Todas las paredes</option></select></label>
       {item?.kind==='model'&&<p>Se aplica al material o superficie elegidos en Propiedades. Sin superficie elegida, afecta al modelo completo.</p>}
       <div className="studio-materials">{materialCatalog.map(m=><button key={m.id} onClick={()=>applyMaterial(m.id)}><img src={materialUrl(m,'color')} alt="" loading="lazy"/><strong>{m.name}</strong><small>{m.category} · CC0 · repetición {m.scale} m</small></button>)}</div>
       <button className="quiet-btn" onClick={()=>applyMaterial('')}>Retirar textura de este destino</button><p className="small-help">Fuentes: Poly Haven, CC0. El color original del modelo se conserva al retirar la textura.</p>
+      <MaterialWorkshop target={materialTarget} onMessage={setMessage}/>
     </>}
     {tab==='modules'&&<>
       <h3>Cocinas y baños modulares</h3><p>Módulos paramétricos propios. Sus medidas y acabados se guardan por instancia; puedes combinar importaciones de fabricantes.</p>
       <label>Ancho del módulo<select aria-label="Ancho del módulo" value={moduleWidth} onChange={e=>setModuleWidth(Number(e.target.value))}>{[.3,.4,.45,.6,.8,.9,1.2].map(w=><option key={w} value={w}>{Math.round(w*100)} cm</option>)}</select></label>
       <div className="studio-module-list">{([['base','Módulo bajo'],['wall','Módulo alto'],['column','Columna'],['sink','Fregadero'],['hob','Placa'],['oven','Horno'],['vanity','Mueble lavabo']] as const).map(([key,label])=><button key={key} disabled={busy} onClick={()=>addModule(key,label)}>Añadir {label}</button>)}</div>
       <h4>Acabados del módulo</h4><label>Color de frentes<input type="color" aria-label="Color de frentes" value={front} onChange={e=>setFront(e.target.value)}/></label>
-      <label>Encimera<select aria-label="Material de encimera" value={worktop} onChange={e=>setWorktop(e.target.value)}>{materialCatalog.filter(m=>m.id==='wood'||m.id==='tile').map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+      <label>Encimera<select aria-label="Material de encimera" value={worktop} onChange={e=>setWorktop(e.target.value)}>{[...materialCatalog.filter(m=>m.id==='wood'||m.id==='tile'),...(project.materials??[])].map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
       <label>Tiradores<select aria-label="Tiradores de módulo" value={handles} onChange={e=>setHandles(e.target.value as ModuleSettings['handles'])}><option value="bar">Barra metálica</option><option value="none">Frente sin tirador</option></select></label>
       <button disabled={!item?.module} onClick={()=>{if(!item?.module)return;change(p=>{const f=p.furniture.find(f=>f.id===item.id)!;f.module={...f.module!,front,worktop,handles};f.color=front;});setMessage('Acabados del módulo seleccionado actualizados.');}}>Aplicar al módulo seleccionado</button>
       <p className="small-help">Para comparar tres propuestas, guarda una versión antes de cambiar frentes o encimeras. Las paredes y el encuadre permanecen iguales.</p>
@@ -134,6 +127,11 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
       <label>Exposición<input type="range" aria-label="Exposición" min="0.2" max="3" step="0.1" value={render.exposure} onChange={e=>updateRender({exposure:Number(e.target.value)})}/></label>
       <label>Calidad<select aria-label="Calidad 3D" value={render.quality} onChange={e=>updateRender({quality:e.target.value as RenderSettings['quality']})}><option value="draft">Rápida</option><option value="high">Alta</option></select></label>
       <button onClick={()=>{setMode('3d');setMessage('Vista 3D abierta. Cierra este panel para ajustar la cámara.');}}>Abrir vista 3D</button>
+      {item&&<button onClick={()=>{
+        const distance=Math.max(2.2,Math.max(item.w,item.d,item.h)*2),target:[number,number,number]=[item.x,item.h*.45+(item.modelElevation??0),item.y];
+        updateRender({camera:{position:[target[0]+distance*.65,target[1]+distance*.45,target[2]+distance*.75],target},walk:false});
+        setMode('3d');setMessage('Objeto encuadrado. Cierra Estudio para verlo o exportar una imagen.');
+      }}>Encuadrar objeto seleccionado</button>}
       <button disabled={!liveCamera} onClick={()=>{if(liveCamera){updateRender({camera:structuredClone(liveCamera),walk:false});setMessage('Encuadre guardado en el proyecto y sus versiones.');}}}>Guardar encuadre actual</button><button disabled={!render.camera} onClick={()=>{updateRender({camera:undefined,walk:false});setMessage('Cámara automática restaurada.');}}>Restablecer cámara</button>
       <button onClick={()=>{updateRender({walk:!render.walk});setMode('3d');setMessage(!render.walk?'Cierra el panel y haz clic en 3D. WASD o flechas para caminar; Escape libera el ratón.':'Cámara orbital activada.');}}>{render.walk?'Salir del paseo':'Recorrer en primera persona'}</button>
       <label>Resolución PNG<select aria-label="Resolución de imagen" value={resolution} onChange={e=>setResolution(e.target.value)}><option value="1280x720">1280 × 720</option><option value="1920x1080">1920 × 1080</option><option value="2560x1440">2560 × 1440</option><option value="3840x2000">3840 × 2000</option></select></label><button className="primary-btn" disabled={busy} onClick={()=>void exportRender()}>Exportar imagen PNG</button>

@@ -4,6 +4,8 @@
 **Repositorio:** `alexisalbaceterodriguez-cmd/project-house-rendering`, rama `main`.
 **Propósito:** avanzar en el producto con resultados verificables en cada ejecución horaria; evitar bloqueos falsos, duplicaciones y planes sin código.
 
+> **Prioridad y validación actualizadas por el usuario, 16/11/2026:** entregar una aplicación de renders potente y terminada, con creación e integración de objetos y materiales de gran realismo. La prioridad de producto y las pruebas básicas por bloque sustituyen cualquier instrucción histórica de repetir `npm ci` o toda la suite tras cada cambio. Usar unitarias focalizadas, un build y smoke del flujo afectado; ampliar solo ante fallos o riesgo real. CI de PR usa unitarias/build/smoke, main mantiene la suite completa antes de publicar y la ejecución manual permite pedirla. No esperar una segunda CI completa por actualizar bitácoras. Véase la directriz vigente en `AGENTS.md`.
+
 ## 1. Fuente de verdad y arranque obligatorio
 
 1. Leer este fichero, `AGENTS.md`, la **cabecera más reciente** y el final de `PROJECT_STATUS.md`, `PROJECT_MEMORY.md` y `README.md`. El texto histórico puede estar obsoleto.
