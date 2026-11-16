@@ -18,6 +18,7 @@ export type PortableResource = { id:string; data:string };
 export type CustomMaterial = {
   id:string; name:string; category:string; color:string; scale:number; roughness:number; metalness:number; normalStrength:number;
   finish?:'standard'|'glass'|'varnish'|'fabric';
+  // Local content-addressed texture:<sha256> references; portable/legacy v1 JSON embeds data URLs.
   maps?: { color?:string; normal?:string; roughness?:string }; source:string; license:string;
 };
 export type WallGraph = { revision: 1; nodes: { id: string; x: number; y: number }[]; edges: { wallId: string; from: string; to: string }[] };

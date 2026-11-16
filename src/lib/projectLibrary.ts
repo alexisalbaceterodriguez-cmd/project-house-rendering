@@ -1,6 +1,7 @@
 import type { Project } from '../types';
 import { migrateProject } from './projectSchema';
 import { openBrowserDatabase } from './browserDatabase';
+import { storeMaterialMaps } from './materialLibrary';
 export type SavedDesign = { id:string; name:string; savedAt:string; project:Project };
 // Separate database avoids invalidating the asset database used by existing projects.
 const open = () => openBrowserDatabase({name:'atelier60-project-library',version:1,upgrade:db=>{
@@ -19,6 +20,7 @@ async function transaction<T>(mode:IDBTransactionMode, work:(store:IDBObjectStor
 }
 export async function saveDesign(project:Project,name:string):Promise<SavedDesign>{
   const saved={id:crypto.randomUUID(),name:name.trim().slice(0,180)||project.name,savedAt:new Date().toISOString(),project:migrateProject(project)};
+  if(saved.project.materials?.length)saved.project.materials=await storeMaterialMaps(saved.project.materials);
   await transaction('readwrite',store=>store.put(saved));return saved;
 }
 export async function listDesigns():Promise<SavedDesign[]>{

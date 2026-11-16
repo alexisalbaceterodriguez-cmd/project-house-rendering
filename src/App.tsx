@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import ErrorBoundary from './components/ErrorBoundary';
 import StudioPanel from './components/StudioPanel';
 import PrintSheet from './components/PrintSheet';
+import MaterialStorage from './components/MaterialStorage';
 const Scene3D=lazy(()=>import('./components/Scene3D'));
 import { catalog, floors, styles } from './data/catalog';
 import { findProductSource, PRODUCT_CATALOG_VERSION } from './data/productCatalog';
@@ -436,6 +437,7 @@ export default function App(){
   return <div className="app-shell">
     <input type="file" accept=".json,application/json" ref={jsonInput} className="file-hidden" onChange={importJSON}/><input type="file" accept=".glb,model/gltf-binary" ref={glbInput} className="file-hidden" onChange={importGLB}/>
     <Header onBlank={onBlank} onReset={onReset} onImport={()=>jsonInput.current?.click()} onExport={exportJSON} onScreenshot={capture} onSvg={exportSVG} toast={toast} saveStatus={saveStatus}/>
+    <MaterialStorage/>
     <div className="workspace"><Sidebar importModel={()=>glbInput.current?.click()} modelUnits={modelUnits} setModelUnits={setModelUnits}/>
       <main className="editor-area"><div className="workspace-intro"><div><span className="eyebrow">TU ESPACIO, A TU MANERA</span><h1>Diseña cada rincón.</h1><p>Da forma a la distribución, elige acabados y vive el espacio en tres dimensiones.</p></div><div className="project-pill"><span className="live-dot"/><span>PROYECTO ACTIVO</span><strong>{(project.width*project.depth).toFixed(0)} m²</strong></div></div>
         <EditorToolbar/>

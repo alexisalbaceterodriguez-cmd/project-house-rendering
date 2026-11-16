@@ -2,7 +2,8 @@ import type { CustomMaterial } from '../types';
 
 export const MAX_MATERIAL_MAP_LENGTH = 1024 * 1024;
 export const MAX_PROJECT_TEXTURE_LENGTH = 4 * 1024 * 1024;
-const image = (value:unknown) => typeof value === 'string' && value.length <= MAX_MATERIAL_MAP_LENGTH
+export const isTextureReference = (value:unknown):value is string => typeof value === 'string' && /^texture:[a-f0-9]{64}$/.test(value);
+export const isMaterialImage = (value:unknown):value is string => typeof value === 'string' && value.length <= MAX_MATERIAL_MAP_LENGTH
   && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
 const finite = (value:unknown,min:number,max:number) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 export function validCustomMaterials(value:unknown): value is CustomMaterial[] {
@@ -18,8 +19,8 @@ export function validCustomMaterials(value:unknown): value is CustomMaterial[] {
     if (material.maps !== undefined) {
       if (!material.maps || typeof material.maps !== 'object' || Array.isArray(material.maps)) return false;
       for (const [key,data] of Object.entries(material.maps)) {
-        if (!['color','normal','roughness'].includes(key) || !image(data)) return false;
-        total += (data as string).length;
+        if (!['color','normal','roughness'].includes(key) || (!isMaterialImage(data) && !isTextureReference(data))) return false;
+        if (isMaterialImage(data)) total += data.length;
       }
     }
   }

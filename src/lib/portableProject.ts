@@ -2,11 +2,13 @@ import type { Project } from '../types';
 import { blobToDataURL,dataURLToBlob,deleteModelAsset,getModelAsset,putModelAsset } from './assets';
 import { validateGLB } from './modelValidation';
 import { isProject } from './validation';
+import { browserMaterials, embedMaterialMaps, storeMaterialMaps, type MaterialAccess } from './materialLibrary';
 type AssetAccess={get:(id:string)=>Promise<Blob|null>;put:(id:string,blob:Blob)=>Promise<void>;delete:(id:string)=>Promise<void>;encode:(blob:Blob)=>Promise<string>};
 const browserAssets:AssetAccess={get:getModelAsset,put:putModelAsset,delete:deleteModelAsset,encode:blobToDataURL};
 
-export async function portableProject(project:Project,assets:AssetAccess=browserAssets):Promise<Project>{
+export async function portableProject(project:Project,assets:AssetAccess=browserAssets,materials:MaterialAccess=browserMaterials):Promise<Project>{
   const copy=structuredClone(project);delete copy.resources;
+  if(copy.materials?.length)copy.materials=await embedMaterialMaps(copy.materials,materials);
   const counts=new Map<string,number>(),encoded=new Map<string,string>();
   for(const f of copy.furniture)if(f.assetId)counts.set(f.assetId,(counts.get(f.assetId)??0)+1);
   for(const f of copy.furniture){
@@ -22,7 +24,7 @@ export async function portableProject(project:Project,assets:AssetAccess=browser
 }
 
 /** Atomic hydration: never replace browser data with foreign IDs or leak partial writes. */
-export async function hydratePortableProject(input:unknown,assets:AssetAccess=browserAssets):Promise<Project>{
+export async function hydratePortableProject(input:unknown,assets:AssetAccess=browserAssets,materials:MaterialAccess=browserMaterials):Promise<Project>{
   if(!isProject(input))throw new Error('El archivo no contiene un proyecto compatible.');
   const copy=structuredClone(input),resources=new Map((copy.resources??[]).map(r=>[r.id,r.data]));
   const created:string[]=[],remapped=new Map<string,string>();
@@ -44,6 +46,7 @@ export async function hydratePortableProject(input:unknown,assets:AssetAccess=br
       if(f.modelData){const blob=dataURLToBlob(f.modelData);await validateGLB(blob);const id=crypto.randomUUID();await assets.put(id,blob);created.push(id);f.assetId=id;delete f.modelData;}
       else if(f.assetId&&remapped.has(f.assetId))f.assetId=remapped.get(f.assetId);
     }
+    if(copy.materials?.length)copy.materials=await storeMaterialMaps(copy.materials,materials);
     delete copy.resources;return copy;
   }catch(error){await Promise.allSettled(created.map(id=>assets.delete(id)));throw error;}
 }

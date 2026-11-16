@@ -5,13 +5,16 @@ import { resolveMaterial } from '../lib/projectMaterials';
 import { useEditor } from '../store';
 import ErrorBoundary from './ErrorBoundary';
 import { physicalProperties } from '../lib/studioRender';
+import { readTextureMap, useTextureLibraryRevision } from '../lib/textureCache';
 
 /** Cached pixels, separate texture transforms and physical properties per assignment. */
 export function usePbrMaps(ids:(string|undefined)[]){
+  useTextureLibraryRevision();
   const materials=useEditor(state=>state.project.materials);
   const high=useEditor(state=>state.project.render?.quality==='high');
   const entries=[...new Set(ids.filter((id):id is string=>!!id))].sort()
-    .map(id=>resolveMaterial({materials},id)).filter(entry=>entry!==undefined);
+    .map(id=>resolveMaterial({materials},id)).filter(entry=>entry!==undefined)
+    .map(entry=>({...entry,maps:entry.maps?Object.fromEntries(Object.entries(entry.maps).map(([map,value])=>[map,readTextureMap(value)])):undefined}));
   const slots=entries.flatMap(entry=>(['color','normal','roughness'] as const)
     .flatMap(map=>entry.maps?.[map]?[{id:entry.id,map,url:entry.maps[map]!}]:[]));
   const key=JSON.stringify(entries);
