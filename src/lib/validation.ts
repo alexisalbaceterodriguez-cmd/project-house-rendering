@@ -1,5 +1,6 @@
 import type { Project,RoomKind,FloorFinish,FurnitureKind } from '../types';
 import { wallLength } from './geometry';
+import { validCustomMaterials } from './materialValidation';
 const object=(a:unknown):a is Record<string,unknown>=>a!==null&&typeof a==='object'&&!Array.isArray(a);
 const str=(s:unknown,n=180):s is string=>typeof s==='string'&&s.length>0&&s.length<=n;
 const num=(n:unknown,min=-100,max=100)=>typeof n==='number'&&Number.isFinite(n)&&n>=min&&n<=max;
@@ -15,6 +16,7 @@ const validModelFinish=(f:unknown)=>object(f)&&color(f.color)&&num(f.roughness,0
 export function isProject(a:unknown):a is Project{
   if(!object(a))return false;
   if(a.schemaRevision!==undefined&&a.schemaRevision!==1)return false;
+  if(a.materials!==undefined&&!validCustomMaterials(a.materials))return false;
   if(a.editor!==undefined){const s=a.editor;if(!object(s)||!num(s.grid,.01,1)||typeof s.magnet!=='boolean'||typeof s.orthogonal!=='boolean')return false;}
   if(a.render!==undefined){
     const r=a.render;

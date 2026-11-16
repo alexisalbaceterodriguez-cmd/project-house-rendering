@@ -132,7 +132,7 @@ function ImportedModel({url,item,selected}:{url:string;item:Furniture;selected:b
             if(material instanceof THREE.MeshStandardMaterial){
               if(finish){material.color.set(finish.color);material.roughness=finish.roughness;material.metalness=finish.metalness;
                 const maps=finish.materialId?pbrMaps.get(finish.materialId):undefined;
-                if(maps){Object.assign(material,maps);material.color.set('#ffffff');}
+                if(maps){Object.assign(material,maps);}
               }
               // Visual feedback is transient: never serialize it or mutate cached GLTF materials.
               if(highlighted){material.emissive.set('#2b9071');material.emissiveIntensity=0.22;}

@@ -14,8 +14,12 @@ export type ModuleSettings = { family: 'base' | 'wall' | 'column' | 'sink' | 'ho
 export type ProductAttribution = { manufacturer:string; reference:string; source:string; license:string; attribution:string };
 export type EditorSettings = { grid:number; magnet:boolean; orthogonal:boolean };
 export type PortableResource = { id:string; data:string };
+export type CustomMaterial = {
+  id:string; name:string; category:string; color:string; scale:number; roughness:number; metalness:number; normalStrength:number;
+  maps?: { color?:string; normal?:string; roughness?:string }; source:string; license:string;
+};
 export type WallGraph = { revision: 1; nodes: { id: string; x: number; y: number }[]; edges: { wallId: string; from: string; to: string }[] };
-export type Project = { version: 1; schemaRevision?: 1; id: string; name: string; width: number; depth: number; wallHeight: number; rooms: Room[]; walls: Wall[]; openings: Opening[]; furniture: Furniture[]; palette: Palette; resources?: PortableResource[]; graph?: WallGraph; editor?: EditorSettings; render?: RenderSettings; referenceImage?: { data: string; width: number; height: number; opacity: number } };
+export type Project = { version: 1; schemaRevision?: 1; id: string; name: string; width: number; depth: number; wallHeight: number; rooms: Room[]; walls: Wall[]; openings: Opening[]; furniture: Furniture[]; palette: Palette; materials?:CustomMaterial[]; resources?: PortableResource[]; graph?: WallGraph; editor?: EditorSettings; render?: RenderSettings; referenceImage?: { data: string; width: number; height: number; opacity: number } };
 export type Selection = { type: 'furniture' | 'wall' | 'room' | 'opening'; id: string } | null;
 export type Tool = 'select' | 'wall' | 'door' | 'window' | 'room';
 export type Mode = '2d' | '3d' | 'split';

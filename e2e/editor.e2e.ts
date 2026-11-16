@@ -16,7 +16,7 @@ async function planPoint(page: Page, x: number, y: number) {
   }, { x, y });
 }
 
-test('crear, editar, deshacer, guardar y recuperar una vivienda', async ({ page }) => {
+test('crear, editar, deshacer, guardar y recuperar una vivienda', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Plano 2D' }).click();
   await expect(page.locator('.plan-svg')).toBeVisible();
