@@ -18,9 +18,9 @@ export function createMaterialMaps(pattern:TexturePattern,color:string,seed=42,s
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
     const u=x/size,v=y/size,n=noise(u,v,16)*.6+noise(u,v,64)*.4;
     let value=n,relief=n*.05,roughness=.65;
-    if(pattern==='wood') {value=.55+.22*Math.sin(u*Math.PI*48+noise(u,v,4)*3)+n*.23;relief=value*.08;roughness=.55+n*.3;}
+    if(pattern==='wood') {const grain=Math.sin(u*Math.PI*48+noise(u,v,4)*3);value=.8+.07*grain+n*.1;relief=value*.008;roughness=.88+n*.12;}
     if(pattern==='marble') {const vein=Math.pow(Math.abs(Math.sin((u*3+v*2)*Math.PI*2+noise(u,v,8)*4)),.15);value=.28+vein*.72;relief=n*.005;roughness=.12+n*.12;}
-    if(pattern==='fabric') {value=.65+.16*Math.sin(u*Math.PI*128)*Math.sin(v*Math.PI*128)+n*.15;relief=value*.18;roughness=.8+n*.2;}
+    if(pattern==='fabric') {value=.88+.035*Math.sin(u*Math.PI*128)*Math.sin(v*Math.PI*128)+n*.06;relief=value*.018;roughness=.94+n*.06;}
     if(pattern==='terrazzo') {const chip=hash(Math.floor(u*48),Math.floor(v*48));value=chip>.74?.45+chip*.7:.83+n*.1;relief=n*.008;roughness=.32+n*.25;}
     if(pattern==='concrete') {value=.7+n*.3;relief=n*.12;roughness=.8+n*.2;}
     heights[y*size+x]=relief;

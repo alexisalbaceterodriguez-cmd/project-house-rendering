@@ -42,7 +42,9 @@ describe('Estudio portable compatible con JSON v1',()=>{
     expect(physicalProperties({...material,finish:'glass'},true)).toMatchObject({transmission:.96,transparent:false,depthWrite:true});
     expect(physicalProperties({...material,finish:'glass'},false)).toMatchObject({transmission:0,transparent:true,opacity:.35});
     expect(physicalProperties({...material,finish:'varnish'},true)).toMatchObject({clearcoat:1,sheen:0,transmission:0});
-    expect(physicalProperties(material,true)).toMatchObject({sheen:1,clearcoat:0,transmission:0});
+    expect(physicalProperties(material,true)).toMatchObject({sheen:.65,sheenRoughness:.9,clearcoat:0,transmission:0});
+    expect(physicalProperties({...material,finish:'glass'},true)).toMatchObject({thickness:.01,ior:1.5});
+    expect(physicalProperties({...material,finish:'varnish'},true)).toMatchObject({clearcoatRoughness:.28});
     expect(physicalProperties(material,false)).toMatchObject({sheen:0,clearcoat:0,transmission:0});
   });
 });

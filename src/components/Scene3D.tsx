@@ -1,6 +1,6 @@
 import { createContext, Suspense, useContext, useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, useGLTF, useProgress } from '@react-three/drei';
+import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, SoftShadows, useGLTF, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { floors } from '../data/catalog';
@@ -259,12 +259,20 @@ function CameraRig({project,top}:{project:Project;top:boolean}){
 }
 function CaptureRig({exposure,high}:{exposure:number;high:boolean}){
   const {gl,scene,camera,invalidate}=useThree();
-  const {active}=useProgress();
   useEffect(()=>{gl.toneMappingExposure=exposure;gl.transmissionResolutionScale=high?1:.25;invalidate();},[gl,exposure,high,invalidate]);
   useEffect(()=>{
     const unregister=registerCapture(gl.domElement,async(width,height)=>{
-      const references=(useEditor.getState().project.materials??[]).flatMap(material=>Object.values(material.maps??{}));
-      if(active||textureMapsPending(references))throw new Error('Espera a que terminen de cargar los modelos y texturas antes de exportar.');
+      const project=useEditor.getState().project;
+      const references=(project.materials??[]).flatMap(material=>Object.values(material.maps??{}));
+      // Model loads can start after the DOM reports idle. Let pending React/loader work
+      // settle for two frames, reading live progress rather than a render's stale value.
+      const deadline=performance.now()+10_000;let settled=0;
+      while(settled<2){
+        await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+        if(useEditor.getState().project!==project)throw new Error('El proyecto cambió mientras se preparaba la imagen. Vuelve a exportar.');
+        if(performance.now()>deadline)throw new Error('Espera a que terminen de cargar los modelos y texturas antes de exportar.');
+        settled=useProgress.getState().active||textureMapsPending(references)?0:settled+1;
+      }
       const size=gl.getSize(new THREE.Vector2()),ratio=gl.getPixelRatio();
       const perspective=camera as THREE.PerspectiveCamera,aspect=perspective.aspect;
       const overlays:THREE.Object3D[]=[];scene.traverse(object=>{if(object.userData.editorOverlay&&object.visible){overlays.push(object);object.visible=false;}});
@@ -280,7 +288,7 @@ function CaptureRig({exposure,high}:{exposure:number;high:boolean}){
         return await new Promise<Blob>((resolve,reject)=>gl.domElement.toBlob(blob=>blob?resolve(blob):reject(new Error('La GPU no pudo crear la imagen.')),'image/png'));
       }finally{overlays.forEach(object=>{object.visible=true;});for(const {material,color,intensity} of emissives){material.emissive.copy(color);material.emissiveIntensity=intensity;}gl.setPixelRatio(ratio);gl.setSize(size.x,size.y,false);perspective.aspect=aspect;perspective.updateProjectionMatrix();invalidate();}
     });return unregister;
-  },[gl,scene,camera,invalidate,active]);return null;
+  },[gl,scene,camera,invalidate]);return null;
 }
 function StudioLights({project,subject,high}:{project:Project;subject?:Furniture;high:boolean}){
   const settings=project.render?.studio??defaultStudio;
@@ -293,8 +301,9 @@ function StudioLights({project,subject,high}:{project:Project;subject?:Furniture
   const color=settings.warmth==='warm'?'#ffe0b5':settings.warmth==='cool'?'#ccddff':'#fff5eb';
   return <>
     <primitive object={target}/>
+    {high&&<SoftShadows size={40} samples={16}/>}
     <ambientLight intensity={.12}/>
-    <directionalLight target={target} position={key} intensity={settings.key} color={color} castShadow shadow-mapSize={[high?2048:1024,high?2048:1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} shadow-camera-far={span*6} shadow-normalBias={.025} shadow-bias={-.0001}/>
+    <directionalLight target={target} position={key} intensity={settings.key} color={color} castShadow shadow-mapSize={[high?2048:1024,high?2048:1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} shadow-camera-far={span*6} shadow-normalBias={.008} shadow-bias={-.00005}/>
     <directionalLight target={target} position={[center[0]-span,center[1]+span*.5,center[2]+span*.7]} intensity={settings.fill} color="#e0ebff"/>
     <directionalLight target={target} position={[center[0]+span*.7,center[1]+span,center[2]-span]} intensity={settings.rim} color="#fff2e0"/>
     <ErrorBoundary fallback={null}><Suspense fallback={null}><Environment files={`${import.meta.env.BASE_URL}environment/studio.hdr`} environmentIntensity={.45}/></Suspense></ErrorBoundary>

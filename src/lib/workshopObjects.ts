@@ -21,7 +21,7 @@ export function buildWorkshopObject(recipe:ObjectRecipe):THREE.Group {
   validateRecipe(recipe);
   const group=new THREE.Group();group.name=recipe.name;
   const wood=new THREE.MeshPhysicalMaterial({name:'Madera',color:recipe.family==='sofa'?recipe.accent:recipe.color,roughness:.48,clearcoat:.2,clearcoatRoughness:.35});
-  const fabric=new THREE.MeshPhysicalMaterial({name:'Tapizado',color:recipe.color,roughness:.92,sheen:1,sheenColor:new THREE.Color(recipe.color),sheenRoughness:.8});
+  const fabric=new THREE.MeshPhysicalMaterial({name:'Tapizado',color:recipe.color,roughness:.92,sheen:.65,sheenColor:new THREE.Color(recipe.color),sheenRoughness:.9});
   const metal=new THREE.MeshStandardMaterial({name:'Metal',color:recipe.accent,roughness:.25,metalness:.85});
   const ceramic=new THREE.MeshPhysicalMaterial({name:'Cerámica',color:recipe.color,roughness:.35,clearcoat:.3});
   const add=(name:string,geometry:THREE.BufferGeometry,material:THREE.Material,position:[number,number,number])=>{

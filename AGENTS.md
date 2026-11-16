@@ -4,6 +4,7 @@ Este repositorio desarrolla **Atelier 60**, un editor web de viviendas en 2D y 3
 
 ## Directriz del usuario vigente — 16/11/2026
 
+- Integrar las PR pendientes y trabajar desde ahora directamente en `main` en este repositorio. Comprobar HEAD remoto antes de publicar; no sobrescribir trabajo concurrente ni forzar pushes.
 - Objetivo de entrega: aplicación de renders potente y terminada, con objetos de gran realismo y capacidad de crear e integrar nuevos materiales y objetos según las peticiones del usuario. Priorizar avances de producto, calidad visual y flujo de creación de recursos; no encadenar ampliaciones de infraestructura mientras se pospone ese resultado. Atender primero cualquier fallo real que amenace datos o edición.
 - Validación durante desarrollo: pruebas básicas por bloque funcional (unitarias focalizadas, build y un recorrido smoke relevante). Repetir solo lo afectado por fallos o cambios posteriores; no ejecutar ni esperar la suite completa tras cada cambio. No reinstalar dependencias cuando no cambian.
 - CI de PR: unitarias, build y smoke. Suite E2E completa al publicar código en main o por ejecución manual. Los cambios solo de Markdown no vuelven a disparar esa CI. No atribuir a un smoke cobertura de toda la aplicación.

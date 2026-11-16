@@ -10,9 +10,10 @@ export const finishPresets = {
 export function physicalProperties(material:Pick<CustomMaterial,'finish'|'color'>,high:boolean) {
   return {
     transmission:high&&material.finish==='glass'?.96:0,
-    thickness:material.finish==='glass'?.12:0,ior:1.5,
-    clearcoat:high&&material.finish==='varnish'?1:0,clearcoatRoughness:.18,
-    sheen:high&&material.finish==='fabric'?1:0,sheenRoughness:.8,
+    // Metres: thin furniture glazing, rather than a 12 cm solid block.
+    thickness:material.finish==='glass'?.01:0,ior:1.5,
+    clearcoat:high&&material.finish==='varnish'?1:0,clearcoatRoughness:.28,
+    sheen:high&&material.finish==='fabric'?.65:0,sheenRoughness:.9,
     opacity:!high&&material.finish==='glass'?.35:1,
     transparent:!high&&material.finish==='glass',
     depthWrite:high||material.finish!=='glass',
