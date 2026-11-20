@@ -87,6 +87,8 @@ const builders={
   curtain:[curtainParts,[[1.8,.15,2.5],[1.2,.12,2.3],[3,.2,2.7]]],
   'extending-table':[extendingTableParts,[[1.6,.9,.76],[1.2,.8,.75],[2,1,.76]]],
   'extending-table (leaf)':[(w:number,d:number,h:number)=>extendingTableParts(w,d,h,.5),[[2.1,.9,.76],[1.7,.8,.75],[1,.8,.75]]],
+  'extending-table (wide leaf)':[(w:number,d:number,h:number)=>extendingTableParts(w,d,h,1),[[2.6,.9,.76],[1.4,.8,.75]]],
+  'extending-table (narrow leaf)':[(w:number,d:number,h:number)=>extendingTableParts(w,d,h,.2),[[1.8,.9,.76],[.6,.8,.75]]],
   'desk-hutch':[deskHutchParts,[[1.2,.6,1.5],[1,.55,1.4],[1.6,.7,1.8]]],
   'bunk-bed':[bunkBedParts,[[.97,2.06,1.6],[.9,1.95,1.5],[1.1,2.1,1.75]]],
   'laundry-basket':[laundryBasketParts,[[.42,.42,.6],[.35,.35,.5],[.5,.4,.65]]],
