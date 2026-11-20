@@ -1,9 +1,18 @@
 # Atelier 60 — Estado persistente
 
-Última revisión: 2026-11-16, 21:31 (Europe/Madrid).
+Última revisión: 2026-11-20, 14:23 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Estado operativo vigente — integración y calibración visual 2026-11-16
+## Estado operativo vigente — dormitorio Salvia, 20/11/2026
+
+- Código publicado en main: `d982692133194aa07a504cb4a2b8232b771a6a97`. Cama original de ancho, fondo y altura configurables. Cabecero acanalado y bastidor comparten tapizado. Patas de madera, lino de colchón/almohadas y colcha con pliegues tienen materiales independientes. El ancho inferior a 1,25 m genera una almohada; a partir de esa medida, dos.
+- Verificación local: 11 unitarias del taller, build y smoke Chromium. El recorrido crea una cama de 1,65 × 2,15 × 1,15 m, cambia solo el tapizado, deshace/rehace, selecciona la cama en planta, exporta PNG 1920 × 1080 e importa el JSON en otro contexto. Recupera el acabado y los mismos bytes GLB.
+- [CI 44742806020](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/44742806020) completed/success, job 136310429283: 107 unitarias, build y 39 E2E Chromium. [Pages 44743630356](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/44743630356) completed/success, job 136313241185, mismo SHA.
+- Comprobación sobre Pages con Chromium: generación y exportación de cama, mesilla y lámpara, composición del dormitorio con seis instancias, exportación HD y reapertura del JSON final en un navegador limpio. Dos recursos GLB compartidos entre parejas de mesillas y lámparas. Evidencia y proyecto editable locales en `C:/Users/alexi/.codex/visualizations/2026/11/20/atelier-60-cama/`. La toma del dormitorio usa muros completos (control Sección). El editor guarda cámara y luces en JSON; Sección es un ajuste de vista.
+- Se revisaron las seis incidencias abiertas; cero PR pendientes al inicio. F0: conflictos entre pestañas y migraciones históricas. F1/F2: pasos libres, geometría degenerada, cotas encadenadas y táctil. F3A/F3B: más productos documentados y composición de baños. F4/F5: calibración en interiores y otras GPU, PDF técnico, cotizaciones y colaboración. Ninguna fase cerrada.
+- Siguiente tarea exacta: mejorar las sombras de contacto de muebles en escenas completas sobre suelo y alfombra. Usar el dormitorio Salvia y su cámara fija como referencia; comprobar apoyo de cama y mesillas, conservar sombra de la toma aislada y comparar ambos PNG HD. La fidelidad fotográfica final sigue pendiente.
+
+## Estado anterior — integración y calibración visual 2026-11-16
 
 - **Directriz vigente:** usuario autoriza integrar todas las PR pendientes y desarrollar directamente en `main` desde ahora. Registrada en AGENTS.md y AUTOMATION_RUNBOOK.md. Se comprueba HEAD remoto antes de publicar; sin pushes forzados.
 - **Integración completada:** PR #8 → `8b3344c209fad7b147b841a5d7b1df6711fb8881`, #9 → `fdc926b9d1c90ba5c2ee575a147e6935475be445`, #10 → `5925be85fe137a7fe44ebac430045c2d59ee8397`, #11 → `2aa874cac182c0d03d1345af70a2933c1d3df865`. Integradas en orden conservando commits y reorientando las PR apiladas a main. Consulta posterior: cero PR abiertas. Copia local en main.
