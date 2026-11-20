@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -73,6 +73,11 @@ const builders={
   toilet:[toiletParts,[[.4,.6,.65],[.43,.65,.65],[.36,.7,.8]]],
   shower:[showerParts,[[.9,.9,2],[.72,.74,2],[1.4,.8,2.1]]],
   lamp:[lampParts,[[.4,.4,1.65],[.5,.45,1.4]]],
+  dresser:[dresserParts,[[1,.45,.8],[.6,.4,.7],[1.4,.5,1.1]]],
+  'shoe-cabinet':[shoeCabinetParts,[[.8,.24,1],[.6,.2,.6],[1.2,.3,1.2]]],
+  'wall-shelf':[wallShelfParts,[[.8,.22,.32],[.5,.18,.25],[1.2,.25,.4]]],
+  'towel-rail':[towelRailParts,[[.5,.1,1.2],[.4,.08,.8],[.6,.12,1.6]]],
+  radiator:[radiatorParts,[[.8,.1,.6],[.4,.08,.5],[1.4,.12,.9]]],
   bench:[benchParts,[[1.2,.4,.45],[.9,.35,.42],[1.6,.45,.5]]],
   'side-table':[sideTableParts,[[.45,.45,.55],[.35,.35,.5],[.6,.6,.65]]],
   'coat-rack':[coatRackParts,[[.45,.45,1.75],[.35,.35,1.6],[.55,.5,1.9]]],
@@ -202,5 +207,14 @@ describe('hung furniture', () => {
     expect(furnitureElevation({kind:'tv',h:.71},2.55)).toBeCloseTo(.845);
     expect(furnitureElevation({kind:'sofa',h:.85},2.55)).toBe(0);
     expect(furnitureElevation({kind:'kitchen',h:.72,module:{family:'wall'}},2.55)).toBeCloseTo(1.45);
+  });
+
+  it('hangs shelves at 1.2 m, towel rails at 15 cm and radiators at 12 cm, never through the ceiling', () => {
+    expect(furnitureElevation({kind:'wall-shelf',h:.32},2.55)).toBeCloseTo(1.2);
+    expect(furnitureElevation({kind:'wall-shelf',h:1.6},2.55)).toBe(0);
+    expect(furnitureElevation({kind:'towel-rail',h:1.2},2.55)).toBeCloseTo(.15);
+    expect(furnitureElevation({kind:'towel-rail',h:2.5},2.55)).toBeCloseTo(.05);
+    expect(furnitureElevation({kind:'radiator',h:.6},2.55)).toBeCloseTo(.12);
+    expect(furnitureElevation({kind:'dresser',h:.8},2.55)).toBe(0);
   });
 });

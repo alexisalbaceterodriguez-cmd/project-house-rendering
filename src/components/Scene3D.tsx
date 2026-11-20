@@ -17,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -266,6 +266,11 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'coffee-table':return <Parts parts={coffeeTableParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv-unit':return <Parts parts={tvUnitParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv':return <Parts parts={tvParts(w,d,h)} item={item} wood={wood}/>;
+    case 'dresser':return <Parts parts={dresserParts(w,d,h)} item={item} wood={wood}/>;
+    case 'shoe-cabinet':return <Parts parts={shoeCabinetParts(w,d,h)} item={item} wood={wood}/>;
+    case 'wall-shelf':return <Parts parts={wallShelfParts(w,d,h)} item={item} wood={wood}/>;
+    case 'towel-rail':return <Parts parts={towelRailParts(w,d,h)} item={item} wood={wood}/>;
+    case 'radiator':return <Parts parts={radiatorParts(w,d,h)} item={item} wood={wood}/>;
     case 'bench':return <Parts parts={benchParts(w,d,h)} item={item} wood={wood}/>;
     case 'side-table':return <Parts parts={sideTableParts(w,d,h)} item={item} wood={wood}/>;
     case 'coat-rack':return <Parts parts={coatRackParts(w,d,h)} item={item} wood={wood}/>;

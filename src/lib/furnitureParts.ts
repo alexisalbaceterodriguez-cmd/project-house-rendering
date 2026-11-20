@@ -726,6 +726,9 @@ export function furnitureElevation(item:{kind:string;h:number;module?:{family:Mo
     case 'pendant':return Math.max(0,wallHeight-item.h);
     case 'mirror':case 'artwork':return item.h>=1.4?0:Math.max(0,1.5-item.h/2);
     case 'tv':return Math.max(0,1.2-item.h/2);
+    case 'wall-shelf':return item.h>=1.4?0:Math.max(0,Math.min(1.2,wallHeight-item.h));
+    case 'towel-rail':return Math.max(0,Math.min(.15,wallHeight-item.h));
+    case 'radiator':return Math.max(0,Math.min(.12,wallHeight-item.h));
     default:return 0;
   }
 }
@@ -789,4 +792,105 @@ export function bathtubParts(w:number,d:number,h:number):FurniturePart[]{
     turned('Desagüe',DISC,[.05,.004,.05],-iw/2+.12,base,0,{color:METAL,material:'metal'}),
     part('Rebosadero',[.006,.07,.07],-w/2+t+.003,h-.16,0,{color:METAL,material:'metal',bevel:.003}),
   ];
+}
+
+/**
+ * Chest of drawers inside `w × d × h`: wooden top, carcass on four short legs and 3–5 full-width
+ * drawers about 20 cm tall, each with one centred bar handle or two on fronts wider than 80 cm.
+ */
+export function dresserParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.025,leg=.04,feet=clamp(h*.12,.06,.12),under=h-top,door=.018,back=-d/2+.01,face=d/2-.02;
+  const bw=w-.02,body=face-door-.002-back,zc=back+body/2;
+  const parts:FurniturePart[]=[
+    part('Tablero',[w,top,d],0,under,0,{color:'item',surface:'woodgrain',bevel:.005}),
+    part('Cuerpo',[bw,under-feet,body],0,feet,zc,{color:'item',bevel:.004}),
+  ];
+  const lx=bw/2-.03-leg/2,lz=body/2-.02-leg/2;
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(part(`Pata ${x} ${z}`,[leg,feet,leg],x*lx,0,zc+z*lz,{color:'wood',bevel:.004}));
+  const span=under-feet-2*HINGE_GAP,count=clamp(Math.round(span/.2),2,5),drawer=(span-(count-1)*HINGE_GAP)/count;
+  const handles=bw>.8?[-bw/4,bw/4]:[0];
+  for(let i=0;i<count;i++){
+    const bottom=feet+HINGE_GAP+i*(drawer+HINGE_GAP);
+    parts.push(part(`Cajón ${i+1}`,[bw-2*HINGE_GAP,drawer,door],0,bottom,face-door/2,{color:'item',bevel:.003}));
+    handles.forEach((x,j)=>parts.push(...barHandle(`Tirador ${i+1}.${j+1}`,x,bottom+drawer/2,Math.min(.14,bw*.3),face,d/2-.002,true)));
+  }
+  return parts;
+}
+
+/**
+ * Slim shoe cabinet inside `w × d × h`: thin top, recessed dark plinth and two or three full-width
+ * tilt-out flaps, each with a horizontal bar handle near its top edge.
+ */
+export function shoeCabinetParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.02,plinth=.06,under=h-top,door=.018,back=-d/2+.01,face=d/2-.02;
+  const bw=w-.01,body=face-door-.002-back,zc=back+body/2;
+  const parts:FurniturePart[]=[
+    part('Tablero',[w,top,d],0,under,0,{color:'item',surface:'woodgrain',bevel:.004}),
+    part('Cuerpo',[bw,under-plinth,body],0,plinth,zc,{color:'item',bevel:.003}),
+    part('Zócalo',[bw-.04,plinth,body-.04],0,0,zc-.02,{color:'#2f2c29',bevel:.002}),
+  ];
+  const span=under-plinth-2*HINGE_GAP,count=span>.75?3:2,flap=(span-(count-1)*HINGE_GAP)/count;
+  for(let i=0;i<count;i++){
+    const bottom=plinth+HINGE_GAP+i*(flap+HINGE_GAP);
+    parts.push(part(`Abatible ${i+1}`,[bw-2*HINGE_GAP,flap,door],0,bottom,face-door/2,{color:'item',bevel:.003}));
+    parts.push(...barHandle(`Tirador ${i+1}`,0,bottom+flap-.045,Math.min(.2,bw*.35),face,d/2-.002,true));
+  }
+  return parts;
+}
+
+const VASE:Profile=[[0,0],[.6,0],[.95,.25],[1,.5],[.7,.82],[.42,.9],[.5,1],[0,1]];
+
+/**
+ * Floating wall shelf inside `w × d × h`: a woodgrain board (brackets hidden in the wall), a row
+ * of upright books on the left and a turned vase on the right whose top reaches `h`.
+ */
+export function wallShelfParts(w:number,d:number,h:number):FurniturePart[]{
+  const board=Math.min(.04,h*.2),room=h-board;
+  const parts:FurniturePart[]=[part('Balda',[w,board,d],0,0,0,{color:'item',surface:'woodgrain',bevel:.004})];
+  const deep=Math.min(d-.03,.17),end=-w/2+w*.45;
+  let x=-w/2+.03;
+  for(let k=0;x<end;k++){
+    const thick=.022+(k*7%5)*.006,tall=Math.min(room*.95,.15+(k*5%4)*.025);
+    if(tall<.08||x+thick>w/2-.03)break;
+    parts.push(part(`Libro ${k+1}`,[thick,tall,deep],x+thick/2,board,d/2-.015-deep/2,{color:BOOK_COLORS[k%BOOK_COLORS.length],bevel:.002}));
+    x+=thick+.002;
+  }
+  const vase=Math.min(.14,d*.75,room*.6);
+  parts.push(turned('Jarrón',VASE,[vase,room,vase],w/2-.05-vase/2,board,0,{color:'#d8d2c6'}));
+  return parts;
+}
+
+/**
+ * Wall-hung heated towel rail inside `w × d × h`: two round uprights with wall brackets, horizontal
+ * bars about every 7 cm and a towel folded over the bar at about two thirds of the height.
+ */
+export function towelRailParts(w:number,d:number,h:number):FurniturePart[]{
+  const tube=.03,bar=.022,barZ=-d/2+.035;
+  const parts:FurniturePart[]=[];
+  for(const s of [-1,1]){
+    parts.push(turned(`Larguero ${s}`,ROD,[tube,h,tube],s*(w/2-tube/2),0,barZ,{color:'item'}));
+    for(const [i,y] of [.12,h-.14].entries())parts.push(part(`Soporte ${s} ${i+1}`,[.02,.02,barZ-tube/2+.002+d/2],s*(w/2-tube/2),y,(-d/2+barZ-tube/2+.002)/2,{color:'item',bevel:.004}));
+  }
+  const count=Math.max(3,Math.floor((h-.08)/.07)),pitch=(h-.08-bar)/(count-1);
+  const bars=Array.from({length:count},(_,i)=>.04+i*pitch);
+  bars.forEach((y,i)=>parts.push(part(`Barra ${i+1}`,[w-tube,bar,bar],0,y,barZ,{color:'item',bevel:.008})));
+  const hang=bars.reduce((best,y)=>Math.abs(y-h*.68)<Math.abs(best-h*.68)?y:best,bars[0]),barTop=hang+bar;
+  const tw=w*.62,towel=.014,back=barZ+bar/2+.001,front=back+towel,tall=Math.min(.45,h*.4,barTop+.008-.02);
+  const textile={surface:'textile'} as const;
+  parts.push(part('Toalla',[tw,tall,towel],0,barTop+.008-tall,back+towel/2,{color:'#e9e2d6',...textile,bevel:.005}));
+  parts.push(part('Toalla pliegue',[tw+.006,.016,front+.003-(barZ-bar/2-.002)],0,barTop,(front+.003+barZ-bar/2-.002)/2,{color:'#e9e2d6',...textile,bevel:.006}));
+  return parts;
+}
+
+/**
+ * Column radiator inside `w × d × h`: rounded vertical elements about 8 cm apart with 8 mm gaps,
+ * joined by top and bottom headers set back towards the wall that span the full width.
+ */
+export function radiatorParts(w:number,d:number,h:number):FurniturePart[]{
+  const n=Math.max(3,Math.round(w/.08)),pitch=w/n,header=Math.min(.04,d*.4);
+  const parts:FurniturePart[]=[];
+  for(let i=0;i<n;i++)parts.push(part(`Elemento ${i+1}`,[pitch-.008,h,d-.01],-w/2+pitch/2+i*pitch,0,.005,{color:'item',bevel:Math.min(.012,(pitch-.008)/3)}));
+  for(const [name,y] of [['Colector inferior',.03],['Colector superior',h-.03-header]] as const)
+    parts.push(part(name,[w,header,header],0,y,-d/2+header/2+.002,{color:'item',bevel:.004}));
+  return parts;
 }
