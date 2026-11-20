@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -73,6 +73,10 @@ const builders={
   toilet:[toiletParts,[[.4,.6,.65],[.43,.65,.65],[.36,.7,.8]]],
   shower:[showerParts,[[.9,.9,2],[.72,.74,2],[1.4,.8,2.1]]],
   lamp:[lampParts,[[.4,.4,1.65],[.5,.45,1.4]]],
+  washer:[washerParts,[[.6,.6,.85],[.6,.55,.85],[.45,.6,.85]]],
+  dryer:[(w:number,d:number,h:number)=>washerParts(w,d,h,true),[[.6,.6,.85],[.6,.65,.9]]],
+  crib:[cribParts,[[1.24,.66,.9],[1.04,.6,.85],[1.44,.76,.95]]],
+  'bar-stool':[barStoolParts,[[.42,.42,.75],[.38,.38,.65],[.45,.45,.8]]],
   dresser:[dresserParts,[[1,.45,.8],[.6,.4,.7],[1.4,.5,1.1]]],
   'shoe-cabinet':[shoeCabinetParts,[[.8,.24,1],[.6,.2,.6],[1.2,.3,1.2]]],
   'wall-shelf':[wallShelfParts,[[.8,.22,.32],[.5,.18,.25],[1.2,.25,.4]]],

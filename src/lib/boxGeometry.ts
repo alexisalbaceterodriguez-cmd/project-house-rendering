@@ -87,11 +87,13 @@ const LATHE_SEGMENTS=48;
  * the profile's unit radius maps to half the width along x and half the depth along z, so a
  * non-square envelope gives an oval (toilet bowl, washbasin). Faces wind outward for a profile
  * listed from the bottom up on the outside; normals are smooth and pass through the scale's
- * inverse transpose, so the oval shades correctly.
+ * inverse transpose, so the oval shades correctly. With `axis` 'z' the solid turns about z instead
+ * (profile height running from back to front), for knobs and portholes on a front.
  */
-export function latheGeometry(profile:Profile,size:readonly [number,number,number],segments=LATHE_SEGMENTS):THREE.BufferGeometry{
+export function latheGeometry(profile:Profile,size:readonly [number,number,number],segments=LATHE_SEGMENTS,axis:'y'|'z'='y'):THREE.BufferGeometry{
   const geometry=new THREE.LatheGeometry(profile.map(([r,y])=>new THREE.Vector2(Math.max(r,1e-5),y-.5)),segments);
-  geometry.scale(size[0]/2,size[1],size[2]/2);
+  if(axis==='z'){geometry.scale(size[0]/2,size[2],size[1]/2);geometry.rotateX(Math.PI/2);}
+  else geometry.scale(size[0]/2,size[1],size[2]/2);
   geometry.computeBoundingBox();geometry.computeBoundingSphere();
   return geometry;
 }

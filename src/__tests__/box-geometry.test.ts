@@ -66,6 +66,14 @@ describe('cushion crown', () => {
 });
 
 describe('latheGeometry', () => {
+  it('turns about z for front-facing parts and still fills the size exactly', async () => {
+    const { latheGeometry } = await import('../lib/boxGeometry');
+    const box=latheGeometry([[0,0],[1,0],[1,1],[0,1]],[.4,.3,.06],undefined,'z').boundingBox!;
+    expect(box.min.x).toBeCloseTo(-.2,6);expect(box.max.x).toBeCloseTo(.2,6);
+    expect(box.min.y).toBeCloseTo(-.15,6);expect(box.max.y).toBeCloseTo(.15,6);
+    expect(box.min.z).toBeCloseTo(-.03,6);expect(box.max.z).toBeCloseTo(.03,6);
+  });
+
   it('fills an oval envelope exactly and winds its faces outward', async () => {
     const { latheGeometry } = await import('../lib/boxGeometry');
     const THREE = await import('three');

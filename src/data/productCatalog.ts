@@ -13,7 +13,7 @@ export type ProductSource = {
   modelUrl?: string;
 };
 export const productSources: ProductSource[] = [
-  ['sofa','Salón'],['table','Salón'],['chair','Salón'],['rug','Salón'],['bookshelf','Salón'],['armchair','Salón'],['sideboard','Salón'],['coffee-table','Salón'],['tv-unit','Salón'],['tv','Salón'],['side-table','Salón'],['bench','Dormitorio'],['coat-rack','Decoración'],['dresser','Dormitorio'],['shoe-cabinet','Decoración'],['wall-shelf','Decoración'],['radiator','Decoración'],
+  ['sofa','Salón'],['table','Salón'],['chair','Salón'],['rug','Salón'],['bookshelf','Salón'],['armchair','Salón'],['sideboard','Salón'],['coffee-table','Salón'],['tv-unit','Salón'],['tv','Salón'],['side-table','Salón'],['bench','Dormitorio'],['coat-rack','Decoración'],['dresser','Dormitorio'],['shoe-cabinet','Decoración'],['wall-shelf','Decoración'],['radiator','Decoración'],['crib','Dormitorio'],['bar-stool','Cocina'],['washer','Baño'],['dryer','Baño'],
   ['bed','Dormitorio'],['single-bed','Dormitorio'],['storage-bed','Dormitorio'],['wardrobe','Dormitorio'],['desk','Dormitorio'],['nightstand','Dormitorio'],
   ['kitchen','Cocina'],['island','Cocina'],['fridge','Cocina'],
   ['sink','Baño'],['toilet','Baño'],['shower','Baño'],['bathtub','Baño'],['towel-rail','Baño'],

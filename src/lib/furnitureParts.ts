@@ -8,7 +8,7 @@ type Vec3=[number,number,number];
  * or as a solid of revolution filling `size` when it has a `lathe` profile, and the render GLB
  * carries the same meshes, so Cycles sees exactly this geometry.
  */
-export type FurniturePart={name:string;size:Vec3;position:Vec3;color:'item'|'wood'|string;surface?:'textile'|'woodgrain';material?:'metal'|'glass'|'mirror'|'gloss';role?:string;bevel:number;crown?:Crown;lathe?:Profile};
+export type FurniturePart={name:string;size:Vec3;position:Vec3;color:'item'|'wood'|string;surface?:'textile'|'woodgrain';material?:'metal'|'glass'|'mirror'|'gloss';role?:string;bevel:number;crown?:Crown;lathe?:Profile;axis?:'z'};
 
 /** Faces that would sit on the same plane are kept at least this far apart (no z-fighting in viewer or Cycles). */
 export const FACE_GAP=.01;
@@ -893,4 +893,68 @@ export function radiatorParts(w:number,d:number,h:number):FurniturePart[]{
   for(const [name,y] of [['Colector inferior',.03],['Colector superior',h-.03-header]] as const)
     parts.push(part(name,[w,header,header],0,y,-d/2+header/2+.002,{color:'item',bevel:.004}));
   return parts;
+}
+
+const PORTHOLE:Profile=[[0,0],[1,0],[1,.7],[.9,1],[.72,1],[.7,.45],[0,.45]];
+const PORTHOLE_GLASS:Profile=[[0,0],[1,0],[1,.5],[.6,1],[0,1]];
+const KNOB:Profile=[[0,0],[1,0],[1,.8],[.85,1],[0,1]];
+const turnedFront=(name:string,profile:Profile,size:Vec3,x:number,y0:number,z:number,rest:Omit<FurniturePart,'name'|'size'|'position'|'lathe'|'bevel'|'axis'>):FurniturePart=>({...turned(name,profile,size,x,y0,z,rest),axis:'z'});
+
+/**
+ * Front-loading washing machine (or tumble dryer) inside `w × d × h`: rounded carcass, control
+ * strip with a detergent drawer (water tank on the dryer), dark display and turned knob, and a
+ * round chrome-rimmed door with a glass porthole. Knob and door end exactly on the front.
+ */
+export function washerParts(w:number,d:number,h:number,dryer=false):FurniturePart[]{
+  const face=d/2-.03,strip=.1,stripFace=face+.012,door=Math.min(w*.75,(h-strip)*.72),cy=(h-strip)*.48;
+  const drawer=Math.min(.2,w*.32),front=d/2-.002;
+  return [
+    part('Cuerpo',[w,h,d-.03],0,0,-.015,{color:'item',bevel:.015}),
+    part('Panel de mandos',[w-.02,strip,.012],0,h-strip-.012,face+.006,{color:'item',bevel:.004}),
+    part(dryer?'Depósito':'Cajetín',[drawer,.06,.006],-w/2+.03+drawer/2,h-strip+.008,stripFace+.003,{color:'item',bevel:.003}),
+    part('Pantalla',[Math.min(.12,w*.2),.035,.004],w*.08,h-strip+.02,stripFace+.002,{color:'#1d1f20',material:'gloss',bevel:.001}),
+    turnedFront('Mando',KNOB,[.055,.055,front-(stripFace-.002)],w/2-.075,h-strip+.01,(stripFace-.002+front)/2,{color:'#d9dad8',material:'metal'}),
+    turnedFront('Puerta',PORTHOLE,[door,door,front-(face-.002)],0,cy-door/2,(face-.002+front)/2,{color:'#c9cac8',material:'metal'}),
+    turnedFront('Ojo de buey',PORTHOLE_GLASS,[door*.7,door*.7,.02],0,cy-door*.35,face+.014,{color:dryer?'#59605f':'#3a4044',material:'glass'}),
+  ];
+}
+
+/**
+ * Cot inside `w × d × h`: four corner posts, top and bottom rails on every side, vertical slats
+ * about every 7 cm, a slatted base and a textile mattress about 30 cm above the floor.
+ */
+export function cribParts(w:number,d:number,h:number):FurniturePart[]{
+  const post=.04,rail=.03,slat=.02,low=.22,top=h-.01-rail,base=.28,span=top-low-rail;
+  const along=Math.max(2,Math.floor((w-2*post)/.07)),across=Math.max(2,Math.floor((d-2*post)/.07));
+  const parts:FurniturePart[]=[];
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(part(`Poste ${x} ${z}`,[post,h,post],x*(w/2-post/2),0,z*(d/2-post/2),{color:'item',bevel:.006}));
+  for(const s of [-1,1]){
+    for(const [k,y] of [['inferior',low],['superior',top]] as const){
+      parts.push(part(`Larguero ${k} ${s}`,[w-2*post,rail,rail],0,y,s*(d/2-post/2),{color:'item',bevel:.006}));
+      parts.push(part(`Testero ${k} ${s}`,[rail,rail,d-2*post],s*(w/2-post/2),y,0,{color:'item',bevel:.006}));
+    }
+    for(let i=0;i<along;i++)parts.push(part(`Barrote ${s} ${i+1}`,[slat,span,slat],-w/2+post+(i+.5)*(w-2*post)/along,low+rail,s*(d/2-post/2),{color:'item',bevel:.004}));
+    for(let i=0;i<across;i++)parts.push(part(`Barrote lateral ${s} ${i+1}`,[slat,span,slat],s*(w/2-post/2),low+rail,-d/2+post+(i+.5)*(d-2*post)/across,{color:'item',bevel:.004}));
+  }
+  parts.push(part('Somier',[w-2*post,.02,d-2*post-.002],0,base,0,{color:'wood',bevel:.003}));
+  parts.push(part('Colchón',[w-2*post-.02,.11,d-2*post-.02],0,base+.02,0,{color:'#f4f1ec',surface:'textile',bevel:.03,crown:{axis:'y',amount:.008}}));
+  return parts;
+}
+
+const FOOT_RING:Profile=[[.9,0],[1,0],[1,1],[.9,1],[.9,0]];
+
+/**
+ * Bar stool inside `w × d × h`: weighted metal base, column, a footrest ring reaching the full
+ * footprint on two cross spokes and a round upholstered seat whose top is `h`.
+ */
+export function barStoolParts(w:number,d:number,h:number):FurniturePart[]{
+  const seat=.07,ring=.015,ringY=clamp(h*.38,.2,.34),base=.02,round=Math.min(w,d)*.92;
+  return [
+    turned('Base',DISC,[w*.8,base,d*.8],0,0,0,{color:'#3d3b38',material:'metal'}),
+    turned('Columna',ROD,[.05,h-seat-base,.05],0,base,0,{color:METAL,material:'metal'}),
+    turned('Reposapiés',FOOT_RING,[w,ring,d],0,ringY,0,{color:METAL,material:'metal'}),
+    part('Radio 1',[w-.02,.012,.012],0,ringY+.0015,0,{color:METAL,material:'metal',bevel:.004}),
+    part('Radio 2',[.012,.012,d-.02],0,ringY+.0025,0,{color:METAL,material:'metal',bevel:.004}),
+    turned('Asiento',DISC,[round,seat,round],0,h-seat,0,{color:'item',surface:'textile'}),
+  ];
 }

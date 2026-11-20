@@ -17,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -26,10 +26,10 @@ function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metaln
 // window glass or door leaves after the scene is exported to glTF.
 // `surface` adds metre-scaled image maps (textile weave, wood grain) that also travel in the render GLB.
 // `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); `crown` domes a cushion face. The GLB carries the same mesh.
-function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile}) {
+function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe,axis}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z'}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
-  const geometry=useMemo(()=>lathe?latheGeometry(lathe,size):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,lathe]);
+  const geometry=useMemo(()=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,lathe,axis]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh castShadow={material!=='glass'} receiveShadow position={position}>
     <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity}/>}
@@ -189,7 +189,7 @@ function ModuleModel({item,wood}:{item:Furniture;wood:string}){
 }
 // Parametric furniture is built from parts (src/lib/furnitureParts.ts), all inside the plan footprint.
 function Parts({parts,item,wood,worktop}:{parts:FurniturePart[];item:Furniture;wood:string;worktop?:string}){
-  return <>{parts.map(p=><Box key={p.name} finishId={p.role==='worktop'?worktop:undefined} position={p.position} size={p.size} color={p.color==='item'?item.color:p.color==='wood'?wood:p.color} surface={p.surface} material={p.material} role={p.role} bevel={p.bevel} crown={p.crown} lathe={p.lathe}/>)}</>;
+  return <>{parts.map(p=><Box key={p.name} finishId={p.role==='worktop'?worktop:undefined} position={p.position} size={p.size} color={p.color==='item'?item.color:p.color==='wood'?wood:p.color} surface={p.surface} material={p.material} role={p.role} bevel={p.bevel} crown={p.crown} lathe={p.lathe} axis={p.axis}/>)}</>;
 }
 function WovenRug({item}:{item:Furniture}){
   const weave=useMemo(()=>{
@@ -266,6 +266,9 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'coffee-table':return <Parts parts={coffeeTableParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv-unit':return <Parts parts={tvUnitParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv':return <Parts parts={tvParts(w,d,h)} item={item} wood={wood}/>;
+    case 'washer':case 'dryer':return <Parts parts={washerParts(w,d,h,item.kind==='dryer')} item={item} wood={wood}/>;
+    case 'crib':return <Parts parts={cribParts(w,d,h)} item={item} wood={wood}/>;
+    case 'bar-stool':return <Parts parts={barStoolParts(w,d,h)} item={item} wood={wood}/>;
     case 'dresser':return <Parts parts={dresserParts(w,d,h)} item={item} wood={wood}/>;
     case 'shoe-cabinet':return <Parts parts={shoeCabinetParts(w,d,h)} item={item} wood={wood}/>;
     case 'wall-shelf':return <Parts parts={wallShelfParts(w,d,h)} item={item} wood={wood}/>;
