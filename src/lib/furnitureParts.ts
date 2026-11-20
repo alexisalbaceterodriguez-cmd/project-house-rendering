@@ -1181,7 +1181,7 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
-export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant']);
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket']);
 // Wall-only or soft items that never carry a tabletop object.
 const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack']);
 
@@ -1333,4 +1333,57 @@ export function photoFrameParts(w:number,d:number,h:number):FurniturePart[]{
     part('Paspartú',[w-2*t,H-2*t,fd*.4],0,base+t,-fd*.1,{color:'#f5f2ea',bevel:0}),
     part('Fotografía',[w-2*t-2*m,H-2*t-2*m,fd*.4],0,base+t+m,fd*.05,{color:'#7f949a',bevel:0}),
   ];
+}
+
+/** Round clock case lathed along +z: a rounded rim around a recessed face (y of the profile runs back → front). */
+const CLOCK_CASE:Profile=[[0,0],[1,0],[1,.8],[.94,1],[.86,1],[.84,.45],[0,.45]];
+/**
+ * Mantel clock inside `w × d × h` (dial facing +z): a wooden plinth across the footprint, a round case of diameter
+ * `min(w, h − 1.5 cm)` standing on it, a recessed ivory dial with four hour marks and hands set at three o'clock.
+ */
+export function tableClockParts(w:number,d:number,h:number):FurniturePart[]{
+  const D=Math.min(w,h-.015),hb=h-D,dc=d*.8,cy=hb+D/2,face=-dc/2+dc*.45,dark={color:'#24201c',bevel:0},mark=Math.max(.004,D*.035);
+  const parts:FurniturePart[]=[
+    part('Peana',[w,hb,d],0,0,0,{color:'item',surface:'woodgrain',bevel:.002}),
+    turnedFront('Caja',CLOCK_CASE,[D,D,dc],0,hb,0,{color:'item'}),
+    turnedFront('Esfera',DISC,[D*.8,D*.8,.002],0,cy-D*.4,face+.001,{color:'#f3efe6'}),
+  ];
+  for(const [n,x,y,horizontal] of [['12',0,1,false],['3',1,0,true],['6',0,-1,false],['9',-1,0,true]] as const)
+    parts.push(part(`Marca ${n}`,horizontal?[mark*2.2,mark*.6,.001]:[mark*.6,mark*2.2,.001],x*D*.32,cy+y*D*.32-(horizontal?mark*.3:mark*1.1),face+.0025,dark));
+  parts.push(part('Aguja horaria',[D*.2,.004,.0015],D*.08,cy-.002,face+.0038,dark));
+  parts.push(part('Minutero',[.003,D*.32,.0015],0,cy-D*.03,face+.0056,dark));
+  parts.push(turnedFront('Eje',DISC,[.008,.008,.003],0,cy-.004,face+.0078,{color:'#b08d57',material:'metal'}));
+  return parts;
+}
+
+/** Low glazed bowl: a narrow foot, a wide flaring wall and a hollow inside down to 12 % of its height. */
+const DECOR_BOWL:Profile=[[0,0],[.42,0],[.44,.07],[.7,.3],[.92,.7],[1,1],[.95,1],[.87,.72],[.66,.38],[.38,.14],[0,.12]];
+/** Decorative bowl inside `w × d × h`: a glazed ceramic bowl holding three decorative spheres (rattan, stone and linen tones). */
+export function decorBowlParts(w:number,d:number,h:number):FurniturePart[]{
+  const m=Math.min(w,d),f=Math.min(h*.55,m*.22),floor=h*.12,r=m*.15;
+  const balls=[['Esfera de ratán','#a8814f'],['Esfera de piedra','#9a958c'],['Esfera de lino','#ddd5c6']] as const;
+  return [turned('Cuenco',DECOR_BOWL,[w,h,d],0,0,0,{color:'item',material:'gloss'}),
+    ...balls.map(([name,color],i)=>{const a=Math.PI/6+i*2*Math.PI/3;return turned(name,BALL,[f,f,f],r*Math.cos(a),floor,r*Math.sin(a),{color});})];
+}
+
+/**
+ * Woven shelf basket inside `w × d × h`: a bottom, front and back walls across `w` and side walls between them, each side
+ * with a handle hole near the top (lower wall, two posts and a bar over the hole). Fibre texture (surface `textile`).
+ */
+export function shelfBasketParts(w:number,d:number,h:number):FurniturePart[]{
+  const t=Math.min(.012,w*.05),b=.01,top=Math.min(.015,h*.08),hole=Math.min(.03,h*.18),hw=Math.min(.05,d*.2),low=h-top-hole,inner=d-2*t;
+  const weave={color:'item',surface:'textile',bevel:.002} as const;
+  const parts:FurniturePart[]=[
+    part('Fondo',[w-2*t,b,inner],0,0,0,weave),
+    part('Pared frontal',[w,h,t],0,0,d/2-t/2,weave),
+    part('Pared trasera',[w,h,t],0,0,-d/2+t/2,weave),
+  ];
+  for(const [s,side] of [[-1,'izquierda'],[1,'derecha']] as const){
+    const x=s*(w/2-t/2),post=inner/2-hw;
+    parts.push(part(`Lateral ${side}`,[t,low,inner],x,0,0,weave));
+    parts.push(part(`Montante trasero ${side}`,[t,hole,post],x,low,-hw-post/2,weave));
+    parts.push(part(`Montante delantero ${side}`,[t,hole,post],x,low,hw+post/2,weave));
+    parts.push(part(`Asa ${side}`,[t,top,2*hw],x,low+hole,0,weave));
+  }
+  return parts;
 }
