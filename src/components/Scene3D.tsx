@@ -197,6 +197,35 @@ function Bed({item}:{item:Furniture}){
     <Box position={[0,.54,item.d*.17]} size={[item.w*.84,.08,item.d*.40]} color="#c7b4a0"/>
   </>;
 }
+function WovenRug({item}:{item:Furniture}){
+  const weave=useMemo(()=>{
+    const size=128,pixels=new Uint8Array(size*size*4);
+    for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+      const alongWarp=(Math.floor(x/8)+Math.floor(y/8))%2===0;
+      const fiber=alongWarp?x:y,cross=alongWarp?y:x;
+      const yarn=Math.sin(Math.PI*(fiber%8+.5)/8);
+      const shade=185+Math.round(43*yarn+9*Math.cos(cross*Math.PI/4)+8*Math.sin(fiber*Math.PI/2));
+      const i=(y*size+x)*4;
+      pixels.set([shade,shade,shade,255],i);
+    }
+    const texture=new THREE.DataTexture(pixels,size,size);
+    texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+    texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;
+    texture.magFilter=THREE.LinearFilter;texture.anisotropy=4;texture.needsUpdate=true;
+    return texture;
+  },[]);
+  useEffect(()=>()=>weave.dispose(),[weave]);
+  weave.repeat.set(item.w/.22,item.d/.22);
+  const border=Math.min(.035,item.w*.05,item.d*.05);
+  const top=.028;
+  return <group>
+    <Box position={[0,top/2,0]} size={[item.w,top,item.d]} color={item.color}/>
+    <mesh receiveShadow position={[0,top+.0005,0]} rotation={[-Math.PI/2,0,0]}>
+      <planeGeometry args={[item.w-border*2,item.d-border*2]}/>
+      <meshStandardMaterial color={item.color} map={weave} bumpMap={weave} bumpScale={.001} roughness={.97}/>
+    </mesh>
+  </group>;
+}
 function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;selected:boolean}){
   if(item.module)return <ModuleModel item={item}/>;
   const {w,d,h}=item;
@@ -226,7 +255,7 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'shower':return <><Box position={[0,.04,0]} size={[w,.08,d]} color="#f0f0ee"/><Box position={[w/2,.99,0]} size={[.018,1.95,d]} color="#b3d5db" material="glass"/><Box position={[0,.99,d/2]} size={[w,1.95,.018]} color="#b3d5db" material="glass"/><Box position={[-w*.35,1.1,-d*.35]} size={[.04,2.08,.04]} color="#8d9696" material="metal"/><mesh position={[-w*.32,2.08,-d*.35]}><cylinderGeometry args={[.13,.13,.025,24]}/><meshStandardMaterial color="#a1a5a2" metalness={.7}/></mesh></>;
     case 'plant':return <><mesh castShadow position={[0,.24,0]}><cylinderGeometry args={[w*.27,w*.2,.48,12]}/><meshStandardMaterial color="#b7a185"/></mesh>{[[0,.75,0],[.12,.98,.12],[-.13,.95,-.08],[0,1.2,.02]].map((p,i)=><mesh key={i} position={p as [number,number,number]}><sphereGeometry args={[.23,9,7]}/><meshStandardMaterial color={i%2?'#4f8060':'#6d9875'}/></mesh>)}</>;
     case 'lamp':return <><mesh castShadow position={[0,.04,0]}><cylinderGeometry args={[.16,.16,.08,24]}/><meshStandardMaterial color="#7b7871"/></mesh><Box position={[0,h/2,0]} size={[.027,h,.027]} color="#797875" material="metal"/><mesh position={[0,h-.12,0]}><coneGeometry args={[.27,.34,24,1,true]}/><meshStandardMaterial color="#eae0cd" side={THREE.DoubleSide}/></mesh><pointLight position={[0,h-.15,0]} intensity={.13} color="#fff2d3" distance={2}/></>;
-    case 'rug':return <Box position={[0,.014,0]} size={[w,.028,d]} color={item.color}/>;
+    case 'rug':return item.materialId?<Box position={[0,.014,0]} size={[w,.028,d]} color={item.color}/>:<WovenRug item={item}/>;
     case 'model':return <ModelShape item={item} selected={selected}/>;
   }
 }
@@ -234,6 +263,28 @@ function ObjectModel({item,project,selected,onSelect}:{item:Furniture;project:Pr
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]} onClick={e=>{e.stopPropagation();onSelect();}} onPointerOver={()=>{document.body.style.cursor='pointer';}} onPointerOut={()=>{document.body.style.cursor='';}}>
     <SurfaceContext.Provider value={item.materialId}><FurnitureShape item={item} project={project} selected={selected}/></SurfaceContext.Provider>
     {selected&&<mesh userData={{editorOverlay:true}} rotation={[-Math.PI/2,0,0]} position={[0,.03,0]}><ringGeometry args={[Math.max(item.w,item.d)*.66,Math.max(item.w,item.d)*.68,40]}/><meshBasicMaterial color="#2b9071" side={THREE.DoubleSide}/></mesh>}
+  </group>;
+}
+// Approximate near-floor occlusion from the placed footprint. Unlike a projected
+// key-light shadow it stays under the furniture as the studio light rotates.
+function FloorContact({item}:{item:Furniture}){
+  const lift=Math.max(0,item.modelElevation??0);
+  if(item.kind==='rug'||item.module?.family==='wall'||lift>=.45)return null;
+  return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]}>
+    <mesh raycast={()=>{}} position={[item.modelOffsetX??0,.031,item.modelOffsetZ??0]} rotation={[-Math.PI/2,0,0]} scale={[item.w*1.45,item.d*1.45,1]}>
+      <planeGeometry/>
+      <shaderMaterial transparent depthWrite={false} uniforms={{strength:{value:.36*(1-lift/.45)}}}
+        vertexShader={`varying vec2 coord;
+          void main(){coord=uv*2.0-1.0;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`}
+        fragmentShader={`varying vec2 coord;
+          uniform float strength;
+          void main(){
+            vec2 edge=max(abs(coord)-vec2(.42),0.0);
+            float occlusion=1.0-smoothstep(.03,.55,length(edge));
+            gl_FragColor=vec4(.035,.025,.018,strength*occlusion);
+            #include <colorspace_fragment>
+          }`}/>
+    </mesh>
   </group>;
 }
 function CameraRig({project,top}:{project:Project;top:boolean}){
@@ -343,7 +394,7 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
   const span=subject?Math.max(subject.w,subject.d,subject.h,2):Math.max(project.width,project.depth);
   const ground=subject?(subject.modelElevation??0)-.012:-.009;
   return <div className="scene-wrap" aria-busy={active||textureMapsPending((project.materials??[]).flatMap(material=>Object.values(material.maps??{})))}>
-    <div className="scene-topline"><span><span className="live-dot"/> VISTA 3D EN TIEMPO REAL</span><span>Arrastra para orbitar · Rueda para zoom · Mayús+clic: material GLB</span></div>
+    <div className="scene-title"><span>{subject?'Estudio de producto':'Perspectiva 3D'}</span><strong>{subject?.name??project.name}</strong></div>
     <Canvas frameloop="demand" shadows dpr={high?[1,2]:[1,1.3]} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
       <color attach="background" args={[studio?(render.studio??defaultStudio).background:'#f4f3ef']}/>
       {studio?<StudioLights project={project} subject={subject} high={high}/>:<>
@@ -362,8 +413,10 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       {wallsVisible&&project.walls.map(w=><WallModel key={w.id} wall={w} project={project} cutaway={cutaway} selected={selection?.type==='wall'&&selection.id===w.id}/>)}
       </>}
       {(subject?[subject]:project.furniture).map(item=><ObjectModel key={item.id} item={item} project={project} selected={selection?.type==='furniture'&&selection.id===item.id} onSelect={()=>setSelection({type:'furniture',id:item.id})}/>)}
-      <ContactShadows key={JSON.stringify([subject?.id,project.wallHeight,wallsVisible,cutaway,project.walls,project.furniture.map(f=>[f.id,f.x,f.y,f.rotation,f.w,f.d,f.h,f.modelElevation,f.modelUpAxis,f.module?.family])])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={studio?.35:.22} blur={studio?2.5:3.5} far={subject?span*2:16}/>
+      {subject?<ContactShadows key={JSON.stringify([subject.id,subject.w,subject.d,subject.h,subject.x,subject.y,subject.rotation,ground])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={.35} blur={2.5} far={span*2}/>
+        :project.furniture.map(item=><FloorContact key={item.id} item={item}/>)}
+
     </Canvas>
-    <div className="scene-footer"><span className="scene-legend"><span className="legend-square"/> Modelo paramétrico · escala métrica</span><span>WebGL</span></div>
+    <div className="scene-navigation">{render.walk&&!subject?'WASD para caminar · Esc para liberar el cursor':'Arrastra para orbitar · Rueda para acercar · Mayús + clic para editar un material'}</div>
   </div>;
 }

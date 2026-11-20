@@ -1,6 +1,11 @@
 import type { CustomMaterial, Furniture, Project, StudioSettings } from '../types';
 
 export const defaultStudio:StudioSettings={key:3,fill:1,rim:2,azimuth:-40,warmth:'neutral',background:'#e8e4de'};
+export const lightPresets=[
+  {name:'Catálogo',settings:{key:3.2,fill:1.6,rim:1.2,azimuth:-35,warmth:'neutral',background:'#eae7df'}},
+  {name:'Luz de tarde',settings:{key:3.7,fill:.55,rim:.8,azimuth:65,warmth:'warm',background:'#ddc9b2'}},
+  {name:'Luz fría',settings:{key:2.6,fill:.85,rim:2.4,azimuth:-115,warmth:'cool',background:'#bfcbd1'}},
+] as const;
 export const finishPresets = {
   standard:{roughness:.65,metalness:0}, glass:{roughness:.08,metalness:0},
   varnish:{roughness:.3,metalness:0}, fabric:{roughness:.9,metalness:0},

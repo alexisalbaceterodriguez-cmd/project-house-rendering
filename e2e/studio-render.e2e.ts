@@ -144,3 +144,44 @@ test('cama a medida conserva el tapizado independiente, la escala y el GLB porta
     expect(recovered.furniture[0].modelFinish).toEqual(project.furniture[0].modelFinish);
   } finally {await fresh.close();}
 });
+
+test('presenta la misma cámara y cambia la iluminación del proyecto',{tag:'@smoke'},async({page})=>{
+  await page.goto('/');
+  await page.getByRole('button',{name:'Vista 3D',exact:true}).click();
+  const expand=page.getByRole('button',{name:'Presentar en pantalla completa'});
+  await expand.click();
+  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.className)).toBe('scene-host');
+  await page.getByRole('button',{name:'Salir de pantalla completa'}).click();
+  await expect(expand).toBeVisible();
+  const original=JSON.parse((await exported(page)).toString()) as Project;
+  await studio(page,'Imagen y cámara');
+  await page.getByLabel('Iluminación',{exact:true}).selectOption('studio');
+  const warm=page.getByRole('button',{name:'Luz de tarde',exact:true});
+  await warm.click();
+  await expect(warm).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByLabel('Tono de luz')).toHaveValue('warm');
+  await page.getByLabel('Luz de relleno').fill('1.5');
+  await expect(warm).toHaveAttribute('aria-pressed','false');
+  await page.getByRole('button',{name:'Cerrar estudio'}).click();
+  await page.locator('button[title^="Deshacer"]').click();
+  const restored=JSON.parse((await exported(page)).toString()) as Project;
+  expect(restored.render?.studio).toMatchObject({warmth:'warm',azimuth:65,fill:.55});
+  expect(restored.render?.camera).toEqual(original.render?.camera);
+  expect(restored.furniture).toEqual(original.furniture);
+});
+
+test('abre el dormitorio editable y recupera el proyecto anterior desde Versiones',async({page})=>{
+  await page.goto('/');
+  await page.getByLabel('Nombre del proyecto',{exact:true}).fill('Vivienda de partida');
+  await studio(page,'Modelos');
+  await page.getByRole('button',{name:'Abrir dormitorio en 3D'}).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByLabel('Nombre del proyecto',{exact:true})).toHaveValue('Dormitorio Salvia');
+  await expect(page.locator('.scene-wrap')).toHaveAttribute('aria-busy','false');
+  const sample=JSON.parse((await exported(page)).toString()) as Project;
+  expect(sample.furniture).toHaveLength(7);
+  expect(sample.furniture.find(item=>item.name==='Díptico en relieve')?.modelData).toMatch(/^data:model\/gltf-binary/);
+  await studio(page,'Versiones');
+  await page.getByRole('button',{name:'Restaurar Vivienda de partida · antes de abrir Salvia'}).click();
+  await expect(page.getByLabel('Nombre del proyecto',{exact:true})).toHaveValue('Vivienda de partida');
+});

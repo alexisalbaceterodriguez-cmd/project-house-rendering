@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { Armchair, ArrowDownToLine, Box, Camera, Check, ChevronDown, CircleHelp, Copy, DoorOpen, Eye, EyeOff, FilePlus2, FolderOpen, Grid2X2, Hammer, House, Image, Layers, LayoutGrid, Maximize2, Move, Paintbrush, PanelRightClose, Plus, Redo2, RotateCcw, RotateCw, Ruler, Save, Settings2, SlidersHorizontal, SplitSquareVertical, Trash2, Undo2, Upload, WandSparkles } from 'lucide-react';
+import { Armchair, ArrowDownToLine, Box, Camera, Check, ChevronDown, CircleHelp, Copy, DoorOpen, Eye, EyeOff, FilePlus2, FolderOpen, Grid2X2, Hammer, House, Image, Layers, LayoutGrid, Maximize2, Minimize2, Move, Paintbrush, PanelRightClose, Plus, Redo2, RotateCcw, RotateCw, Ruler, Save, Settings2, SlidersHorizontal, SplitSquareVertical, Trash2, Undo2, Upload, WandSparkles } from 'lucide-react';
 import Plan2D from './components/Plan2D';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
@@ -338,6 +338,20 @@ export default function App(){
   const [saveStatus,setSaveStatus]=useState<'saving'|'saved'|'error'>('saving');
   const savePending=useRef(false);
   const [toast,setToast]=useState(''); const [help,setHelp]=useState(false); const [topView,setTopView]=useState(false);
+  useEffect(()=>setTopView(false),[project.id]);
+  const sceneHost=useRef<HTMLDivElement>(null);
+  const [presenting,setPresenting]=useState(false);
+  useEffect(()=>{
+    const sync=()=>setPresenting(!!sceneHost.current&&document.fullscreenElement===sceneHost.current);
+    document.addEventListener('fullscreenchange',sync);
+    return ()=>document.removeEventListener('fullscreenchange',sync);
+  },[]);
+  const togglePresentation=async()=>{
+    try {
+      if(document.fullscreenElement===sceneHost.current&&document.fullscreenElement)await document.exitFullscreen();
+      else await sceneHost.current?.requestFullscreen();
+    } catch {alert('El navegador no permite abrir el visor en pantalla completa.');}
+  };
   const jsonInput=useRef<HTMLInputElement>(null);const glbInput=useRef<HTMLInputElement>(null);const canvasRef=useRef<HTMLCanvasElement|null>(null);
   const alert=useCallback((msg:string)=>{setToast(msg);setTimeout(()=>setToast(''),4200);},[]);
   useEffect(()=>{
@@ -441,7 +455,11 @@ export default function App(){
     <div className="workspace"><Sidebar importModel={()=>glbInput.current?.click()} modelUnits={modelUnits} setModelUnits={setModelUnits}/>
       <main className="editor-area"><div className="workspace-intro"><div><span className="eyebrow">TU ESPACIO, A TU MANERA</span><h1>Diseña cada rincón.</h1><p>Da forma a la distribución, elige acabados y vive el espacio en tres dimensiones.</p></div><div className="project-pill"><span className="live-dot"/><span>PROYECTO ACTIVO</span><strong>{(project.width*project.depth).toFixed(0)} m²</strong></div></div>
         <EditorToolbar/>
-        <div className={`editors mode-${mode}`}>{mode!=='3d'&&<Plan2D/>}{mode!=='2d'&&<div className="scene-host"><ErrorBoundary fallback={<div role="alert" className="scene-loading">La vista 3D no pudo iniciarse. El plano y tus datos siguen disponibles. Prueba otro navegador o activa la aceleración gráfica.</div>}><Suspense fallback={<div className="scene-loading">Preparando vista 3D…</div>}><Scene3D canvasRef={canvasRef} topView={topView}/></Suspense></ErrorBoundary><div className="camera-buttons"><button className={!topView?'selected':''} onClick={()=>setTopView(false)}><Box size={14}/> Isométrica</button><button className={topView?'selected':''} onClick={()=>setTopView(true)}><Grid2X2 size={14}/> Cenital</button></div></div>}</div>
+        <div className={`editors mode-${mode}`}>{mode!=='3d'&&<Plan2D/>}{mode!=='2d'&&<div className="scene-host" ref={sceneHost}><ErrorBoundary fallback={<div role="alert" className="scene-loading">La vista 3D no pudo iniciarse. El plano y tus datos siguen disponibles. Prueba otro navegador o activa la aceleración gráfica.</div>}><Suspense fallback={<div className="scene-loading">Preparando vista 3D…</div>}><Scene3D canvasRef={canvasRef} topView={topView}/></Suspense></ErrorBoundary><div className="camera-buttons" role="group" aria-label="Controles de cámara">
+          <button aria-pressed={!topView} className={!topView?'selected':''} onClick={()=>setTopView(false)}><Box size={15}/> Isométrica</button>
+          <button aria-pressed={topView} className={topView?'selected':''} onClick={()=>setTopView(true)}><Grid2X2 size={15}/> Cenital</button>
+          <button className="present-button" onClick={()=>void togglePresentation()} title={presenting?'Salir de pantalla completa':'Presentar en pantalla completa'} aria-label={presenting?'Salir de pantalla completa':'Presentar en pantalla completa'}>{presenting?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
+        </div></div>}</div>
         <div className="workspace-bottom"><div><span className="dot-green"/> Edición en tiempo real <span className="bottom-dot">·</span> Paso de dibujo: {(project.editor?.grid??.1)*100} cm <span className="bottom-dot">·</span> {projectWarnings(project).length} avisos</div><button onClick={()=>setHelp(true)}><CircleHelp size={15}/> Guía de uso</button></div>
       </main>
       <PropertyPanel/>

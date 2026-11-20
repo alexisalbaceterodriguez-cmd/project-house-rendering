@@ -4,6 +4,7 @@ import { modelCatalog, modelUrl, type LibraryProduct } from '../data/modelCatalo
 import { materialCatalog, materialUrl } from '../data/materialCatalog';
 import { getModelAsset,listModelAssets,putModelAsset,putModelMetadata } from '../lib/assets';
 import { deleteUnusedModelResource } from '../lib/modelRetention';
+import { hydratePortableProject } from '../lib/portableProject';
 import { validateGLB } from '../lib/modelValidation';
 import { measureModelDimensions } from '../lib/modelThumbnail';
 import { deleteDesign, listDesigns, saveDesign, type SavedDesign } from '../lib/projectLibrary';
@@ -18,7 +19,7 @@ import BudgetTools from './BudgetTools';
 import MaterialWorkshop from './MaterialWorkshop';
 import ObjectWorkshop from './ObjectWorkshop';
 import { assignMaterial, type MaterialTarget } from '../lib/projectMaterials';
-import { defaultStudio, objectCamera, studioSubject } from '../lib/studioRender';
+import { defaultStudio, lightPresets, objectCamera, studioSubject } from '../lib/studioRender';
 
 type Tab='models'|'materials'|'modules'|'versions'|'render'|'tools';
 const tabs:[Tab,string][]=[['models','Modelos'],['materials','Acabados'],['modules','Cocina y baño'],['versions','Versiones'],['render','Imagen y cámara'],['tools','Plano y revisión']];
@@ -70,6 +71,21 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
   const saveVersion=()=>run(async()=>{
     await saveDesign(project,versionName||`${project.name} · propuesta ${versions.length+1}`);await refreshVersions();setVersionName('');setMessage('Versión guardada con geometría, modelos, acabados y cámara.');
   });
+  const openBedroom=()=>run(async()=>{
+    const response=await fetch(`${import.meta.env.BASE_URL}examples/dormitorio-salvia.json`);
+    if(!response.ok)throw new Error('No se pudo cargar Dormitorio Salvia. Vuelve a intentarlo.');
+    const sample=await response.json();
+    const stillOpen=()=>dialog.current?.open&&useEditor.getState().project===project;
+    if(!stillOpen())return;
+    await saveDesign(project,`${project.name} · antes de abrir Salvia`);
+    if(!stillOpen())return;
+    const bedroom=await hydratePortableProject(sample);
+    if(!stillOpen())return;
+    load({...bedroom,id:makeId()});
+    setComparison(null);setMode('3d');
+    useEditor.getState().setCutaway(false);useEditor.getState().setWallsVisible(true);
+    onClose();
+  });
   const openVersion=(version:SavedDesign)=>run(async()=>{
     await saveDesign(project,`${project.name} · antes de restaurar`);load(version.project);setComparison(null);await refreshVersions();setMessage(`Restaurada «${version.name}». El estado anterior queda guardado.`);
   });
@@ -90,6 +106,12 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
     {message&&<p className="studio-message" role="status">{message}</p>}
     <div className="studio-body" aria-busy={busy}>
     {tab==='models'&&<>
+      <article className="example-room">
+        <img src={`${import.meta.env.BASE_URL}examples/dormitorio-salvia.webp`} alt="Dormitorio con cabecero salvia, díptico en relieve y mesillas de nogal"/>
+        <div><h3>Dormitorio Salvia</h3><p>Explora la escena en 3D y prueba otros acabados. Tu proyecto actual quedará guardado en Versiones.</p>
+          <button type="button" disabled={busy} onClick={()=>void openBedroom()}>Abrir dormitorio en 3D</button>
+        </div>
+      </article>
       <ObjectWorkshop onMessage={setMessage}/>
       <h3>Modelos 3D incluidos</h3><p>Recursos autorizados, con medidas del archivo original. Al insertarlos quedan disponibles en tu biblioteca local.</p>
       <label>Buscar modelos<input aria-label="Buscar modelos incluidos" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Sofá, butaca, lámpara…"/></label>
@@ -129,6 +151,13 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
       <label>Iluminación<select aria-label="Iluminación" value={render.lighting} onChange={e=>updateRender({lighting:e.target.value as RenderSettings['lighting']})}><option value="day">Día</option><option value="night">Noche cálida</option><option value="studio">Estudio HDRI</option></select></label>
       {render.lighting==='studio'&&<section className="resource-workshop" aria-label="Iluminación de estudio">
         <h4>Estudio de producto y escena</h4>
+        <div className="light-presets" role="group" aria-label="Ambientes de iluminación">
+          {lightPresets.map(({name,settings})=><button key={name} type="button"
+            aria-pressed={Object.entries(settings).every(([key,value])=>studio[key as keyof typeof settings]===value)}
+            onClick={()=>updateStudio(settings)}>
+            <i aria-hidden="true" style={{background:settings.background}}/>{name}
+          </button>)}
+        </div>
         <label>Contenido<select aria-label="Contenido del estudio" value={studio.subjectId??''} onChange={e=>{
           const subject=project.furniture.find(f=>f.id===e.target.value);
           updateRender({studio:{...studio,subjectId:subject?.id},camera:subject?objectCamera(subject):undefined,walk:false});setMode('3d');
