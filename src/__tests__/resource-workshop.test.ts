@@ -52,6 +52,21 @@ describe('Geometría original a escala',()=>{
       expect(pieces).toBeGreaterThan(4);expect(names.size).toBeGreaterThanOrEqual(2);
     } finally {disposeWorkshopObject(object);}
   });
+  it.each([[.9,1],[1.65,2]])('cama de %s m conserva almohadas y acabados independientes', (width,pillows)=>{
+    const recipe={...objectTemplates.bed,w:width,color:'#557261',accent:'#795536'};
+    const object=buildWorkshopObject(recipe);
+    try {
+      const parts:THREE.Mesh[]=[];
+      object.traverse(node=>{if(node instanceof THREE.Mesh)parts.push(node);});
+      expect(parts.filter(part=>part.name.startsWith('Almohada '))).toHaveLength(pillows);
+      const finish=(name:string)=>parts.find(part=>part.name===name)?.material as THREE.MeshStandardMaterial;
+      expect(finish('Pata 1 1').color.getHexString()).toBe('795536');
+      expect(finish('Cabecero').color.getHexString()).toBe('557261');
+      expect(finish('Bastidor')).toBe(finish('Cabecero'));
+      expect(finish('Colchón').name).toBe('Lino');
+      expect(finish('Colcha con embozo').name).toBe('Colcha');
+    } finally {disposeWorkshopObject(object);}
+  });
   it('rechaza recetas inválidas antes de generar geometría',()=>{
     expect(()=>buildWorkshopObject({...objectTemplates.table,w:Infinity})).toThrow('medidas');
     expect(()=>buildWorkshopObject({...objectTemplates.lamp,h:-1})).toThrow('medidas');

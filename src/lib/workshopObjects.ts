@@ -3,8 +3,9 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { createMaterialMaps } from './proceduralTextures';
 
-export type ObjectRecipe={family:'sofa'|'sideboard'|'table'|'lamp';name:string;w:number;d:number;h:number;color:string;accent:string};
+export type ObjectRecipe={family:'sofa'|'sideboard'|'table'|'lamp'|'bed';name:string;w:number;d:number;h:number;color:string;accent:string};
 export const objectTemplates:Record<ObjectRecipe['family'],ObjectRecipe>={
+  bed:{family:'bed',name:'Cama tapizada',w:1.8,d:2.15,h:1.15,color:'#829386',accent:'#785438'},
   sofa:{family:'sofa',name:'Sofá de autor',w:2.3,d:.95,h:.82,color:'#c8b99f',accent:'#64452f'},
   sideboard:{family:'sideboard',name:'Aparador acanalado',w:1.8,d:.45,h:.8,color:'#8e6140',accent:'#b49a60'},
   table:{family:'table',name:'Mesa de comedor',w:1.8,d:.9,h:.75,color:'#b58a5e',accent:'#333431'},
@@ -20,7 +21,7 @@ function validateRecipe(recipe:ObjectRecipe) {
 export function buildWorkshopObject(recipe:ObjectRecipe):THREE.Group {
   validateRecipe(recipe);
   const group=new THREE.Group();group.name=recipe.name;
-  const wood=new THREE.MeshPhysicalMaterial({name:'Madera',color:recipe.family==='sofa'?recipe.accent:recipe.color,roughness:.48,clearcoat:.2,clearcoatRoughness:.35});
+  const wood=new THREE.MeshPhysicalMaterial({name:'Madera',color:(recipe.family==='sofa'||recipe.family==='bed')?recipe.accent:recipe.color,roughness:.48,clearcoat:.2,clearcoatRoughness:.35});
   const fabric=new THREE.MeshPhysicalMaterial({name:'Tapizado',color:recipe.color,roughness:.92,sheen:.65,sheenColor:new THREE.Color(recipe.color),sheenRoughness:.9});
   const metal=new THREE.MeshStandardMaterial({name:'Metal',color:recipe.accent,roughness:.25,metalness:.85});
   const ceramic=new THREE.MeshPhysicalMaterial({name:'Cerámica',color:recipe.color,roughness:.35,clearcoat:.3});
@@ -56,6 +57,46 @@ export function buildWorkshopObject(recipe:ObjectRecipe):THREE.Group {
       const points=[[-.43,-.4],[-.43,.4],[.43,.4],[.43,-.4],[-.43,-.4]].map(([sx,sz])=>new THREE.Vector3(x+sx*(inner/count-.018),leg+seat+h*.085,d*.04+sz*(d-back-.04)));
       add(`Ribete ${i+1}`,new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points,true,'centripetal'),32,.002,5,true),seamMaterial,[0,0,0]);
     }
+  } else if(recipe.family==='bed') {
+    const linen=new THREE.MeshPhysicalMaterial({name:'Lino',color:'#ede7da',roughness:.94,sheen:.3});
+    const cover=new THREE.MeshPhysicalMaterial({name:'Colcha',color:'#c19a7a',roughness:.91,sheen:.35});
+    for(const x of [-1,1])for(const z of [-1,1]){
+      cylinder(`Pata ${x} ${z}`,Math.min(w,d)*.024,h*.12,[x*w*.42,h*.06,z*d*.41],wood);
+    }
+    box('Bastidor',[w*.98,h*.17,d*.94],[0,h*.205,d*.025],fabric,.045);
+    box('Cabecero',[w,h*.85,d*.065],[0,h*.575,-d*.4675],fabric,.05);
+    const channels=Math.max(4,Math.round(w/.22));
+    for(let i=0;i<channels;i++){
+      const pitch=w*.96/channels;
+      box(`Canal ${i+1}`,[pitch*.985,h*.69,d*.043],[(i+.5-channels/2)*pitch,h*.645,-d*.441],fabric,.05);
+    }
+    box('Colchón',[w*.94,h*.18,d*.90],[0,h*.38,d*.037],linen,.06);
+    const pillows=w<1.25?1:2;
+    for(let i=0;i<pillows;i++){
+      const pillow=box(`Almohada ${i+1}`,[w*.84/pillows,h*.105,d*.195],[(i+.5-pillows/2)*w*.89/pillows,h*.526,-d*.284],linen,.12);
+      pillow.rotation.y=(i-(pillows-1)/2)*.045;
+      pillow.rotation.x=.08;
+    }
+    // A continuous textile surface hangs over the mattress on three sides.
+    const quilt=new THREE.PlaneGeometry(1,1,64,48);
+    const pos=quilt.attributes.position,uv=quilt.attributes.uv;
+    for(let i=0;i<pos.count;i++){
+      const u=uv.getX(i)*2-1,v=uv.getY(i);
+      const side=Math.max(0,(Math.abs(u)-.86)/.14),foot=Math.max(0,(v-.90)/.1);
+      const ripple=Math.sin(u*24+v*4)*.004+Math.sin(u*11-v*13)*.003;
+      const fold=.023*Math.exp(-Math.pow((v-.09)*20,2));
+      const x=Math.sign(u)*(.47*Math.min(Math.abs(u)/.86,1)+.025*Math.sin(side*Math.PI/2))*w;
+      const z=(-.162+.65*Math.min(v/.90,1)+.012*Math.sin(foot*Math.PI/2))*d;
+      pos.setXYZ(i,x,h*(.483+ripple+fold-.105*Math.max(side*side,foot*foot)),z);
+      uv.setXY(i,(u+1)*w/2,v*d*.71);
+    }
+    const indices=quilt.getIndex()!;
+    for(let i=0;i<indices.count;i+=3){
+      const second=indices.getX(i+1);indices.setX(i+1,indices.getX(i+2));indices.setX(i+2,second);
+    }
+    quilt.computeVertexNormals();
+    cover.side=THREE.DoubleSide;
+    add('Colcha con embozo',quilt,cover,[0,0,0]);
   } else if(recipe.family==='sideboard') {
     const foot=h*.17,thickness=.025;
     box('Cuerpo',[w,h-foot,d],[0,foot+(h-foot)/2,0],wood);
@@ -111,7 +152,7 @@ export async function createWorkshopGLB(recipe:ObjectRecipe):Promise<Blob> {
   try {
     const materials=new Set<THREE.MeshStandardMaterial>();
     object.traverse(node=>{if(node instanceof THREE.Mesh)for(const material of Array.isArray(node.material)?node.material:[node.material])if(material instanceof THREE.MeshStandardMaterial)materials.add(material);});
-    for(const material of materials)if(material.name==='Madera'||material.name==='Tapizado'||material.name==='Pantalla'){
+    for(const material of materials)if(material.name==='Madera'||material.name==='Tapizado'||material.name==='Pantalla'||material.name==='Lino'||material.name==='Colcha'){
       const maps=createMaterialMaps(material.name==='Madera'?'wood':'fabric',`#${material.color.getHexString()}`,42,256);
       const loader=new THREE.TextureLoader();
       [material.map,material.normalMap,material.roughnessMap]=await Promise.all([maps.color,maps.normal,maps.roughness].map(url=>loader.loadAsync(url)));

@@ -4,7 +4,7 @@ import { deleteModelResource, putModelAsset, putModelMetadata } from '../lib/ass
 import { findFreePlacement } from '../lib/diagnostics';
 import type { ObjectRecipe } from '../lib/workshopObjects';
 
-const families=[['sofa','Sofá tapizado',2.3,.95,.82],['sideboard','Aparador acanalado',1.8,.45,.8],['table','Mesa de comedor',1.8,.9,.75],['lamp','Lámpara escultórica',.5,.5,1.5]] as const;
+const families=[['sofa','Sofá tapizado',2.3,.95,.82],['sideboard','Aparador acanalado',1.8,.45,.8],['bed','Cama tapizada',1.8,2.15,1.15],['table','Mesa de comedor',1.8,.9,.75],['lamp','Lámpara escultórica',.5,.5,1.5]] as const;
 export default function ObjectWorkshop({onMessage}:{onMessage:(message:string)=>void}) {
   const {change,setSelection,setMode}=useEditor();
   const [recipe,setRecipe]=useState<ObjectRecipe>({family:'sideboard',name:'Aparador acanalado',w:1.8,d:.45,h:.8,color:'#986a45',accent:'#b49a60'});
@@ -32,11 +32,11 @@ export default function ObjectWorkshop({onMessage}:{onMessage:(message:string)=>
   };
   return <section className="resource-workshop" aria-label="Taller de objetos">
     <h3>Crea un objeto</h3><p>Diseños originales con bordes redondeados, detalles y materiales independientes. Ajusta medidas reales; el modelo se incorpora a tu biblioteca local.</p>
-    <div className="workshop-grid"><label>Diseño<select aria-label="Diseño del objeto" value={recipe.family} disabled={busy} onChange={event=>{const family=families.find(family=>family[0]===event.target.value)!;patch({family:family[0],name:family[1],w:family[2],d:family[3],h:family[4]});}}>{families.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
+    <div className="workshop-grid"><label>Diseño<select aria-label="Diseño del objeto" value={recipe.family} disabled={busy} onChange={event=>{const family=families.find(family=>family[0]===event.target.value)!;patch({family:family[0],name:family[1],w:family[2],d:family[3],h:family[4],...(family[0]==='bed'?{color:'#829386',accent:'#785438'}:{})});}}>{families.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
       <label>Nombre del objeto<input aria-label="Nombre del objeto creado" maxLength={180} value={recipe.name} disabled={busy} onChange={event=>patch({name:event.target.value})}/></label>
       {(['w','d','h'] as const).map((axis,index)=><label key={axis}>{['Ancho','Fondo','Altura'][index]} (m)<input aria-label={['Ancho del objeto creado','Fondo del objeto creado','Altura del objeto creado'][index]} type="number" min={.2} max={6} step={.01} disabled={busy} value={recipe[axis]} onChange={event=>patch({[axis]:Number(event.target.value)})}/></label>)}
-      <label>Color principal<input aria-label="Color del objeto creado" type="color" disabled={busy} value={recipe.color} onChange={event=>patch({color:event.target.value})}/></label>
-      <label>Color de detalles<input aria-label="Color de detalles del objeto" type="color" disabled={busy} value={recipe.accent} onChange={event=>patch({accent:event.target.value})}/></label>
+      <label>{recipe.family==='bed'?'Tapizado':'Color principal'}<input aria-label="Color del objeto creado" type="color" disabled={busy} value={recipe.color} onChange={event=>patch({color:event.target.value})}/></label>
+      <label>{recipe.family==='bed'?'Madera de las patas':'Color de detalles'}<input aria-label="Color de detalles del objeto" type="color" disabled={busy} value={recipe.accent} onChange={event=>patch({accent:event.target.value})}/></label>
     </div><button className="primary-btn" disabled={busy} onClick={()=>void create()}>{busy?'Creando objeto…':'Crear e insertar objeto'}</button>
     <p className="small-help">Para otra forma o un producto concreto, importa su GLB desde Objetos. El taller puede ampliarse con nuevos diseños creados bajo petición.</p>
   </section>;

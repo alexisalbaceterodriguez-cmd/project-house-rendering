@@ -99,3 +99,48 @@ test('vidrio y barniz en estudio de escena exportan UHD y cambian a calidad ráp
   await page.screenshot({path:'test-results/studio-physical-interface.png'});
   expect(errors).toEqual([]);
 });
+
+test('cama a medida conserva el tapizado independiente, la escala y el GLB portable',{tag:'@smoke'},async({page,browser})=>{
+  await page.goto('/');
+  page.once('dialog',dialog=>dialog.accept());
+  await page.getByRole('button',{name:'Nuevo',exact:true}).click();
+  await studio(page,'Modelos');
+  await page.getByLabel('Diseño del objeto').selectOption('bed');
+  await page.getByLabel('Ancho del objeto creado').fill('1.65');
+  await page.getByRole('button',{name:'Crear e insertar objeto'}).click();
+  await expect(page.getByText(/Objeto creado a escala/)).toBeVisible({timeout:20_000});
+  const close=()=>page.getByRole('button',{name:'Cerrar estudio',exact:true}).click();
+  await close();
+  await page.getByLabel('Sobrescribir materiales de esta instancia').check();
+  const target=page.getByLabel('Material GLB objetivo');
+  await target.selectOption('Tapizado');
+  await studio(page,'Acabados');
+  await page.getByRole('dialog').getByRole('button',{name:/^Tejido natural/}).click();
+  await close();
+  await page.locator('button[title^="Deshacer"]').click();
+  const undone=JSON.parse((await exported(page)).toString()) as Project;
+  expect(undone.furniture[0].modelFinish?.materialId).toBeUndefined();
+  await page.locator('button[title^="Rehacer"]').click();
+  await page.locator('.plan-furniture').click();
+  await studio(page,'Imagen y cámara');
+  await page.getByRole('button',{name:'Preparar estudio del objeto seleccionado'}).click();
+  await page.getByLabel('Resolución de imagen').selectOption('1920x1080');
+  const image=await png(page);
+  expect([image.readUInt32BE(16),image.readUInt32BE(20)]).toEqual([1920,1080]);
+  await writeFile('test-results/studio-bed-hd.png',image);
+  await close();
+  const bytes=await exported(page),project=JSON.parse(bytes.toString()) as Project;
+  expect(project.furniture).toHaveLength(1);
+  expect(project.furniture[0]).toMatchObject({w:1.65,d:2.15,h:1.15,modelFinish:{materialName:'Tapizado',materialId:'fabric'}});
+  expect(project.furniture[0].modelFinishes??[]).toEqual([]);
+  const fresh=await browser.newPage();
+  try {
+    await fresh.goto('/');
+    await fresh.locator('input[accept*=".json"]').setInputFiles({name:'cama.json',mimeType:'application/json',buffer:bytes});
+    await expect(fresh.getByText('Proyecto cargado correctamente.')).toBeVisible();
+    const recovered=JSON.parse((await exported(fresh)).toString()) as Project;
+    expect(recovered.furniture[0].modelData).toMatch(/^data:model\/gltf-binary;base64,/);
+    expect(recovered.furniture[0].modelData).toEqual(project.furniture[0].modelData);
+    expect(recovered.furniture[0].modelFinish).toEqual(project.furniture[0].modelFinish);
+  } finally {await fresh.close();}
+});
