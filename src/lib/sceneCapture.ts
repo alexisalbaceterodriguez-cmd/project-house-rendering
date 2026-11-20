@@ -23,3 +23,17 @@ export async function captureImage(width:number,height:number):Promise<Blob>{
   capturing=true;
   try{return await capture(width,height);}finally{capturing=false;}
 }
+
+// Live three.js scene of the 3D viewer, used to export the render package (GLB).
+export type SceneSource={scene:import('three').Scene;camera:import('three').PerspectiveCamera;invalidate:()=>void};
+const sources=new Map<HTMLCanvasElement,SceneSource>();
+export const registerSceneSource=(canvas:HTMLCanvasElement,source:SceneSource)=>{
+  sources.set(canvas,source);
+  return()=>{if(sources.get(canvas)===source)sources.delete(canvas);};
+};
+export async function getSceneSource():Promise<SceneSource>{
+  const canvas=await captureCanvas();
+  const source=sources.get(canvas);
+  if(!source)throw new Error('Abre primero la vista 3D y espera a que termine de cargar.');
+  return source;
+}

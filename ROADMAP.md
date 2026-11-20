@@ -1,6 +1,6 @@
 # Roadmap de Project House Rendering
 
-> Última actualización: 16 de noviembre de 2026. PR #7 integrada en main (`6fd3372`); incremento F0 de conexiones y bloqueos IndexedDB en `codex/indexeddb-lifecycle`. El editor es **conceptual**. No sustituye una medición, proyecto de obra ni verificación normativa.
+> Última actualización: 20 de noviembre de 2026 (render Cycles R0–R7, ver «Render fotorrealista con Blender/Cycles»). Anterior: 16 de noviembre de 2026. PR #7 integrada en main (`6fd3372`); incremento F0 de conexiones y bloqueos IndexedDB en `codex/indexeddb-lifecycle`. El editor es **conceptual**. No sustituye una medición, proyecto de obra ni verificación normativa.
 
 > **Objetivo de producto actualizado por el usuario (16/11):** aplicación de renders potente y terminada, con objetos de gran realismo y creación e integración de nuevos materiales/objetos bajo petición. Priorizar esa entrega frente a ampliaciones indefinidas de infraestructura. Pruebas básicas por bloque, con cobertura completa al publicar. Incremento `codex/resource-workshop`: materiales PBR propios y portables, patrones sintéticos o mapas importados, cuatro generadores GLB originales y encuadre de objeto. Este incremento no equivale todavía a render fotorrealista final ni a generación universal de objetos.
 
@@ -15,7 +15,7 @@
 | 2. Editor | Arrastre cancelable, zoom en cursor/pan, grupos, rejilla y referencia calibrada | **Base implementada** | Cotas encadenadas y cobertura táctil real; validación de conflictos antes de confirmar |
 | 3A. Biblioteca universal | Modelos autorizados, variantes por superficie y cuatro PBR (issue #6) | **Catálogo inicial implementado** | Ampliar familias/proveedores y optimización de recursos grandes; verificar aceptación en web publicada |
 | 3B. Interiorismo modular | Cocina y lavabo propios con medidas/frentes/encimeras (issue #4) | **Base paramétrica implementada** | Ampliar composición de baños y productos comerciales integrados |
-| 4. Render | PBR/HDRI, cámaras, paseo, calidad rápida/alta y PNG | **Base WebGL implementada** | Más pruebas de GPU y fidelidad de capturas; render offline sigue fuera de la entrega |
+| 4. Render | PBR/HDRI, cámaras, paseo, calidad rápida/alta y PNG; render offline Blender/Cycles local | **Base WebGL + pipeline Cycles local implementados** | Horneado de patrones a texturas, fidelidad de materiales/mobiliario, IA (R8–R9) y presentación (R10) |
 | 5. Proyectos | Versiones locales, A/B, presupuesto CSV e impresión/PDF | **Flujo local implementado** | PDF técnico, cotizaciones automáticas y colaboración; integración y aceptación pública pendientes |
 
 ## Prioridades siguientes
@@ -93,6 +93,26 @@ Conservar la vista interactiva eficiente de Three.js/React Three Fiber y añadir
 ### F5. Alternativas y biblioteca de proyectos (issue [#5](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/issues/5))
 
 Guardar/duplicar versiones completas del mismo diseño, incluyendo referencias/licencias de productos, asignaciones de material, iluminación y cámaras. Comparador A/B que conserve geometría, cámara y luces mientras cambia únicamente el material u opción elegida (por ejemplo, roble vs porcelánico y dos tejidos de sofá). Exportar dos imágenes con **encuadre idéntico** y recuperar ambas alternativas. Optimizar activos repetidos y carga diferida.
+
+### Render fotorrealista con Blender/Cycles (encargo del 20/11/2026)
+
+Motor local independiente en [`render-engine/`](render-engine/README.md): el editor exporta un paquete canónico (`scene.json` + `scene.glb` + `preview.png`), una API local lo encola y Blender headless lo renderiza con Cycles. La IA nunca será fuente de geometría.
+
+| Fase | Alcance | Estado |
+| --- | --- | --- |
+| R0 | Auditoría del editor y del render WebGL | Implementado |
+| R1 | Modelo canónico versionado: IDs estables, unidades físicas, licencias, hash reproducible | Parcial (manifiesto derivado al exportar) |
+| R2 | Exportación del paquete, incluidos GLB de IndexedDB | Implementado |
+| R3 | Motor Blender headless, cola, API, errores estructurados, idempotencia | Implementado (MVP local) |
+| R4 | PBR → Principled BSDF | Parcial (sin horneado de patrones sintéticos) |
+| R5 | Presets tarde/día/noche/estudio, cámara, verticales, AgX | Implementado |
+| R6 | «Generar render» → API → Cycles → galería en el editor | Implementado (local) |
+| R7 | Pases EXR float multicapa (profundidad, normal, IDs, albedo) | Implementado (base) |
+| R8 | Proveedores de IA | Pendiente |
+| R9 | Ediciones IA controladas que preservan la arquitectura | Pendiente |
+| R10 | Presentación cinematográfica (recorridos, variantes) | Pendiente |
+
+Siguiente paso: hornear vetas, tramas y tejidos del visor como texturas del paquete (R4) y comparar la demo nórdica Cycles/WebGL en la misma cámara.
 
 ### Arquitectura común y secuencia
 

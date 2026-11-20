@@ -58,3 +58,18 @@
 .studio-body .example-room p {color:#d5dfd5;line-height:1.5;margin:0 0 14px}
 .example-room button {background:#f4efe2;border:0;color:#243d30;border-radius:6px;padding:10px 14px;font-weight:700}
 @media(max-width:580px){.example-room {grid-template-columns:1fr}.example-room img{height:145px;min-height:0}}
+/* Cycles render panel */
+.cycles-panel .engine-status{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px}
+.cycles-panel .engine-status.ok{background:#e6f3e6;color:#2f6a41}.cycles-panel .engine-status.off{background:#fbf1e8;color:#8a5a33}
+.cycles-panel .engine-status button{margin:0}
+.cycles-panel code{background:#edf1ea;padding:1px 5px;border-radius:4px}
+.cycles-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.cycles-job{display:flex;flex-direction:column;background:white;border:1px solid #dce6d7;border-radius:10px;overflow:hidden}
+.cycles-figure{margin:0;position:relative}.cycles-figure img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#e9ece6}
+.cycles-figure figcaption{position:absolute;left:8px;bottom:8px;padding:2px 8px;border-radius:999px;background:#1b2b23cc;color:white;font-size:11px}
+.cycles-placeholder{aspect-ratio:16/9;display:grid;place-items:center;background:#eef2eb;color:#5c7263;font-weight:700;font-size:12px}
+.cycles-job-info{display:flex;flex-direction:column;gap:3px;padding:10px 12px}.cycles-job-info small{color:#6a7e6f;overflow-wrap:anywhere}
+.cycles-job-info progress{width:100%;accent-color:#326d4b}
+.cycles-actions{display:flex;flex-wrap:wrap;align-items:center;gap:2px}.cycles-actions span{display:inline-flex}
+.cycles-error{color:#a1584b;margin:4px 0}
+.studio-body label.studio-check{flex-direction:row;align-items:flex-start;gap:10px;font-weight:600;line-height:1.45;margin:10px 0}.studio-body label.studio-check input[type=checkbox]{width:18px;height:18px;min-height:0;padding:0;margin:1px 0 0;flex:none;accent-color:#326d4b}

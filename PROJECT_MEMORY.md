@@ -50,7 +50,7 @@ Vivienda rectangular de **60 m² = 10 × 6 m**, 3 dormitorios, 2 baños, cocina 
 ## 2. Stack, repositorio y archivos
 
 - **Frontend:** React 19, TypeScript, Vite 7; estado Zustand 5; plano SVG en React; Three.js 0.180, React Three Fiber 9 y Drei 10; iconos Lucide.
-- **Sin backend por ahora:** datos en `localStorage`; intercambio de proyectos JSON v1; importación de modelos GLB con datos embebidos en JSON; render WebGL en cliente.
+- **Sin backend en la nube:** datos en `localStorage`/IndexedDB; intercambio de proyectos JSON v1; render WebGL en cliente. Desde el 20/11/2026, motor local opcional `render-engine/` (Python + Blender/Cycles) para renders offline.
 - `src/types.ts`: tipos `Project`, `Room`, `Wall`, `Opening`, `Furniture`, `Selection`, `Tool`.
 - `src/data/defaultProject.ts`: plantilla conceptual de 60 m².
 - `src/components/Plan2D.tsx`: edición SVG, snap de 10 cm, selección, dibujo de muros y estancias, manipulación de muebles.
@@ -131,7 +131,9 @@ Los estados son **PENDIENTE**, **EN CURSO** y **HECHO**, y se actualizan al veri
 - [ ] Materiales y texturas PBR para paredes, suelos, cocinas y baños; variantes de acabados sin alterar geometría.
 - [ ] Colisiones conceptuales, ajustes/encajes y comprobaciones de espacio libre; configuraciones de cocina y mobiliario por estancia.
 
-### F4. Visualización y render fotorrealista | PENDIENTE
+### F4. Visualización y render fotorrealista | EN CURSO
+
+> 20/11/2026: pipeline Blender/Cycles local (R0–R7) en `render-engine/`. El editor exporta `scene.json` (manifiesto canónico, IDs estables, unidades m, eje Y) + `scene.glb` (mismo grafo Three.js del visor, `extras.atelierId`) + `preview.png`; el servicio Python (`python -m atelier_engine`, 127.0.0.1:8765) valida, encola y lanza Blender 4.5 LTS headless. Coordenadas plano (x,y) → Three (x,z) → Blender (x,−z,y). Decisiones: Blender local y no expuesto a internet; sin dependencias Python externas; reutilización de trabajos solo con la misma revisión del script del motor; los pases técnicos van en EXR float, nunca en PNG de 8 bits; la IA (R8–R9) solo editará apariencia, nunca geometría. Estado detallado en PROJECT_STATUS.md y render-engine/README.md.
 
 - [ ] Iluminación interior/exterior, HDRI, sombras coherentes, texturas PBR y cámaras configurables.
 - [ ] Modo paseo en primera persona, vistas guardadas y recorridos.

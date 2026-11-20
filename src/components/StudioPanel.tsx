@@ -18,6 +18,7 @@ import WallEditingTools from './WallEditingTools';
 import BudgetTools from './BudgetTools';
 import MaterialWorkshop from './MaterialWorkshop';
 import ObjectWorkshop from './ObjectWorkshop';
+import CyclesRender from './CyclesRender';
 import { assignMaterial, type MaterialTarget } from '../lib/projectMaterials';
 import { defaultStudio, lightPresets, objectCamera, studioSubject } from '../lib/studioRender';
 
@@ -180,6 +181,7 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
       <button disabled={!liveCamera} onClick={()=>{if(liveCamera){updateRender({camera:structuredClone(liveCamera),walk:false});setMessage('Encuadre guardado en el proyecto y sus versiones.');}}}>Guardar encuadre actual</button><button disabled={!render.camera} onClick={()=>{updateRender({camera:undefined,walk:false});setMessage('Cámara automática restaurada.');}}>Restablecer cámara</button>
       <button disabled={!!studioSubject(project)} onClick={()=>{updateRender({walk:!render.walk});setMode('3d');setMessage(!render.walk?'Cierra el panel y haz clic en 3D. WASD o flechas para caminar; Escape libera el ratón.':'Cámara orbital activada.');}}>{render.walk?'Salir del paseo':'Recorrer en primera persona'}</button>
       <label>Resolución PNG<select aria-label="Resolución de imagen" value={resolution} onChange={e=>setResolution(e.target.value)}><option value="1280x720">1280 × 720</option><option value="1920x1080">1920 × 1080</option><option value="2560x1440">2560 × 1440</option><option value="3840x2160">3840 × 2160 · 4K UHD</option></select></label><p className="small-help">La imagen usa la calidad elegida y el encuadre actual, sin ayudas de selección. Elige Alta para vidrio, barniz y tejido; si la GPU no admite la resolución, reduce el tamaño.</p><button className="primary-btn" disabled={busy} onClick={()=>void exportRender()}>Exportar imagen PNG</button>
+      <CyclesRender busy={busy} run={run} onMessage={setMessage}/>
     </>}
     {tab==='tools'&&<>
       <h3>Precisión y revisión del plano</h3><p>Mayús + clic selecciona varios muebles; arrastra el grupo. Escape revierte el arrastre completo. Rueda amplía el plano; botón central o Espacio desplaza.</p>

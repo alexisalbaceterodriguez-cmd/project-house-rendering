@@ -28,6 +28,9 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Run tests
         run: npm run test
+      - name: Run render engine tests (contract, API, queue; Blender smoke skips without Blender)
+        working-directory: render-engine
+        run: python3 -m unittest discover -s tests -t . -v
       - name: Build production bundle
         run: npm run build
       - name: Install Playwright Chromium

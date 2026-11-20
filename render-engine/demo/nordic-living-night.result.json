@@ -1,0 +1,34 @@
+{
+ "status": "succeeded",
+ "blender": "4.5.16 LTS",
+ "device": "OPTIX:NVIDIA GeForce RTX 5070 Laptop GPU",
+ "width": 1280,
+ "height": 720,
+ "samples": 256,
+ "quality": "standard",
+ "lighting": "night",
+ "world": {
+  "world": "sky",
+  "sunElevationDeg": 10.0
+ },
+ "ceiling": true,
+ "portals": 4,
+ "interiorLights": 8,
+ "materials": {
+  "glass": 8,
+  "doors": 7,
+  "shades": 1
+ },
+ "objects": 49,
+ "outputs": [
+  "beauty.png",
+  "passes.exr"
+ ],
+ "renderSeconds": 11.67,
+ "totalSeconds": 12.52,
+ "image": {
+  "meanLuminance": 0.5444,
+  "clippedRatio": 0.0,
+  "blackRatio": 0.0
+ }
+}

@@ -10,3 +10,9 @@ coverage/
 playwright-report/
 test-results/
 *.tsbuildinfo
+
+# Render engine local runtime (Blender binary, jobs and outputs)
+render-engine/.blender/
+render-engine/data/
+__pycache__/
+*.pyc

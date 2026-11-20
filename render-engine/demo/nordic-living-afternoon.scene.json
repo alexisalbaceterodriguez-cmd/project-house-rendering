@@ -1,0 +1,517 @@
+{
+  "format": "atelier-render-package",
+  "schemaVersion": 1,
+  "generator": {
+    "app": "atelier-60",
+    "version": "1"
+  },
+  "createdAt": "2026-11-20T15:00:43.340Z",
+  "units": "m",
+  "upAxis": "Y",
+  "handedness": "right",
+  "coordinates": "three.js world: metres, +Y up, right-handed; plan (x, y) -> (x, z). rooms[].polygon uses plan coordinates.",
+  "project": {
+    "id": "atelier-60-demo",
+    "name": "Mi piso nórdico",
+    "contentHash": "c6fb6e686a848476ac92f9342467973eae92c6ea1ea43ced31df6be1b8cd01dc",
+    "wallHeight": 2.55,
+    "width": 10,
+    "depth": 6
+  },
+  "geometry": {
+    "file": "scene.glb",
+    "sha256": "6863b74720dbe302a254bed1883e5c2077c6d932458ed4677581aa69d678ad01",
+    "bytes": 428288
+  },
+  "rooms": [
+    {
+      "id": "master",
+      "name": "Dormitorio principal",
+      "kind": "bedroom",
+      "polygon": [
+        [
+          6.8,
+          0
+        ],
+        [
+          10,
+          0
+        ],
+        [
+          10,
+          3
+        ],
+        [
+          6.8,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "bed2",
+      "name": "Dormitorio 2",
+      "kind": "bedroom",
+      "polygon": [
+        [
+          4,
+          0
+        ],
+        [
+          6.8,
+          0
+        ],
+        [
+          6.8,
+          3
+        ],
+        [
+          4,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "living",
+      "name": "Salón · cocina",
+      "kind": "living",
+      "polygon": [
+        [
+          0,
+          0
+        ],
+        [
+          4,
+          0
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          0,
+          6
+        ]
+      ]
+    },
+    {
+      "id": "hall",
+      "name": "Distribuidor",
+      "kind": "hall",
+      "polygon": [
+        [
+          10,
+          3
+        ],
+        [
+          10,
+          4
+        ],
+        [
+          8.4,
+          4
+        ],
+        [
+          6.8,
+          4
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          6.8,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "bath2",
+      "name": "Baño 2",
+      "kind": "bathroom",
+      "polygon": [
+        [
+          10,
+          4
+        ],
+        [
+          10,
+          6
+        ],
+        [
+          8.4,
+          6
+        ],
+        [
+          8.4,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "bed3",
+      "name": "Dormitorio 3",
+      "kind": "bedroom",
+      "polygon": [
+        [
+          4,
+          6
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          6.8,
+          4
+        ],
+        [
+          6.8,
+          6
+        ]
+      ]
+    },
+    {
+      "id": "bath1",
+      "name": "Baño 1",
+      "kind": "bathroom",
+      "polygon": [
+        [
+          6.8,
+          6
+        ],
+        [
+          6.8,
+          4
+        ],
+        [
+          8.4,
+          4
+        ],
+        [
+          8.4,
+          6
+        ]
+      ]
+    }
+  ],
+  "objects": [
+    {
+      "id": "n",
+      "type": "wall"
+    },
+    {
+      "id": "e",
+      "type": "wall"
+    },
+    {
+      "id": "s",
+      "type": "wall"
+    },
+    {
+      "id": "w",
+      "type": "wall"
+    },
+    {
+      "id": "living-top",
+      "type": "wall"
+    },
+    {
+      "id": "bed-top",
+      "type": "wall"
+    },
+    {
+      "id": "bed-bottom",
+      "type": "wall"
+    },
+    {
+      "id": "bath-divider",
+      "type": "wall"
+    },
+    {
+      "id": "hall-top",
+      "type": "wall"
+    },
+    {
+      "id": "hall-bottom",
+      "type": "wall"
+    },
+    {
+      "id": "entry",
+      "type": "opening",
+      "kind": "door"
+    },
+    {
+      "id": "living-entry",
+      "type": "opening",
+      "kind": "door"
+    },
+    {
+      "id": "door-bed2",
+      "type": "opening",
+      "kind": "door"
+    },
+    {
+      "id": "door-master",
+      "type": "opening",
+      "kind": "door"
+    },
+    {
+      "id": "door-bed3",
+      "type": "opening",
+      "kind": "door"
+    },
+    {
+      "id": "door-bath1",
+      "type": "opening",
+      "kind": "door"
+    },
+    {
+      "id": "door-bath2",
+      "type": "opening",
+      "kind": "door"
+    },
+    {
+      "id": "living-window",
+      "type": "opening",
+      "kind": "window"
+    },
+    {
+      "id": "bed2-window",
+      "type": "opening",
+      "kind": "window"
+    },
+    {
+      "id": "master-window",
+      "type": "opening",
+      "kind": "window"
+    },
+    {
+      "id": "bed3-window",
+      "type": "opening",
+      "kind": "window"
+    },
+    {
+      "id": "master",
+      "type": "room",
+      "kind": "bedroom",
+      "name": "Dormitorio principal"
+    },
+    {
+      "id": "bed2",
+      "type": "room",
+      "kind": "bedroom",
+      "name": "Dormitorio 2"
+    },
+    {
+      "id": "living",
+      "type": "room",
+      "kind": "living",
+      "name": "Salón · cocina"
+    },
+    {
+      "id": "hall",
+      "type": "room",
+      "kind": "hall",
+      "name": "Distribuidor"
+    },
+    {
+      "id": "bath2",
+      "type": "room",
+      "kind": "bathroom",
+      "name": "Baño 2"
+    },
+    {
+      "id": "bed3",
+      "type": "room",
+      "kind": "bedroom",
+      "name": "Dormitorio 3"
+    },
+    {
+      "id": "bath1",
+      "type": "room",
+      "kind": "bathroom",
+      "name": "Baño 1"
+    },
+    {
+      "id": "sofa-1",
+      "type": "furniture",
+      "kind": "sofa",
+      "name": "Sofá"
+    },
+    {
+      "id": "rug-1",
+      "type": "furniture",
+      "kind": "rug",
+      "name": "Alfombra"
+    },
+    {
+      "id": "table-1",
+      "type": "furniture",
+      "kind": "table",
+      "name": "Mesa de comedor"
+    },
+    {
+      "id": "kitchen-1",
+      "type": "furniture",
+      "kind": "kitchen",
+      "name": "Cocina lineal"
+    },
+    {
+      "id": "fridge-1",
+      "type": "furniture",
+      "kind": "fridge",
+      "name": "Frigorífico"
+    },
+    {
+      "id": "bed-main",
+      "type": "furniture",
+      "kind": "bed",
+      "name": "Cama doble"
+    },
+    {
+      "id": "ward-main",
+      "type": "furniture",
+      "kind": "wardrobe",
+      "name": "Armario principal"
+    },
+    {
+      "id": "bed-2",
+      "type": "furniture",
+      "kind": "single-bed",
+      "name": "Cama individual"
+    },
+    {
+      "id": "desk-2",
+      "type": "furniture",
+      "kind": "desk",
+      "name": "Escritorio"
+    },
+    {
+      "id": "bed-3",
+      "type": "furniture",
+      "kind": "single-bed",
+      "name": "Cama individual"
+    },
+    {
+      "id": "sink-1",
+      "type": "furniture",
+      "kind": "sink",
+      "name": "Lavabo 1"
+    },
+    {
+      "id": "toilet-1",
+      "type": "furniture",
+      "kind": "toilet",
+      "name": "Inodoro 1"
+    },
+    {
+      "id": "shower-1",
+      "type": "furniture",
+      "kind": "shower",
+      "name": "Ducha 1"
+    },
+    {
+      "id": "sink-2",
+      "type": "furniture",
+      "kind": "sink",
+      "name": "Lavabo 2"
+    },
+    {
+      "id": "toilet-2",
+      "type": "furniture",
+      "kind": "toilet",
+      "name": "Inodoro 2"
+    },
+    {
+      "id": "shower-2",
+      "type": "furniture",
+      "kind": "shower",
+      "name": "Ducha 2"
+    },
+    {
+      "id": "plant-1",
+      "type": "furniture",
+      "kind": "plant",
+      "name": "Ficus"
+    },
+    {
+      "id": "coffee-1",
+      "type": "furniture",
+      "kind": "table",
+      "name": "Mesa de centro"
+    },
+    {
+      "id": "lamp-1",
+      "type": "furniture",
+      "kind": "lamp",
+      "name": "Lámpara de pie"
+    }
+  ],
+  "camera": {
+    "position": [
+      3.88,
+      1.4,
+      3.3
+    ],
+    "target": [
+      0.9,
+      1,
+      0.7
+    ],
+    "fovY": 42,
+    "near": 0.05,
+    "far": 1000,
+    "verticals": false
+  },
+  "lighting": {
+    "preset": "afternoon",
+    "exposure": 0,
+    "sun": {
+      "direction": [
+        0.5455,
+        0.309,
+        -0.7791
+      ],
+      "strength": 4.5,
+      "angle": 2,
+      "temperature": 4700
+    },
+    "sky": {
+      "strength": 0.6
+    },
+    "hdri": null,
+    "ceiling": "auto",
+    "roomLights": false,
+    "interior": []
+  },
+  "render": {
+    "engine": "cycles",
+    "width": 1280,
+    "height": 720,
+    "samples": 256,
+    "quality": "standard",
+    "denoise": true,
+    "passes": [
+      "albedo",
+      "beauty",
+      "depth",
+      "material_id",
+      "normal",
+      "object_id"
+    ]
+  },
+  "assets": [],
+  "materials": []
+}

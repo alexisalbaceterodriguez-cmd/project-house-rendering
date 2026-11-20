@@ -11,12 +11,14 @@ import { useEditor } from '../store';
 import type { Furniture, Opening, Project, Wall } from '../types';
 import ErrorBoundary from './ErrorBoundary';
 import PbrSurface, { usePbrMaps } from './PbrSurface';
-import { registerCapture } from '../lib/sceneCapture';
+import { registerCapture, registerSceneSource } from '../lib/sceneCapture';
 import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '../lib/studioRender';
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 const SurfaceContext=createContext<string|undefined>(undefined);
 
-function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string}) {
+// `role` names the material (atelier:<role>) so the Cycles engine can recognise
+// window glass or door leaves after the scene is exported to glTF.
+function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string;role?:string}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
   const geometry=useMemo(()=>{
@@ -29,7 +31,7 @@ function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId}:{
   },[...size]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh castShadow={material!=='glass'} receiveShadow position={position}>
-    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:<meshStandardMaterial color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} transparent={opacity<1} opacity={opacity}/>}
+    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} transparent={opacity<1} opacity={opacity}/>}
   </mesh>;
 }
 function FloorSurface({room}:{room:Project['rooms'][number]}){
@@ -50,7 +52,7 @@ function FloorSurface({room}:{room:Project['rooms'][number]}){
     }
     return result;
   },[room]);
-  return <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[0,.021,0]}>
+  return <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[0,.021,0]} userData={{atelierId:room.id,atelierType:'room',atelierKind:room.kind}}>
     <shapeGeometry args={[shape]}/>
     <Suspense fallback={<meshStandardMaterial color={finish.color}/>}><PbrSurface id={room.materialId} color={finish.color}/></Suspense>
   </mesh>;
@@ -61,7 +63,7 @@ function WallModel({wall,project,cutaway,selected}:{wall:Wall;project:Project;cu
   const height=cutaway ? .9 : project.wallHeight;
   const openings=project.openings.filter(o=>o.wallId===wall.id);
   const parts=wallParts(wall,openings,height);
-  return <group position={[wall.a.x,0,wall.a.y]} rotation={[0,-angle,0]}>
+  return <group position={[wall.a.x,0,wall.a.y]} rotation={[0,-angle,0]} userData={{atelierId:wall.id,atelierType:'wall'}}>
     {parts.map((p,i)=><group key={i}><Box position={[(p.from+p.to)/2,(p.bottom+p.top)/2,0]} size={[p.to-p.from,p.top-p.bottom,wall.thickness]} finishId={wall.materialId} color={project.palette.walls}/>{selected&&<mesh userData={{editorOverlay:true}} position={[(p.from+p.to)/2,(p.bottom+p.top)/2,0]}><boxGeometry args={[p.to-p.from+.005,p.top-p.bottom+.005,wall.thickness+.005]}/><meshBasicMaterial color="#2b9071" wireframe/></mesh>}</group>)}
     {!cutaway&&openings.map(o=><OpeningModel key={o.id} opening={o} length={len} thickness={wall.thickness}/>)}
   </group>;
@@ -69,7 +71,7 @@ function WallModel({wall,project,cutaway,selected}:{wall:Wall;project:Project;cu
 function OpeningModel({opening:o,length,thickness}:{opening:Opening;length:number;thickness:number}){
   const x=o.offset*length;
   const pale='#d9d8d1';
-  return <group position={[x,0,0]}>
+  return <group position={[x,0,0]} userData={{atelierId:o.id,atelierType:'opening',atelierKind:o.kind}}>
     <Box position={[-o.width/2, o.height/2+o.sill,0]} size={[.045,o.height,thickness+.025]} color={pale}/>
     <Box position={[o.width/2, o.height/2+o.sill,0]} size={[.045,o.height,thickness+.025]} color={pale}/>
     <Box position={[0,o.height+o.sill,0]} size={[o.width,.055,thickness+.04]} color={pale}/>
@@ -77,7 +79,7 @@ function OpeningModel({opening:o,length,thickness}:{opening:Opening;length:numbe
       <Box position={[0,o.sill+o.height/2,0]} size={[o.width-.055,o.height-.055,.025]} color="#a8d5df" material="glass"/>
       <Box position={[0,o.sill+o.height/2,0]} size={[.028,o.height,.04]} color="#d1d4d0"/>
     </>:<group position={[-o.width/2+.03,o.sill,0]} rotation={[0,-.25,0]}>
-      <Box position={[o.width*.47,o.height*.49,.014]} size={[o.width*.93,o.height*.97,.04]} color="#d4b99a" opacity={.6}/>
+      <Box position={[o.width*.47,o.height*.49,.014]} size={[o.width*.93,o.height*.97,.04]} color="#d4b99a" opacity={.6} role="door"/>
       <Box position={[o.width*.82,o.height*.47,.055]} size={[.11,.018,.04]} color="#97938b" material="metal"/>
     </group>}
   </group>;
@@ -254,13 +256,13 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'toilet':return <><Box position={[0,.27,-d*.29]} size={[w,.5,d*.27]} color="#f5f5f2"/><mesh castShadow position={[0,.42,d*.10]}><cylinderGeometry args={[w*.42,w*.36,.13,24]}/><meshStandardMaterial color="#f6f6f4"/></mesh><mesh position={[0,.50,d*.10]}><torusGeometry args={[w*.3,.045,9,25]}/><meshStandardMaterial color="#f8f8f5"/></mesh></>;
     case 'shower':return <><Box position={[0,.04,0]} size={[w,.08,d]} color="#f0f0ee"/><Box position={[w/2,.99,0]} size={[.018,1.95,d]} color="#b3d5db" material="glass"/><Box position={[0,.99,d/2]} size={[w,1.95,.018]} color="#b3d5db" material="glass"/><Box position={[-w*.35,1.1,-d*.35]} size={[.04,2.08,.04]} color="#8d9696" material="metal"/><mesh position={[-w*.32,2.08,-d*.35]}><cylinderGeometry args={[.13,.13,.025,24]}/><meshStandardMaterial color="#a1a5a2" metalness={.7}/></mesh></>;
     case 'plant':return <><mesh castShadow position={[0,.24,0]}><cylinderGeometry args={[w*.27,w*.2,.48,12]}/><meshStandardMaterial color="#b7a185"/></mesh>{[[0,.75,0],[.12,.98,.12],[-.13,.95,-.08],[0,1.2,.02]].map((p,i)=><mesh key={i} position={p as [number,number,number]}><sphereGeometry args={[.23,9,7]}/><meshStandardMaterial color={i%2?'#4f8060':'#6d9875'}/></mesh>)}</>;
-    case 'lamp':return <><mesh castShadow position={[0,.04,0]}><cylinderGeometry args={[.16,.16,.08,24]}/><meshStandardMaterial color="#7b7871"/></mesh><Box position={[0,h/2,0]} size={[.027,h,.027]} color="#797875" material="metal"/><mesh position={[0,h-.12,0]}><coneGeometry args={[.27,.34,24,1,true]}/><meshStandardMaterial color="#eae0cd" side={THREE.DoubleSide}/></mesh><pointLight position={[0,h-.15,0]} intensity={.13} color="#fff2d3" distance={2}/></>;
+    case 'lamp':return <><mesh castShadow position={[0,.04,0]}><cylinderGeometry args={[.16,.16,.08,24]}/><meshStandardMaterial color="#7b7871"/></mesh><Box position={[0,h/2,0]} size={[.027,h,.027]} color="#797875" material="metal"/><mesh position={[0,h-.12,0]}><coneGeometry args={[.27,.34,24,1,true]}/><meshStandardMaterial name="atelier:lampshade" color="#eae0cd" side={THREE.DoubleSide}/></mesh><pointLight position={[0,h-.15,0]} intensity={.13} color="#fff2d3" distance={2}/></>;
     case 'rug':return item.materialId?<Box position={[0,.014,0]} size={[w,.028,d]} color={item.color}/>:<WovenRug item={item}/>;
     case 'model':return <ModelShape item={item} selected={selected}/>;
   }
 }
 function ObjectModel({item,project,selected,onSelect}:{item:Furniture;project:Project;selected:boolean;onSelect:()=>void}){
-  return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]} onClick={e=>{e.stopPropagation();onSelect();}} onPointerOver={()=>{document.body.style.cursor='pointer';}} onPointerOut={()=>{document.body.style.cursor='';}}>
+  return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]} userData={{atelierId:item.id,atelierType:'furniture',atelierKind:item.kind}} onClick={e=>{e.stopPropagation();onSelect();}} onPointerOver={()=>{document.body.style.cursor='pointer';}} onPointerOut={()=>{document.body.style.cursor='';}}>
     <SurfaceContext.Provider value={item.materialId}><FurnitureShape item={item} project={project} selected={selected}/></SurfaceContext.Provider>
     {selected&&<mesh userData={{editorOverlay:true}} rotation={[-Math.PI/2,0,0]} position={[0,.03,0]}><ringGeometry args={[Math.max(item.w,item.d)*.66,Math.max(item.w,item.d)*.68,40]}/><meshBasicMaterial color="#2b9071" side={THREE.DoubleSide}/></mesh>}
   </group>;
@@ -271,7 +273,7 @@ function FloorContact({item}:{item:Furniture}){
   const lift=Math.max(0,item.modelElevation??0);
   if(item.kind==='rug'||item.module?.family==='wall'||lift>=.45)return null;
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]}>
-    <mesh raycast={()=>{}} position={[item.modelOffsetX??0,.031,item.modelOffsetZ??0]} rotation={[-Math.PI/2,0,0]} scale={[item.w*1.45,item.d*1.45,1]}>
+    <mesh raycast={()=>{}} userData={{renderExclude:true}} position={[item.modelOffsetX??0,.031,item.modelOffsetZ??0]} rotation={[-Math.PI/2,0,0]} scale={[item.w*1.45,item.d*1.45,1]}>
       <planeGeometry/>
       <shaderMaterial transparent depthWrite={false} uniforms={{strength:{value:.36*(1-lift/.45)}}}
         vertexShader={`varying vec2 coord;
@@ -338,7 +340,9 @@ function CaptureRig({exposure,high}:{exposure:number;high:boolean}){
         await gl.compileAsync(scene,camera);gl.shadowMap.needsUpdate=true;gl.render(scene,camera);
         return await new Promise<Blob>((resolve,reject)=>gl.domElement.toBlob(blob=>blob?resolve(blob):reject(new Error('La GPU no pudo crear la imagen.')),'image/png'));
       }finally{overlays.forEach(object=>{object.visible=true;});for(const {material,color,intensity} of emissives){material.emissive.copy(color);material.emissiveIntensity=intensity;}gl.setPixelRatio(ratio);gl.setSize(size.x,size.y,false);perspective.aspect=aspect;perspective.updateProjectionMatrix();invalidate();}
-    });return unregister;
+    });
+    const unregisterSource=registerSceneSource(gl.domElement,{scene,camera:camera as THREE.PerspectiveCamera,invalidate});
+    return()=>{unregister();unregisterSource();};
   },[gl,scene,camera,invalidate]);return null;
 }
 function StudioLights({project,subject,high}:{project:Project;subject?:Furniture;high:boolean}){
@@ -406,14 +410,14 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       <CaptureRig exposure={render.exposure} high={high}/>
       <CameraRig project={project} top={!cameraLocked&&topView}/>
       {render.walk&&!subject?<WalkRig project={project}/>:<OrbitControls makeDefault target={project.render?.camera?.target??[project.width/2,.05,project.depth/2]} enableRotate={!cameraLocked} enableZoom={!cameraLocked} enablePan={!cameraLocked} enableDamping dampingFactor={.08} minDistance={.4} maxDistance={500} maxPolarAngle={Math.PI*.495}/>}
-      <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[center[0],subject?ground:-.1,center[2]]}><planeGeometry args={subject?[span*8+50,span*8+50]:[project.width+50,project.depth+50]}/><meshStandardMaterial color={studio?(render.studio??defaultStudio).background:'#ebeae5'} roughness={studio?.85:1}/></mesh>
+      <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[center[0],subject?ground:-.1,center[2]]} userData={{atelierId:'ground',atelierType:'ground'}}><planeGeometry args={subject?[span*8+50,span*8+50]:[project.width+50,project.depth+50]}/><meshStandardMaterial color={studio?(render.studio??defaultStudio).background:'#ebeae5'} roughness={studio?.85:1}/></mesh>
       {!subject&&<>
       {project.rooms.map(room=><FloorSurface key={room.id} room={room}/>)}
-      <Box position={[project.width/2,-.065,project.depth/2]} size={[project.width,.10,project.depth]} color="#d4c7b5"/>
+      <group userData={{atelierId:'slab',atelierType:'slab'}}><Box position={[project.width/2,-.065,project.depth/2]} size={[project.width,.10,project.depth]} color="#d4c7b5"/></group>
       {wallsVisible&&project.walls.map(w=><WallModel key={w.id} wall={w} project={project} cutaway={cutaway} selected={selection?.type==='wall'&&selection.id===w.id}/>)}
       </>}
       {(subject?[subject]:project.furniture).map(item=><ObjectModel key={item.id} item={item} project={project} selected={selection?.type==='furniture'&&selection.id===item.id} onSelect={()=>setSelection({type:'furniture',id:item.id})}/>)}
-      {subject?<ContactShadows key={JSON.stringify([subject.id,subject.w,subject.d,subject.h,subject.x,subject.y,subject.rotation,ground])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={.35} blur={2.5} far={span*2}/>
+      {subject?<group userData={{renderExclude:true}}><ContactShadows key={JSON.stringify([subject.id,subject.w,subject.d,subject.h,subject.x,subject.y,subject.rotation,ground])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={.35} blur={2.5} far={span*2}/></group>
         :project.furniture.map(item=><FloorContact key={item.id} item={item}/>)}
 
     </Canvas>
