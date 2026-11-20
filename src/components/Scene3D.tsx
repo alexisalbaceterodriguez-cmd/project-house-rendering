@@ -346,7 +346,9 @@ function CaptureRig({exposure,high}:{exposure:number;high:boolean}){
         if(width>Math.min(max,viewport[0])||height>Math.min(max,viewport[1]))throw new Error('Esta GPU no admite esa resolución. Prueba 1920 × 1080.');
         for(const material of highlighted){const original=material.userData.editorEmissive;material.emissive.copy(original.color);material.emissiveIntensity=original.intensity;}
         gl.setPixelRatio(1);gl.setSize(width,height,false);perspective.aspect=width/height;perspective.updateProjectionMatrix();
-        await gl.compileAsync(scene,camera);gl.shadowMap.needsUpdate=true;gl.render(scene,camera);
+        // Synchronous compile: three's compileAsync polls materials from a setTimeout and, if a
+        // GLB/texture swap disposes one meanwhile, throws there and never resolves (export hung).
+        gl.compile(scene,camera);gl.shadowMap.needsUpdate=true;gl.render(scene,camera);
         return await new Promise<Blob>((resolve,reject)=>gl.domElement.toBlob(blob=>blob?resolve(blob):reject(new Error('La GPU no pudo crear la imagen.')),'image/png'));
       }finally{overlays.forEach(object=>{object.visible=true;});for(const {material,color,intensity} of emissives){material.emissive.copy(color);material.emissiveIntensity=intensity;}gl.setPixelRatio(ratio);gl.setSize(size.x,size.y,false);perspective.aspect=aspect;perspective.updateProjectionMatrix();invalidate();}
     });
