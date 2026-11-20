@@ -729,6 +729,7 @@ export function furnitureElevation(item:{kind:string;h:number;module?:{family:Mo
     case 'wall-shelf':return item.h>=1.4?0:Math.max(0,Math.min(1.2,wallHeight-item.h));
     case 'towel-rail':return Math.max(0,Math.min(.15,wallHeight-item.h));
     case 'radiator':return Math.max(0,Math.min(.12,wallHeight-item.h));
+    case 'floating-nightstand':return Math.max(0,Math.min(.35,wallHeight-item.h));
     default:return 0;
   }
 }
@@ -957,4 +958,188 @@ export function barStoolParts(w:number,d:number,h:number):FurniturePart[]{
     part('Radio 2',[.012,.012,d-.02],0,ringY+.0025,0,{color:METAL,material:'metal',bevel:.004}),
     turned('Asiento',DISC,[round,seat,round],0,h-seat,0,{color:'item',surface:'textile'}),
   ];
+}
+
+/**
+ * Extending dining table inside `w × d × h`: a woodgrain top split into two halves at a 3 mm
+ * centre seam (where the leaf goes), square legs, aprons and two metal slides under the seam.
+ */
+export function extendingTableParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.03,leg=.06,inset=.03,rail=.08,under=h-top,seam=.003,half=(w-seam)/2;
+  const lx=w/2-inset-leg/2,lz=d/2-inset-leg/2,inner=w-2*(inset+leg);
+  const parts:FurniturePart[]=[];
+  for(const s of [-1,1])parts.push(part(`Tablero ${s}`,[half,top,d],s*(seam+half)/2,under,0,{color:'item',surface:'woodgrain',bevel:.006}));
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(part(`Pata ${x} ${z}`,[leg,under,leg],x*lx,0,z*lz,{color:'wood',bevel:.008}));
+  for(const z of [-1,1])parts.push(part(`Faldón ${z}`,[inner,rail,.02],0,under-rail,z*(lz-.005),{color:'wood',bevel:.003}));
+  for(const x of [-1,1])parts.push(part(`Faldón lateral ${x}`,[.02,rail,d-2*(inset+leg)],x*(lx-.005),under-rail,0,{color:'wood',bevel:.003}));
+  for(const z of [-1,1])parts.push(part(`Guía ${z}`,[inner-.06,.02,.03],0,under-.022,z*d*.22,{color:METAL,material:'metal',bevel:.003}));
+  return parts;
+}
+
+/**
+ * Desk with a hutch inside `w × d × h` (seat on +z): a woodgrain worktop about 75 cm high on two
+ * side panels, a modesty panel, a centred drawer, and on the back a shallow open shelf unit up to
+ * `h` (uprights, back panel, top and a middle shelf with a row of books).
+ */
+export function deskHutchParts(w:number,d:number,h:number):FurniturePart[]{
+  const panel=.022,top=.025,desk=Math.min(.76,h-.45),under=desk-top,face=d/2-.02,hd=Math.min(.26,d*.45),inner=w-2*panel;
+  const parts:FurniturePart[]=[
+    part('Tablero',[w,top,d],0,under,0,{color:'item',surface:'woodgrain',bevel:.005}),
+    part('Faldón trasero',[inner,Math.min(.3,under*.4),.018],0,under-Math.min(.3,under*.4),-d/2+.03,{color:'item',bevel:.003}),
+    part('Sombrerete',[inner,.025,hd],0,h-.025,-d/2+hd/2,{color:'item',surface:'woodgrain',bevel:.004}),
+    part('Trasera',[inner,h-desk-.025,.012],0,desk,-d/2+.006,{color:'item',bevel:.002}),
+  ];
+  for(const s of [-1,1]){
+    parts.push(part(`Costado ${s}`,[panel,under,face+d/2],s*(w/2-panel/2),0,(face-d/2)/2,{color:'item',bevel:.004}));
+    parts.push(part(`Montante ${s}`,[panel,h-desk,hd],s*(w/2-panel/2),desk,-d/2+hd/2,{color:'item',bevel:.004}));
+  }
+  const drawer=Math.min(.5,inner*.45),dh=.09,box=face-(-d/2+.04);
+  parts.push(part('Cajón',[drawer,dh,box],0,under-dh-HINGE_GAP,(face+(-d/2+.04))/2,{color:'item',bevel:.003}));
+  parts.push(...barHandle('Tirador',0,under-HINGE_GAP-dh/2,Math.min(.14,drawer*.5),face,d/2-.002,true));
+  const shelf=.02,shelfY=desk+(h-desk-.025)*.48,shelfD=hd-.012-.006;
+  parts.push(part('Balda',[inner,shelf,shelfD],0,shelfY,-d/2+.012+shelfD/2,{color:'item',surface:'woodgrain',bevel:.003}));
+  const room=h-.025-(shelfY+shelf),deep=Math.min(.17,shelfD-.03);
+  let x=-inner/2+.03;
+  for(let k=0;x<-inner/2+inner*.4;k++){
+    const thick=.022+(k*7%5)*.006,tall=Math.min(room*.9,.17+(k*5%4)*.02);
+    if(tall<.08)break;
+    parts.push(part(`Libro ${k+1}`,[thick,tall,deep],x+thick/2,shelfY+shelf,-d/2+.012+.008+deep/2,{color:BOOK_COLORS[k%BOOK_COLORS.length],bevel:.002}));
+    x+=thick+.002;
+  }
+  return parts;
+}
+
+/**
+ * Bunk bed inside `w × d × h` (foot +z): four full-height posts, rails and end boards around two
+ * slatted bases with textile mattresses and pillows, guard rails along the top bunk and a ladder
+ * of rungs between the foot posts.
+ */
+export function bunkBedParts(w:number,d:number,h:number):FurniturePart[]{
+  const post=.05,rail=.03,board=.12,upper=h-.55,iw=w-2*post,id=d-2*post;
+  const parts:FurniturePart[]=[];
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(part(`Poste ${x} ${z}`,[post,h,post],x*(w/2-post/2),0,z*(d/2-post/2),{color:'item',bevel:.008}));
+  const textile={surface:'textile'} as const;
+  for(const [k,y] of [['inferior',.2],['superior',upper]] as const){
+    for(const s of [-1,1]){
+      parts.push(part(`Larguero ${k} ${s}`,[rail,board,id],s*(w/2-post/2),y,0,{color:'item',bevel:.006}));
+      parts.push(part(`Testero ${k} ${s}`,[iw,board,rail],0,y,s*(d/2-post/2),{color:'item',bevel:.006}));
+    }
+    parts.push(part(`Somier ${k}`,[iw,.02,id-.002],0,y+.02,0,{color:'wood',bevel:.003}));
+    parts.push(part(`Colchón ${k}`,[iw-.02,.15,id-.02],0,y+.04,0,{color:'#f4f1ec',...textile,bevel:.04,crown:{axis:'y',amount:.008}}));
+    parts.push(part(`Almohada ${k}`,[Math.min(.6,iw-.12),.1,.34],0,y+.185,-id/2+.03+.17,{color:'#f8f5f0',...textile,bevel:.04,crown:{axis:'y',amount:.025}}));
+    parts.push(part(`Manta ${k}`,[iw-.04,.04,id*.55],0,y+.185,id/2-.005-id*.275,{color:'item',...textile,bevel:.02,crown:{axis:'y',amount:.006}}));
+  }
+  const guard=upper+.25;
+  for(const s of [-1,1])parts.push(part(`Barandilla ${s}`,[rail,.1,id],s*(w/2-post/2),guard,0,{color:'item',bevel:.006}));
+  parts.push(part('Testero cabecero',[iw,.1,rail],0,guard,-(d/2-post/2),{color:'item',bevel:.006}));
+  const first=.45,last=upper-.06,n=Math.max(2,Math.round((last-first)/.25)+1),pitch=(last-first)/(n-1);
+  for(let i=0;i<n;i++)parts.push(part(`Peldaño ${i+1}`,[iw,.03,rail],0,first+i*pitch,d/2-post/2,{color:'item',bevel:.006}));
+  return parts;
+}
+
+const BASKET:Profile=[[0,0],[.84,0],[.9,.06],[1,1],[0,1]];
+const BASKET_LID:Profile=[[0,0],[1,0],[1,.45],[.3,.6],[.22,.7],[.22,1],[0,1]];
+
+/** Round laundry hamper inside `w × d × h`: a woven body widening to the top and a lid with a turned knob. */
+export function laundryBasketParts(w:number,d:number,h:number):FurniturePart[]{
+  const lid=.06;
+  return [
+    turned('Cesto',BASKET,[w*.96,h-lid,d*.96],0,0,0,{color:'item',surface:'textile'}),
+    turned('Tapa',BASKET_LID,[w,lid,d],0,h-lid,0,{color:'item',surface:'textile'}),
+  ];
+}
+
+/**
+ * Wall-hung bedside shelf inside `w × d × h`: top, bottom, sides and back around a drawer in the
+ * upper part with a turned knob, and an open niche below holding two stacked books.
+ */
+export function floatingNightstandParts(w:number,d:number,h:number):FurniturePart[]{
+  const t=.018,front=d/2-.025,depth=front+d/2,zc=(front-d/2)/2,inner=w-2*t,span=h-2*t;
+  const dh=span*.55,bottom=h-t-HINGE_GAP-dh;
+  const parts:FurniturePart[]=[
+    part('Tapa',[w,t,d],0,h-t,0,{color:'item',surface:'woodgrain',bevel:.004}),
+    part('Base',[w,t,depth],0,0,zc,{color:'item',bevel:.003}),
+    part('Trasera',[inner,span,.008],0,t,-d/2+.004,{color:'item',bevel:.002}),
+    part('Cajón',[inner-2*HINGE_GAP,dh,t],0,bottom,front-t/2,{color:'item',surface:'woodgrain',bevel:.003}),
+    turnedFront('Pomo',KNOB,[.03,.03,d/2-.002-(front-.002)],0,bottom+dh/2-.015,(d/2-.002+front-.002)/2,{color:'wood'}),
+  ];
+  for(const s of [-1,1])parts.push(part(`Costado ${s}`,[t,span,depth],s*(w/2-t/2),t,zc,{color:'item',bevel:.003}));
+  const bw=Math.min(.22,inner*.6),bd=Math.min(.15,depth-.06),niche=bottom-t;
+  const bz=-d/2+.008+.01+bd/2;
+  if(niche>.04){
+    parts.push(part('Libro 1',[bw,Math.min(.03,niche*.35),bd],-inner/2+.02+bw/2,t,bz,{color:BOOK_COLORS[2],bevel:.002}));
+    parts.push(part('Libro 2',[bw*.88,Math.min(.025,niche*.3),bd*.9],-inner/2+.03+bw*.44,t+Math.min(.03,niche*.35),bz,{color:BOOK_COLORS[3],bevel:.002}));
+  }
+  return parts;
+}
+
+/**
+ * Corner (chaise) sofa inside `w × d × h` (back on −z, chaise on +x): wooden feet, one arm on −x,
+ * a full-width back, an upholstered plinth for the seat run and a deeper one for the chaise, seat
+ * cushions, a long chaise cushion and a row of back cushions.
+ */
+export function cornerSofaParts(w:number,d:number,h:number):FurniturePart[]{
+  const arm=clamp(w*.07,.12,.2),back=Math.min(.2,d*.14),leg=.06,seatD=Math.min(.95,d*.6);
+  const chaise=clamp(w*.3,.7,.95),fabric={color:'item',surface:'textile'} as const;
+  const rear=-d/2+FACE_GAP+back+FACE_GAP*.5,front=-d/2+seatD-.015,cFront=d/2-.015;
+  const left=-w/2+arm,split=w/2-chaise,run=split-left;
+  const parts:FurniturePart[]=[];
+  for(const [x,z] of [[-w/2+arm/2,-d/2+.07],[-w/2+arm/2,-d/2+seatD-.07],[w/2-.07,-d/2+.07],[w/2-.07,d/2-.07],[split+.07,d/2-.07]])
+    parts.push(part(`Pata ${parts.length+1}`,[.045,leg,.045],x,0,z,{color:'wood',bevel:.006}));
+  parts.push(part('Brazo',[arm,.58,seatD],-w/2+arm/2,leg,-d/2+seatD/2,{...fabric,bevel:.05}));
+  parts.push(part('Respaldo',[w-2*FACE_GAP,h-leg-FACE_GAP,back],0,leg+FACE_GAP,-d/2+FACE_GAP+back/2,{...fabric,bevel:.04}));
+  parts.push(part('Zócalo',[run-FACE_GAP,.225,front-rear],(left+split)/2-FACE_GAP/2,leg+.015,(front+rear)/2,{...fabric,bevel:.02}));
+  parts.push(part('Zócalo chaise',[chaise,.225,cFront-rear],w/2-chaise/2,leg+.015,(cFront+rear)/2,{...fabric,bevel:.02}));
+  const n=Math.max(1,Math.round(run/.7)),cushion=(run-FACE_GAP*(n+1))/n;
+  for(let i=0;i<n;i++)parts.push(part(`Cojín de asiento ${i+1}`,[cushion,.16,front-rear],left+FACE_GAP+cushion/2+i*(cushion+FACE_GAP),.3,(front+rear)/2,{...fabric,bevel:.05,crown:{axis:'y',amount:.015}}));
+  parts.push(part('Cojín chaise',[chaise-2*FACE_GAP,.16,cFront-rear],w/2-chaise/2,.3,(cFront+rear)/2,{...fabric,bevel:.05,crown:{axis:'y',amount:.015}}));
+  const inner=w-arm,m=Math.max(2,Math.round(inner/.75)),bc=(inner-FACE_GAP*(m+1))/m,bd=Math.min(.17,(front-rear)*.26);
+  for(let i=0;i<m;i++)parts.push(part(`Cojín de respaldo ${i+1}`,[bc,Math.min(.36,h-.5),bd],left+FACE_GAP+bc/2+i*(bc+FACE_GAP),.46,rear+bd/2,{...fabric,bevel:.06,crown:{axis:'z',amount:.025}}));
+  return parts;
+}
+
+const POUF:Profile=[[0,0],[.9,0],[.97,.04],[1,.15],[1,.85],[.95,.97],[.85,1],[0,1]];
+
+/** Round upholstered pouf inside `w × d × h`: a recessed dark plinth ring and a padded drum. */
+export function poufParts(w:number,d:number,h:number):FurniturePart[]{
+  const base=.025;
+  return [
+    turned('Zócalo',ROD,[w*.82,base,d*.82],0,0,0,{color:'#3b3631'}),
+    turned('Cuerpo',POUF,[w,h-base,d],0,base,0,{color:'item',surface:'textile'}),
+  ];
+}
+
+/**
+ * Hall console inside `w × d × h`: a woodgrain top over a shallow apron with two drawers and
+ * turned knobs, slim metal legs and a lower shelf.
+ */
+export function consoleTableParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.025,leg=.025,apron=.12,under=h-top,lx=w/2-leg/2,lz=d/2-leg/2,inner=w-2*leg,face=d/2-.012;
+  const parts:FurniturePart[]=[part('Tablero',[w,top,d],0,under,0,{color:'item',surface:'woodgrain',bevel:.005})];
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(part(`Pata ${x} ${z}`,[leg,under,leg],x*lx,0,z*lz,{color:METAL,material:'metal',bevel:.004}));
+  parts.push(part('Caja',[inner,apron,face-.018-(-lz)],0,under-apron,(face-.018-lz)/2,{color:'item',bevel:.003}));
+  const dw=(inner-3*HINGE_GAP)/2;
+  for(const s of [-1,1]){
+    const x=s*(HINGE_GAP+dw)/2;
+    parts.push(part(`Cajón ${s}`,[dw,apron-2*HINGE_GAP,.018],x,under-apron+HINGE_GAP,face-.009,{color:'item',surface:'woodgrain',bevel:.003}));
+    parts.push(turnedFront(`Pomo ${s}`,KNOB,[.028,.028,d/2-.002-face],x,under-apron/2-.014,(d/2-.002+face)/2,{color:METAL,material:'metal'}));
+  }
+  parts.push(part('Balda',[inner,.02,d-2*leg],0,.16,0,{color:'item',surface:'woodgrain',bevel:.003}));
+  return parts;
+}
+
+/**
+ * Pair of curtain panels inside `w × d × h` (wall on −z): a metal rod on two brackets across `w`
+ * and, gathered at each side, a textile panel made of overlapping vertical folds down to the floor.
+ */
+export function curtainParts(w:number,d:number,h:number):FurniturePart[]{
+  const rod=.025,rz=-d/2+Math.min(.07,d*.55),panel=Math.min(w*.3,.9),fw=.075;
+  const parts:FurniturePart[]=[part('Barra',[w,rod,rod],0,h-rod,rz,{color:METAL,material:'metal',bevel:.008})];
+  for(const s of [-1,1])parts.push(part(`Soporte ${s}`,[.02,.02,rz-rod/2-(-d/2)],s*(w/2-.12),h-rod*.8,(rz-rod/2-d/2)/2,{color:METAL,material:'metal',bevel:.003}));
+  const n=Math.max(3,Math.round(panel/(fw*.8))),pitch=(panel-fw)/(n-1),depth=Math.min(.06,d/2-rz),len=h-rod-.02;
+  for(const s of [-1,1])for(let i=0;i<n;i++){
+    const x=s*(w/2-fw/2-i*pitch),z=rz+(i%2?depth*.18:-depth*.18);
+    parts.push(turned(`Pliegue ${s} ${i+1}`,ROD,[fw,len,Math.min(depth,2*(d/2-Math.abs(z)))],x,0,z,{color:'item',surface:'textile'}));
+  }
+  return parts;
 }

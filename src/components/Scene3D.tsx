@@ -17,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, cornerSofaParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -266,6 +266,15 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'coffee-table':return <Parts parts={coffeeTableParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv-unit':return <Parts parts={tvUnitParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv':return <Parts parts={tvParts(w,d,h)} item={item} wood={wood}/>;
+    case 'corner-sofa':return <Parts parts={cornerSofaParts(w,d,h)} item={item} wood={wood}/>;
+    case 'pouf':return <Parts parts={poufParts(w,d,h)} item={item} wood={wood}/>;
+    case 'console-table':return <Parts parts={consoleTableParts(w,d,h)} item={item} wood={wood}/>;
+    case 'curtain':return <Parts parts={curtainParts(w,d,h)} item={item} wood={wood}/>;
+    case 'extending-table':return <Parts parts={extendingTableParts(w,d,h)} item={item} wood={wood}/>;
+    case 'desk-hutch':return <Parts parts={deskHutchParts(w,d,h)} item={item} wood={wood}/>;
+    case 'bunk-bed':return <Parts parts={bunkBedParts(w,d,h)} item={item} wood={wood}/>;
+    case 'laundry-basket':return <Parts parts={laundryBasketParts(w,d,h)} item={item} wood={wood}/>;
+    case 'floating-nightstand':return <Parts parts={floatingNightstandParts(w,d,h)} item={item} wood={wood}/>;
     case 'washer':case 'dryer':return <Parts parts={washerParts(w,d,h,item.kind==='dryer')} item={item} wood={wood}/>;
     case 'crib':return <Parts parts={cribParts(w,d,h)} item={item} wood={wood}/>;
     case 'bar-stool':return <Parts parts={barStoolParts(w,d,h)} item={item} wood={wood}/>;

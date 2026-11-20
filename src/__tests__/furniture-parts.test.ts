@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, cornerSofaParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -73,6 +73,15 @@ const builders={
   toilet:[toiletParts,[[.4,.6,.65],[.43,.65,.65],[.36,.7,.8]]],
   shower:[showerParts,[[.9,.9,2],[.72,.74,2],[1.4,.8,2.1]]],
   lamp:[lampParts,[[.4,.4,1.65],[.5,.45,1.4]]],
+  'corner-sofa':[cornerSofaParts,[[2.6,1.6,.85],[2.2,1.5,.8],[3.2,1.8,.9]]],
+  pouf:[poufParts,[[.5,.5,.42],[.4,.4,.38],[.6,.45,.45]]],
+  'console-table':[consoleTableParts,[[1,.35,.8],[.8,.3,.75],[1.4,.4,.85]]],
+  curtain:[curtainParts,[[1.8,.15,2.5],[1.2,.12,2.3],[3,.2,2.7]]],
+  'extending-table':[extendingTableParts,[[1.6,.9,.76],[1.2,.8,.75],[2,1,.76]]],
+  'desk-hutch':[deskHutchParts,[[1.2,.6,1.5],[1,.55,1.4],[1.6,.7,1.8]]],
+  'bunk-bed':[bunkBedParts,[[.97,2.06,1.6],[.9,1.95,1.5],[1.1,2.1,1.75]]],
+  'laundry-basket':[laundryBasketParts,[[.42,.42,.6],[.35,.35,.5],[.5,.4,.65]]],
+  'floating-nightstand':[floatingNightstandParts,[[.45,.32,.25],[.4,.3,.2],[.6,.35,.3]]],
   washer:[washerParts,[[.6,.6,.85],[.6,.55,.85],[.45,.6,.85]]],
   dryer:[(w:number,d:number,h:number)=>washerParts(w,d,h,true),[[.6,.6,.85],[.6,.65,.9]]],
   crib:[cribParts,[[1.24,.66,.9],[1.04,.6,.85],[1.44,.76,.95]]],
@@ -219,6 +228,7 @@ describe('hung furniture', () => {
     expect(furnitureElevation({kind:'towel-rail',h:1.2},2.55)).toBeCloseTo(.15);
     expect(furnitureElevation({kind:'towel-rail',h:2.5},2.55)).toBeCloseTo(.05);
     expect(furnitureElevation({kind:'radiator',h:.6},2.55)).toBeCloseTo(.12);
+    expect(furnitureElevation({kind:'floating-nightstand',h:.25},2.55)).toBeCloseTo(.35);
     expect(furnitureElevation({kind:'dresser',h:.8},2.55)).toBe(0);
   });
 });
