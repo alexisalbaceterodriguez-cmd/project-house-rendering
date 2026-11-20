@@ -12,6 +12,7 @@ import { catalog, floors, styles } from './data/catalog';
 import { findProductSource, PRODUCT_CATALOG_VERSION } from './data/productCatalog';
 import { blankProject } from './data/defaultProject';
 import { clamp, download, fileSafe, makeId, wallLength, wallProjection } from './lib/geometry';
+import { tabletopSpot } from './lib/furnitureParts';
 import { projectWarnings, reconcileRooms, resizeProject, roomArea, splitInteriorWall, splitWallAtTJunctions, splitWallsAtCrossing, splitAllWallCrossings, normalizeInteriorIntersections, mergeInteriorWalls, updateWallGeometry } from './lib/topology';
 import { dataURLToBlob, getModelAsset, listModelAssets, putModelAsset, putModelMetadata } from './lib/assets';
 import { isProject, saveLocal, useEditor } from './store';
@@ -153,7 +154,7 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
   };
   const refreshModels=async()=>{try{setLocalModels(await listModelAssets());setLibraryError('');}catch(error){setLibraryError(error instanceof Error?error.message:'No se ha podido abrir la biblioteca local.');}};
   useEffect(()=>{void refreshModels();},[]);
-  const { project,change,setSelection,setTool,setMode }=useEditor();
+  const { project,selection,change,setSelection,setTool,setMode }=useEditor();
   const groups=['Todos',...new Set(catalog.map(item=>item.category))];
   const visibleLocalModels=localModels.filter(model=>{
     const query=librarySearch.trim().toLocaleLowerCase();
@@ -163,7 +164,10 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
   const visible=catalog.filter(o=>(filter==='Todos'||o.category===filter)&&[o.name,o.category,findProductSource(o.kind)?.reference].some(value=>value?.toLowerCase().includes(search.toLowerCase())));
   const add=(entry:typeof catalog[number])=>{
     const id=makeId();
-    change(p=>p.furniture.push({id,kind:entry.kind,name:entry.name,x:clamp(2+(p.furniture.length%5)*.22,.5,p.width-.5),y:clamp(2.7,.5,p.depth-.5),w:entry.w,d:entry.d,h:entry.h,rotation:0,color:entry.color,productId:findProductSource(entry.kind)?.id}));
+    // Tabletop objects (table lamp) land on the selected piece of furniture, turned like it.
+    const selected=selection?.type==='furniture'?project.furniture.find(f=>f.id===selection.id):undefined;
+    const spot=tabletopSpot(entry.kind,selected);
+    change(p=>p.furniture.push({id,kind:entry.kind,name:entry.name,x:spot?.x??clamp(2+(p.furniture.length%5)*.22,.5,p.width-.5),y:spot?.y??clamp(2.7,.5,p.depth-.5),w:entry.w,d:entry.d,h:entry.h,rotation:spot?.rotation??0,color:entry.color,productId:findProductSource(entry.kind)?.id}));
     setSelection({type:'furniture',id}); setTool('select');setMode('split');
   };
   const insertStoredModel=async(assetId:string)=>{

@@ -1158,7 +1158,7 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
-export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp']);
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books']);
 // Wall-only or soft items that never carry a tabletop object.
 const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack']);
 
@@ -1184,4 +1184,46 @@ export function supportTop(item:Placed,furniture:readonly Placed[],wallHeight:nu
 /** Height of `item`'s base above the floor: hung kinds by `furnitureElevation`, tabletop kinds on their support. */
 export function placedElevation(item:Placed,furniture:readonly Placed[],wallHeight:number):number{
   return TABLETOP_KINDS.has(item.kind)?supportTop(item,furniture,wallHeight):furnitureElevation(item,wallHeight);
+}
+
+/** Whether furniture of `kind` can carry a tabletop object (see `supportTop`). */
+export const canSupport=(kind:string)=>!NO_SUPPORT.has(kind)&&!TABLETOP_KINDS.has(kind);
+
+/**
+ * Plan spot for a tabletop object added while `selected` is selected: the centre of the selected
+ * support, turned like it. Undefined when the new kind is not a tabletop kind or the selection
+ * cannot carry one, so the caller falls back to its usual placement.
+ */
+export function tabletopSpot(kind:string,selected:Placed|undefined):{x:number;y:number;rotation:number}|undefined{
+  if(!TABLETOP_KINDS.has(kind)||!selected||!canSupport(selected.kind))return undefined;
+  return {x:selected.x,y:selected.y,rotation:selected.rotation};
+}
+
+/** Tabletop vase inside `w × d × h`: a turned ceramic body holding three dried stems up to `h`. */
+export function vaseParts(w:number,d:number,h:number):FurniturePart[]{
+  const body=Math.min(h,Math.max(h*.55,.12)),stem=.007;
+  const parts:FurniturePart[]=[turned('Jarrón',VASE,[w,body,d],0,0,0,{color:'item'})];
+  if(h-body>.03)for(const [i,x,z] of [[1,-w*.08,0],[2,w*.06,d*.05],[3,0,-d*.06]] as const)
+    parts.push(turned(`Tallo ${i}`,ROD,[stem,h-body*.85-(i===2?0:(h-body)*.12*i),stem],x,body*.85,z,{color:'#9c8462'}));
+  return parts;
+}
+
+/**
+ * Stack of books lying flat inside `w × d × h`: from the bottom, three books of decreasing size
+ * and alternating offsets, each with two cover boards, a spine on −x and a recessed page block.
+ */
+export function bookStackParts(w:number,d:number,h:number):FurniturePart[]{
+  const covers=['item','#3f4d5a','#a5553f'],share=[.38,.28,.34],board=Math.min(.003,h*.05),spine=.004,inset=.003;
+  const parts:FurniturePart[]=[];
+  let y=0;
+  for(let i=0;i<3;i++){
+    const t=h*share[i],bw=w*(1-.1*i),bd=d*(1-.08*i),x=i===1?-(w-bw)/2:(w-bw)/2*(i?.4:0),z=i===2?-(d-bd)/2:(d-bd)/2*(i?1:0);
+    const left=x-bw/2,cover={color:covers[i],bevel:.001};
+    parts.push(part(`Lomo ${i+1}`,[spine,t,bd],left+spine/2,y,z,cover));
+    parts.push(part(`Tapa inferior ${i+1}`,[bw-spine,board,bd],x+spine/2,y,z,cover));
+    parts.push(part(`Páginas ${i+1}`,[bw-spine-inset,t-2*board,bd-2*inset],x+(spine-inset)/2,y+board,z,{color:'#f1ece0',bevel:0}));
+    parts.push(part(`Tapa superior ${i+1}`,[bw-spine,board,bd],x+spine/2,y+t-board,z,cover));
+    y+=t;
+  }
+  return parts;
 }
