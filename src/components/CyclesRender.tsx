@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor } from '../store';
 import { download, fileSafe } from '../lib/geometry';
 import { createRenderPackage } from '../lib/renderExport';
-import { presetLabels, QUALITY_SAMPLES, type CyclesPreset, type CyclesQuality, type RenderPass } from '../lib/renderPackage';
+import { interiorLights, MAX_INTERIOR_LIGHTS, presetLabels, QUALITY_SAMPLES, type CyclesPreset, type CyclesQuality, type RenderPass } from '../lib/renderPackage';
 import { cancelRender, engineHealth, engineUrl, FINAL_STATUSES, getRender, listRenders, outputUrl, renderOutputs, setEngineUrl, stageLabels, submitRender, type EngineHealth, type RenderJob, type RenderOutput } from '../lib/renderApi';
 
 const resolutions=['960x540','1280x720','1920x1080','2560x1440','3840x2160'];
@@ -114,6 +114,7 @@ export default function CyclesRender({busy,run,onMessage}:{busy:boolean;run:(wor
     </div>
     <label className="studio-check"><input type="checkbox" aria-label="Corregir verticales" checked={verticals} onChange={e=>setVerticals(e.target.checked)}/> Verticales corregidas (fotografía de arquitectura; cambia ligeramente el encuadre respecto al visor)</label>
     <label className="studio-check"><input type="checkbox" aria-label="Pases técnicos EXR" checked={passes} onChange={e=>setPasses(e.target.checked)}/> Pases técnicos en EXR de 32 bits (profundidad, normales, IDs de objeto y material, albedo)</label>
+    {preset==='night'&&(lights=>lights>MAX_INTERIOR_LIGHTS&&<p className="small-help">El proyecto pide {lights} luces nocturnas (lámparas y llamas de vela); Cycles usa las {MAX_INTERIOR_LIGHTS} más intensas y omite el resto.</p>)(interiorLights(project).length)}
     <p className="small-help">Encuadra la vista 3D (por ejemplo a 1,5 m de altura en Recorrer en primera persona) y genera. {w*h>2_100_000&&quality==='high'?'Alta resolución con calidad Alta puede tardar varios minutos en CPU.':''}</p>
     <button className="primary-btn" type="button" disabled={busy} onClick={()=>void generate()}>Generar render Cycles</button>
     <button type="button" disabled={busy} onClick={()=>void exportPackage()}>Descargar paquete de render</button>

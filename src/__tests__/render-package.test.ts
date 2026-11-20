@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoProject } from '../data/defaultProject';
-import { assemblePackage, buildManifest, crc32, LIT_ROOM_WATTS_PER_M2, mainWindow, packageKey, pointInPolygon, sha256Hex, storedZip, windowlessRooms, type PackageCamera } from '../lib/renderPackage';
+import { assemblePackage, buildManifest, interiorLights, MAX_INTERIOR_LIGHTS, crc32, LIT_ROOM_WATTS_PER_M2, mainWindow, packageKey, pointInPolygon, sha256Hex, storedZip, windowlessRooms, type PackageCamera } from '../lib/renderPackage';
 import { Vector3 } from 'three';
 import { candleFlames } from '../lib/furnitureParts';
 
@@ -100,6 +100,16 @@ describe('render package', () => {
     for(const light of lights){expect(light.temperature).toBeLessThan(2700);expect(light.power).toBeLessThan(5);}
     const day=buildManifest(p,camera,{preset:'afternoon',quality:'draft',width:960,height:540},geometry,'hash');
     expect(day.lighting.interior).toEqual([]);
+  });
+
+  it('keeps the strongest night lights within the contract cap', () => {
+    const p=structuredClone(demoProject);
+    p.furniture.push({id:'fl',kind:'lamp',name:'Lámpara',x:3,y:2,w:.4,d:.4,h:1.6,rotation:0,color:'#ffffff'});
+    for(let i=0;i<25;i++)p.furniture.push({id:`c${i}`,kind:'candles',name:'Portavelas',x:1+i*.3,y:3,w:.24,d:.16,h:.22,rotation:0,color:'#b08d57'});
+    expect(interiorLights(p).length).toBe(76);
+    const night=buildManifest(p,camera,{preset:'night',quality:'draft',width:960,height:540},geometry,'hash');
+    expect(night.lighting.interior).toHaveLength(MAX_INTERIOR_LIGHTS);
+    expect(night.lighting.interior[0].id).toBe('fl');
   });
 
   it('switches presets without touching the geometry', () => {

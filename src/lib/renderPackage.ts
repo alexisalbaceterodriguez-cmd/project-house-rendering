@@ -93,8 +93,10 @@ export function windowlessRooms(project:Project){
   });
 }
 
-export function buildLighting(project:Project,camera:PackageCamera,preset:CyclesPreset,exposure=0){
-  const target={x:camera.target[0],y:camera.target[2]};
+/** Most interior point lights the engine contract accepts (MAX_INTERIOR_LIGHTS in contract.py). */
+export const MAX_INTERIOR_LIGHTS=64;
+/** Every night light the project's furniture asks for, strongest first, before the contract's cap. */
+export function interiorLights(project:Project){
   // Floor lamps light from under the shade's top; pendants from inside their bell (furnitureElevation);
   // table lamps from inside their shade, on top of the furniture they stand on (placedElevation);
   // every candle from its own flame, a small warm source (about 1900 K) rotated with the tray.
@@ -102,14 +104,20 @@ export function buildLighting(project:Project,camera:PackageCamera,preset:Cycles
     :f.kind==='table-lamp'?placedElevation(f,project.furniture,project.wallHeight)+f.h-tableLampShadeHeight(f.h)*.55:Math.max(.3,f.h-.15);
   const SOURCES:Record<string,{power:number;temperature:number;radius:number}>={lamp:{power:60,temperature:2700,radius:.06},pendant:{power:60,temperature:2700,radius:.06},'table-lamp':{power:35,temperature:2700,radius:.04}};
   const flame={power:1.5,temperature:1900,radius:.006};
-  const lamps=project.furniture.flatMap(f=>{
+  return project.furniture.flatMap(f=>{
     if(f.kind==='candles'){
       // Scene3D turns the item by -rotation about +y: local (x,z) → world (x·cos−z·sin, x·sin+z·cos).
       const a=f.rotation*Math.PI/180,c=Math.cos(a),s=Math.sin(a),y0=placedElevation(f,project.furniture,project.wallHeight);
       return candleFlames(f.w,f.d,f.h).map(([x,y,z],i)=>({id:`${f.id}:llama-${i+1}`,position:vec([f.x+x*c-z*s,y0+y,f.y+x*s+z*c]),...flame}));
     }
     return f.kind in SOURCES?[{id:f.id,position:vec([f.x,lampY(f),f.y]),...SOURCES[f.kind]}]:[];
-  }).slice(0,64);
+  }).sort((a,b)=>b.power-a.power);
+}
+
+export function buildLighting(project:Project,camera:PackageCamera,preset:CyclesPreset,exposure=0){
+  const target={x:camera.target[0],y:camera.target[2]};
+  // Past the cap the weakest sources (candle flames before lamps) are left out; the Cycles panel says so.
+  const lamps=interiorLights(project).slice(0,MAX_INTERIOR_LIGHTS);
   if(preset==='studio')return {preset,exposure,sun:{direction:[.3,.8,.5] as Vec3,strength:0,angle:1.5,temperature:5600},sky:{strength:1},hdri:'studio',ceiling:'off',roomLights:false,litRooms:[] as {id:string;power:number}[],interior:[]};
   if(preset==='night'){
     const direction=sunDirection(project,target,{...SUN.day,elevation:10});
