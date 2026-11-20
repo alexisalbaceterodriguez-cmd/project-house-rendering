@@ -1,9 +1,19 @@
 # Atelier 60 — Estado persistente
 
-Última revisión: 2026-11-20, 14:23 (Europe/Madrid).
+Última revisión: 2026-11-20, 14:50 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Estado operativo vigente — dormitorio Salvia, 20/11/2026
+## Estado operativo vigente — presentación de interiores, 20/11/2026
+
+- Prioridad del usuario: aspecto de aplicación de diseño, utilidad del editor y calidad comprobable del visor y de las exportaciones 3D. Publicación de código en main: `3fb29515ecd0df540f193059d55d24434e5f25a8`.
+- Estudio → Modelos abre Dormitorio Salvia con siete objetos editables y conserva el proyecto de partida en Versiones. Incluye díptico original en relieve como GLB personalizable. La tarjeta muestra una miniatura WebP de 17 kB tomada del render. El proyecto portable ocupa 4,29 MB y se descarga al abrirlo.
+- Visor con controles de cámara y presentación a pantalla completa. El estudio añade Catálogo, Luz de tarde y Luz fría; se pueden afinar manualmente y deshacer en el historial. La geometría y la cámara quedan fijas al cambiar de ambiente. Alfombra con trama sintética a escala y ribete; un material PBR explícito tiene prioridad. La sombra de proximidad en escena completa se aproxima a partir de la huella y la elevación de cada objeto.
+- Local: 5 unitarias del estudio, build y cuatro recorridos distintos de Chromium (referencia A/B/calidad, sofá aislado, presentación/iluminación, apertura/restauración de la escena). PNG HD antes/después del dormitorio original con los mismos datos y cámara. Los píxeles modificados se concentran en la parte inferior del encuadre. Tres PNG HD adicionales con el nuevo díptico y los tres ambientes. Visor comprobado a 1600 y 390 px de ancho. Evidencia local en `C:/Users/alexi/.codex/visualizations/2026/11/20/01a1f914-f25f-7bb0-8d5f-35935c13d02a/`.
+- CI inicial [44745275873](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/44745275873): 40 recorridos pasaron, el de A/B agotó la espera de un aviso temporal durante la segunda importación. La traza del reintento muestra la confirmación de carga después del plazo. Corrección `dbbae93f0341fc9923889a9d11b83fb392ddfe46`: comprobar identificador y color persistidos de la variante; cancelar el temporizador del aviso anterior al mostrar otro. Build y A/B focalizados correctos en local.
+- [CI 44746762689](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/44746762689) completed/success, job 136323971406: 107 unitarias, build y 41 E2E Chromium correctos. [Pages 44747595373](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/44747595373) completed/success, job 136326810485, mismo SHA `dbbae93`. Comprobación sobre la web publicada: abrir Salvia desde la tarjeta, entrar/salir de presentación, exportar tres PNG HD con los tres ambientes y usar los controles del visor a 390 px en Chromium.
+- Siguiente tarea exacta: mejorar el aspecto de las luminarias de interior encendidas. Usar las dos lámparas del dormitorio como referencia, con emisión de pantalla y luz local cálida regulable; verificar la luz sobre la mesa y la pared con PNG HD encendida/apagada, guardado, recuperación y A/B. Pendientes la calibración en GPU móviles físicas y la fidelidad fotográfica final.
+
+## Estado anterior — dormitorio Salvia, 20/11/2026
 
 - Código publicado en main: `d982692133194aa07a504cb4a2b8232b771a6a97`. Cama original de ancho, fondo y altura configurables. Cabecero acanalado y bastidor comparten tapizado. Patas de madera, lino de colchón/almohadas y colcha con pliegues tienen materiales independientes. El ancho inferior a 1,25 m genera una almohada; a partir de esa medida, dos.
 - Verificación local: 11 unitarias del taller, build y smoke Chromium. El recorrido crea una cama de 1,65 × 2,15 × 1,15 m, cambia solo el tapizado, deshace/rehace, selecciona la cama en planta, exporta PNG 1920 × 1080 e importa el JSON en otro contexto. Recupera el acabado y los mismos bytes GLB.

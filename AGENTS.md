@@ -10,6 +10,10 @@ Este repositorio desarrolla **Atelier 60**, un editor web de viviendas en 2D y 3
 - CI de PR: unitarias, build y smoke. Suite E2E completa al publicar código en main o por ejecución manual. Los cambios solo de Markdown no vuelven a disparar esa CI. No atribuir a un smoke cobertura de toda la aplicación.
 - Registrar límites reales: la creación de recursos propios y la importación de GLB/PBR son bases del flujo solicitado; no afirmar que cualquier objeto ya se genera con fidelidad fotográfica ni que el producto está finalizado hasta cumplir los criterios de entrega.
 
+## Prioridad visual vigente — 20/11/2026
+
+Priorizar que el editor tenga calidad de diseño y que sea fácil crear, ver y presentar un interior en 3D. Para cambios visuales, comprobar el visor real y el PNG de la misma escena y cámara. Revisar también que los controles sigan siendo usables a anchura reducida. Mantener la prioridad de los fallos que comprometan datos o edición.
+
 ## Leer antes de actuar (orden obligatorio)
 
 1. **`AUTOMATION_RUNBOOK.md`**: procedimiento operativo, diagnóstico de CI, salidas alternativas si falla el entorno y prioridades actualizadas. Aplicar en cada sesión.

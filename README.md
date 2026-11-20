@@ -2,6 +2,12 @@
 
 Editor local de viviendas en 2D y 3D. Permite crear una planta, distribuir objetos, asignar acabados, preparar propuestas y exportar imágenes comparables. El ejemplo de 10 × 6 m es una plantilla, no una restricción de tamaño.
 
+## Explorar un interior en 3D
+
+En **Estudio → Modelos**, pulsa **Abrir dormitorio en 3D**. Atelier 60 guarda una versión del proyecto activo y abre Dormitorio Salvia con siete objetos editables. Puedes recuperar tu proyecto desde **Estudio → Versiones**.
+
+El botón de las flechas junto a **Cenital** amplía el visor a pantalla completa. En **Estudio → Imagen y cámara**, elige iluminación **Estudio HDRI** para probar **Catálogo**, **Luz de tarde** o **Luz fría** con el mismo encuadre. Exporta el PNG desde ese panel.
+
 ## Ejecutar
 
 Node 22.12+ y npm; CI usa Node 22.
