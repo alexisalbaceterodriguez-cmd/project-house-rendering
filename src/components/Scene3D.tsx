@@ -31,7 +31,7 @@ function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,ro
   const geometry=useMemo(()=>lathe?latheGeometry(lathe,size):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,lathe]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh castShadow={material!=='glass'} receiveShadow position={position}>
-    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} transparent={opacity<1} opacity={opacity}/>}
+    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity}/>}
   </mesh>;
 }
 function FloorSurface({room}:{room:Project['rooms'][number]}){
@@ -407,8 +407,10 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
     <Canvas frameloop="demand" shadows dpr={high?[1,2]:[1,1.3]} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
       <color attach="background" args={[studio?(render.studio??defaultStudio).background:'#f4f3ef']}/>
       {studio?<StudioLights project={project} subject={subject} high={high}/>:<>
-      <ambientLight intensity={render.lighting==='night'?.12:.65}/>
-      <hemisphereLight intensity={render.lighting==='night'?.18:.6} groundColor="#ccc8bd" color="#e7f1ff"/>
+      <ambientLight intensity={render.lighting==='night'?.08:.35}/>
+      <hemisphereLight intensity={render.lighting==='night'?.12:.4} groundColor="#ccc8bd" color="#e7f1ff"/>
+      {/* Image-based light: metals need something to reflect, or they render almost black. */}
+      <ErrorBoundary fallback={null}><Suspense fallback={null}><Environment files={`${import.meta.env.BASE_URL}environment/studio.hdr`} environmentIntensity={render.lighting==='night'?.08:.28}/></Suspense></ErrorBoundary>
       <directionalLight castShadow position={[-5,13,7]} intensity={render.lighting==='night'?.2:2.3} color={render.lighting==='night'?'#a8bfff':'#fff5e8'} shadow-mapSize-width={high?2048:1024} shadow-mapSize-height={high?2048:1024} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} shadow-bias={-.0001}/>
       {render.lighting==='night'&&<pointLight position={[project.width/2,2.3,project.depth/2]} intensity={35} color="#ffd6a3" decay={2}/>}
       </>}
