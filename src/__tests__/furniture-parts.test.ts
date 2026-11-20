@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, tableLampParts, vaseParts, bookStackParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, tableLampParts, vaseParts, bookStackParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -78,6 +78,7 @@ const builders={
   'table-lamp':[tableLampParts,[[.3,.3,.48],[.25,.25,.4],[.4,.4,.6]]],
   'sheer-curtain':[sheerCurtainParts,[[1.8,.15,2.5],[1.2,.12,2.2],[3,.2,2.7]]],
   'corner-sofa':[cornerSofaParts,[[2.6,1.6,.85],[2.2,1.5,.8],[3.2,1.8,.9]]],
+  'corner-sofa-left':[cornerSofaLeftParts,[[2.6,1.6,.85],[2.2,1.5,.8],[3.2,1.8,.9]]],
   pouf:[poufParts,[[.5,.5,.42],[.4,.4,.38],[.6,.45,.45]]],
   'console-table':[consoleTableParts,[[1,.35,.8],[.8,.3,.75],[1.4,.4,.85]]],
   curtain:[curtainParts,[[1.8,.15,2.5],[1.2,.12,2.3],[3,.2,2.7]]],
@@ -291,5 +292,16 @@ describe('tabletop objects', () => {
     // A crowded support still returns the farthest spot instead of failing.
     const crowd=[0,.2475,-.2475,.45,-.45].map((u,i)=>({...lamp,id:`k${i}`,x:2+u,y:1}));
     expect(tabletopSpot('vase',desk,[desk,...crowd],size)).toBeDefined();
+  });
+});
+
+describe('corner sofa hands', () => {
+  it('puts the chaise on +x by default and on −x for the left-hand variant', () => {
+    const at = (parts: ReturnType<typeof cornerSofaParts>, name: string) => parts.find(p => p.name === name)!.position[0];
+    const right = cornerSofaParts(2.6, 1.6, .85), left = cornerSofaLeftParts(2.6, 1.6, .85);
+    expect(at(right, 'Cojín chaise')).toBeGreaterThan(0);
+    expect(at(right, 'Brazo')).toBeLessThan(0);
+    expect(at(left, 'Cojín chaise')).toBeCloseTo(-at(right, 'Cojín chaise'));
+    expect(at(left, 'Brazo')).toBeGreaterThan(0);
   });
 });

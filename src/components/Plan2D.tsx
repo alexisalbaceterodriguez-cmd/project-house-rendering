@@ -4,10 +4,17 @@ import { clamp, distance, makeId, snap, wallProjection } from '../lib/geometry';
 import { roomLabelPoint, projectWarnings, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
 import { useEditor } from '../store';
 import { furnitureCollisions } from '../lib/diagnostics';
+import { cornerSofaLayout } from '../lib/furnitureParts';
 import type { Furniture, Point, Wall } from '../types';
 
 function iconFor(item: Furniture) {
   if (item.kind === 'bed' || item.kind === 'single-bed' || item.kind === 'storage-bed' || item.kind === 'bunk-bed') return <><rect x={-item.w*.45} y={-item.d*.44} width={item.w*.9} height={item.d*.88} rx=".09" fill="#f3efe7" stroke="#beb6aa" strokeWidth=".024"/><rect x={-item.w*.38} y={-item.d*.39} width={item.w*.76} height={Math.min(.43,item.d*.25)} rx=".06" fill="#d1c2b2"/></>;
+  if (item.kind === 'corner-sofa' || item.kind === 'corner-sofa-left') {
+    // L outline (back on −y, chaise reaching the front on +x, or −x for the left-hand variant).
+    const { seatD, chaise } = cornerSofaLayout(item.w, item.d), s = item.kind === 'corner-sofa' ? 1 : -1, w2 = item.w / 2, d2 = item.d / 2;
+    const pts = [[-w2, -d2], [w2, -d2], [w2, d2], [w2 - chaise, d2], [w2 - chaise, -d2 + seatD], [-w2, -d2 + seatD]].map(([x, y]) => `${s * x},${y}`).join(' ');
+    return <><polygon points={pts} fill={item.color} stroke="#968877" strokeWidth=".03" strokeLinejoin="round"/><line x1={-w2} y1={-d2 + .18} x2={w2} y2={-d2 + .18} stroke="#968877" strokeWidth=".02"/></>;
+  }
   if (item.kind === 'sofa') return <><rect x={-item.w*.46} y={-item.d*.44} width={item.w*.92} height={item.d*.88} rx=".13" fill={item.color} stroke="#968877" strokeWidth=".03"/><rect x={-item.w*.4} y={-item.d*.4} width={item.w*.8} height=".17" rx=".05" fill="#b8a99b"/></>;
   if (item.kind === 'table-lamp') return <><circle r={item.w*.48} fill="#f6efdf" stroke="#968877" strokeWidth=".02"/><circle r={item.w*.14} fill="#968877"/></>;
   if (item.kind === 'vase') return <circle r={item.w*.48} fill="#ece6da" stroke="#968877" strokeWidth=".015"/>;

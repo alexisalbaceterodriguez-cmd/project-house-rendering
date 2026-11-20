@@ -1078,9 +1078,12 @@ export function floatingNightstandParts(w:number,d:number,h:number):FurniturePar
  * a full-width back, an upholstered plinth for the seat run and a deeper one for the chaise, seat
  * cushions, a long chaise cushion and a row of back cushions.
  */
+/** Seat-run depth and chaise width of a `w × d` corner sofa (shared by its parts and its plan symbol). */
+export const cornerSofaLayout=(w:number,d:number)=>({seatD:Math.min(.95,d*.6),chaise:clamp(w*.3,.7,.95)});
+
 export function cornerSofaParts(w:number,d:number,h:number):FurniturePart[]{
-  const arm=clamp(w*.07,.12,.2),back=Math.min(.2,d*.14),leg=.06,seatD=Math.min(.95,d*.6);
-  const chaise=clamp(w*.3,.7,.95),fabric={color:'item',surface:'textile'} as const;
+  const arm=clamp(w*.07,.12,.2),back=Math.min(.2,d*.14),leg=.06,{seatD,chaise}=cornerSofaLayout(w,d);
+  const fabric={color:'item',surface:'textile'} as const;
   const rear=-d/2+FACE_GAP+back+FACE_GAP*.5,front=-d/2+seatD-.015,cFront=d/2-.015;
   const left=-w/2+arm,split=w/2-chaise,run=split-left;
   const parts:FurniturePart[]=[];
@@ -1097,6 +1100,10 @@ export function cornerSofaParts(w:number,d:number,h:number):FurniturePart[]{
   for(let i=0;i<m;i++)parts.push(part(`Cojín de respaldo ${i+1}`,[bc,Math.min(.36,h-.5),bd],left+FACE_GAP+bc/2+i*(bc+FACE_GAP),.46,rear+bd/2,{...fabric,bevel:.06,crown:{axis:'z',amount:.025}}));
   return parts;
 }
+
+/** Corner sofa with the chaise on −x and the arm on +x: `cornerSofaParts` mirrored across x = 0. */
+export const cornerSofaLeftParts=(w:number,d:number,h:number):FurniturePart[]=>
+  cornerSofaParts(w,d,h).map(p=>({...p,position:[-p.position[0],p.position[1],p.position[2]]}));
 
 const POUF:Profile=[[0,0],[.9,0],[.97,.04],[1,.15],[1,.85],[.95,.97],[.85,1],[0,1]];
 
