@@ -15,23 +15,18 @@ import { registerCapture, registerSceneSource } from '../lib/sceneCapture';
 import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '../lib/studioRender';
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
+import { EDGE_RADIUS, physicalBox } from '../lib/boxGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
 
 // `role` names the material (atelier:<role>) so the Cycles engine can recognise
 // window glass or door leaves after the scene is exported to glTF.
 // `surface` adds metre-scaled image maps (textile weave, wood grain) that also travel in the render GLB.
-function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>}) {
+// `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); the GLB carries the same mesh.
+function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
-  const geometry=useMemo(()=>{
-    const g=new THREE.BoxGeometry(...size);const uv=g.attributes.uv,normal=g.attributes.normal,pos=g.attributes.position;
-    for(let i=0;i<uv.count;i++){
-      if(Math.abs(normal.getY(i))>.5)uv.setXY(i,pos.getX(i),pos.getZ(i));
-      else if(Math.abs(normal.getX(i))>.5)uv.setXY(i,pos.getZ(i),pos.getY(i));
-      else uv.setXY(i,pos.getX(i),pos.getY(i));
-    }return g;
-  },[...size]);
+  const geometry=useMemo(()=>physicalBox(size,bevel),[...size,bevel]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh castShadow={material!=='glass'} receiveShadow position={position}>
     <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} transparent={opacity<1} opacity={opacity}/>}
@@ -196,11 +191,11 @@ function ModuleModel({item}:{item:Furniture}){
   </group>;
 }
 function Bed({item}:{item:Furniture}){
-  return <><Box position={[0,.20,0]} size={[item.w,.35,item.d]} color="#c0a489"/>
-    <Box position={[0,.44,0]} size={[item.w*.94,.16,item.d*.94]} color={item.color} surface="textile"/>
-    <Box position={[0,.55,-item.d*.36]} size={[item.w*.8,.13,item.d*.21]} color="#f8f5f0" surface="textile"/>
-    <Box position={[0,.65,-item.d*.52]} size={[item.w,.95,.095]} color="#bc9c80"/>
-    <Box position={[0,.54,item.d*.17]} size={[item.w*.84,.08,item.d*.40]} color="#c7b4a0" surface="textile"/>
+  return <><Box position={[0,.20,0]} size={[item.w,.35,item.d]} color="#c0a489" bevel={EDGE_RADIUS.wood}/>
+    <Box position={[0,.44,0]} size={[item.w*.94,.16,item.d*.94]} color={item.color} surface="textile" bevel={EDGE_RADIUS.upholstery}/>
+    <Box position={[0,.55,-item.d*.36]} size={[item.w*.8,.13,item.d*.21]} color="#f8f5f0" surface="textile" bevel={EDGE_RADIUS.upholstery}/>
+    <Box position={[0,.65,-item.d*.52]} size={[item.w,.95,.095]} color="#bc9c80" bevel={EDGE_RADIUS.wood}/>
+    <Box position={[0,.54,item.d*.17]} size={[item.w*.84,.08,item.d*.40]} color="#c7b4a0" surface="textile" bevel={EDGE_RADIUS.cushion}/>
   </>;
 }
 function WovenRug({item}:{item:Furniture}){
@@ -244,18 +239,19 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
   switch(item.kind){
     case 'bed':case 'single-bed':return <Bed item={item}/>;
     case 'sofa':return <>
-      <Box position={[0,.27,0]} size={[w,.48,d]} color={item.color} surface="textile"/>
-      <Box position={[0,.60,-d*.37]} size={[w,.58,.19]} color={item.color} surface="textile"/>
-      {[-1,1].map(v=><Box key={v} position={[v*(w/2-.14),.48,0]} size={[.24,.45,d]} color="#c4b7a9" surface="textile"/>)}
-      <Box position={[0,.55,.13]} size={[w*.69,.10,d*.53]} color="#e4ddd3" surface="textile"/>
+      {/* Seat sits 1.5 cm behind the arms' front face: coplanar faces z-fought (flickering patch); the arms keep the full depth. */}
+      <Box position={[0,.27,0]} size={[w,.48,d-.03]} color={item.color} surface="textile" bevel={EDGE_RADIUS.upholstery}/>
+      <Box position={[0,.60,-d*.37]} size={[w,.58,.19]} color={item.color} surface="textile" bevel={EDGE_RADIUS.upholstery}/>
+      {[-1,1].map(v=><Box key={v} position={[v*(w/2-.14),.48,0]} size={[.24,.45,d]} color="#c4b7a9" surface="textile" bevel={EDGE_RADIUS.upholstery}/>)}
+      <Box position={[0,.55,.13]} size={[w*.69,.10,d*.53]} color="#e4ddd3" surface="textile" bevel={EDGE_RADIUS.cushion}/>
     </>;
     case 'table':case 'desk':case 'island':return <>
-      <Box position={[0,h-.055,0]} size={[w,.11,d]} color={item.color} surface="woodgrain"/>
-      {[-1,1].flatMap(x=>[-1,1].map(z=><Box key={`${x}-${z}`} position={[x*(w/2-.13),h/2-.03,z*(d/2-.12)]} size={[.075,h-.1,.075]} color={wood}/>))}
-      {item.kind==='island'&&<Box position={[0,h*.48,0]} size={[w*.9,h*.72,d*.75]} color="#e5e0d8"/>}
+      <Box position={[0,h-.055,0]} size={[w,.11,d]} color={item.color} surface="woodgrain" bevel={EDGE_RADIUS.wood}/>
+      {[-1,1].flatMap(x=>[-1,1].map(z=><Box key={`${x}-${z}`} position={[x*(w/2-.13),h/2-.03,z*(d/2-.12)]} size={[.075,h-.1,.075]} color={wood} bevel={EDGE_RADIUS.wood}/>))}
+      {item.kind==='island'&&<Box position={[0,h*.48,0]} size={[w*.9,h*.72,d*.75]} color="#e5e0d8" bevel={EDGE_RADIUS.carcass}/>}
     </>;
-    case 'chair':return <><Box position={[0,.45,0]} size={[w,.08,d]} color={item.color}/><Box position={[0,.70,-d*.43]} size={[w,.52,.08]} color={item.color}/>{[-1,1].flatMap(x=>[-1,1].map(z=><Box key={`${x}-${z}`} position={[x*w*.37,.22,z*d*.36]} size={[.045,.44,.045]} color={wood}/>))}</>;
-    case 'wardrobe':return <><Box position={[0,h/2,0]} size={[w,h,d]} color={item.color}/><Box position={[0,h/2,d/2+.003]} size={[.016,h*.94,.008]} color="#b1aa9f"/><Box position={[-.08,h/2,d/2+.016]} size={[.018,.19,.018]} color="#a59b8e" material="metal"/><Box position={[.08,h/2,d/2+.016]} size={[.018,.19,.018]} color="#a59b8e" material="metal"/></>;
+    case 'chair':return <><Box position={[0,.45,0]} size={[w,.08,d]} color={item.color} bevel={EDGE_RADIUS.wood}/><Box position={[0,.70,-d*.43]} size={[w,.52,.08]} color={item.color} bevel={EDGE_RADIUS.wood}/>{[-1,1].flatMap(x=>[-1,1].map(z=><Box key={`${x}-${z}`} position={[x*w*.37,.22,z*d*.36]} size={[.045,.44,.045]} color={wood} bevel={EDGE_RADIUS.wood}/>))}</>;
+    case 'wardrobe':return <><Box position={[0,h/2,0]} size={[w,h,d]} color={item.color} bevel={EDGE_RADIUS.carcass}/><Box position={[0,h/2,d/2+.003]} size={[.016,h*.94,.008]} color="#b1aa9f"/><Box position={[-.08,h/2,d/2+.016]} size={[.018,.19,.018]} color="#a59b8e" material="metal"/><Box position={[.08,h/2,d/2+.016]} size={[.018,.19,.018]} color="#a59b8e" material="metal"/></>;
     case 'kitchen':return <><Box position={[0,h/2,0]} size={[w,h,d]} color={item.color}/><Box position={[0,h-.025,0]} size={[w+.03,.05,d+.035]} color="#b2aa9e"/><Box position={[0,h*.45,d/2+.004]} size={[.02,h*.83,.015]} color="#c9c3b7"/>
       <Box position={[-w*.24,h+.006,0]} size={[.55,.012,.37]} color="#3b3c3c"/>
       <Box position={[w*.24,h+.005,0]} size={[.48,.012,.33]} color="#9da6a4"/>

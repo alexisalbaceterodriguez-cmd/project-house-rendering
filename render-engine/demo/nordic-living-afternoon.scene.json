@@ -5,7 +5,7 @@
     "app": "atelier-60",
     "version": "1"
   },
-  "createdAt": "2026-11-20T15:28:56.107Z",
+  "createdAt": "2026-11-20T18:18:29.136Z",
   "units": "m",
   "upAxis": "Y",
   "handedness": "right",
@@ -20,8 +20,8 @@
   },
   "geometry": {
     "file": "scene.glb",
-    "sha256": "cf3dbdbce8b5df253b7a5ddb48aea407a3f4a5505ce105856e25e020f8f856fb",
-    "bytes": 1503604
+    "sha256": "e1a740fabdd1e17d7c428047f2cc5bdfa5d3ddf52ebe9e2ce8ccc5be5e7f2e4d",
+    "bytes": 3500468
   },
   "rooms": [
     {
@@ -505,12 +505,7 @@
     "quality": "standard",
     "denoise": true,
     "passes": [
-      "albedo",
-      "beauty",
-      "depth",
-      "material_id",
-      "normal",
-      "object_id"
+      "beauty"
     ]
   },
   "assets": [],

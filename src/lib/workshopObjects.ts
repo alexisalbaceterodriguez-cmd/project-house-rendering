@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { physicalBox } from './boxGeometry';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { createMaterialMaps } from './proceduralTextures';
 
@@ -29,16 +29,8 @@ export function buildWorkshopObject(recipe:ObjectRecipe):THREE.Group {
     const mesh=new THREE.Mesh(geometry,material);mesh.name=name;mesh.position.set(...position);mesh.castShadow=mesh.receiveShadow=true;group.add(mesh);return mesh;
   };
   const box=(name:string,size:[number,number,number],position:[number,number,number],material:THREE.Material,radius=.012)=>{
-    const geometry=new RoundedBoxGeometry(...size,3,Math.min(radius,...size.map(value=>value*.45)));
-    // Project physical UVs, preserving repeat size across objects of different dimensions.
-    const uv=geometry.attributes.uv,pos=geometry.attributes.position,normal=geometry.attributes.normal;
-    for(let i=0;i<uv.count;i++){
-      const n=[Math.abs(normal.getX(i)),Math.abs(normal.getY(i)),Math.abs(normal.getZ(i))];
-      if(n[1]>=n[0]&&n[1]>=n[2])uv.setXY(i,pos.getX(i),pos.getZ(i));
-      else if(n[0]>=n[2])uv.setXY(i,pos.getZ(i),pos.getY(i));
-      else uv.setXY(i,pos.getX(i),pos.getY(i));
-    }
-    return add(name,geometry,material,position);
+    // Physical UVs keep the same repeat size across objects of different dimensions.
+    return add(name,physicalBox(size,radius),material,position);
   };
   const cylinder=(name:string,radius:number,height:number,position:[number,number,number],material:THREE.Material)=>add(name,new THREE.CylinderGeometry(radius,radius,height,24),material,position);
   const {w,d,h}=recipe;

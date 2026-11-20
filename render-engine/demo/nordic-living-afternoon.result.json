@@ -23,21 +23,13 @@
  },
  "objects": 49,
  "outputs": [
-  "beauty.png",
-  "passes.exr"
+  "beauty.png"
  ],
- "renderSeconds": 9.55,
- "totalSeconds": 10.54,
+ "renderSeconds": 9.38,
+ "totalSeconds": 10.33,
  "image": {
-  "meanLuminance": 0.5351,
+  "meanLuminance": 0.5362,
   "clippedRatio": 0.0,
-  "blackRatio": 0.0,
-  "zones": {
-   "windowRatio": 0.2082,
-   "clippedWindow": 0.0001,
-   "clippedInterior": 0.0,
-   "meanInterior": 0.4452,
-   "meanWindow": 0.8772
-  }
+  "blackRatio": 0.0
  }
 }
