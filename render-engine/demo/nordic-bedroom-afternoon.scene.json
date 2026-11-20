@@ -5,7 +5,7 @@
     "app": "atelier-60",
     "version": "1"
   },
-  "createdAt": "2026-11-20T18:58:23.051Z",
+  "createdAt": "2026-11-20T19:52:48.335Z",
   "units": "m",
   "upAxis": "Y",
   "handedness": "right",
@@ -13,15 +13,15 @@
   "project": {
     "id": "atelier-60-demo",
     "name": "Mi piso nórdico",
-    "contentHash": "a2d746eb4e206de624f209f5a0a51ad7cccd34092f1b35195c6dc57d3cca8e64",
+    "contentHash": "3397940ecebc7df35f9721bfa65cc361497b8739f63be5db31db99b218040ad8",
     "wallHeight": 2.55,
     "width": 10,
     "depth": 6
   },
   "geometry": {
     "file": "scene.glb",
-    "sha256": "cc9a964e8e390a74fd8012233babdf5b665751d4c3609cb3ccec1c8f0bdce31d",
-    "bytes": 2765864
+    "sha256": "86ae9a74cd035c34fc83476ee69993e5640a0d469040c5f8dfcbe81fb9f61dc6",
+    "bytes": 5647756
   },
   "rooms": [
     {
@@ -298,6 +298,11 @@
       "kind": "window"
     },
     {
+      "id": "kitchen-window",
+      "type": "opening",
+      "kind": "window"
+    },
+    {
       "id": "bed3-window",
       "type": "opening",
       "kind": "window"
@@ -361,6 +366,30 @@
       "type": "furniture",
       "kind": "table",
       "name": "Mesa de comedor"
+    },
+    {
+      "id": "chair-1",
+      "type": "furniture",
+      "kind": "chair",
+      "name": "Silla"
+    },
+    {
+      "id": "chair-2",
+      "type": "furniture",
+      "kind": "chair",
+      "name": "Silla"
+    },
+    {
+      "id": "chair-3",
+      "type": "furniture",
+      "kind": "chair",
+      "name": "Silla"
+    },
+    {
+      "id": "chair-4",
+      "type": "furniture",
+      "kind": "chair",
+      "name": "Silla"
     },
     {
       "id": "kitchen-1",
@@ -449,14 +478,14 @@
   ],
   "camera": {
     "position": [
-      9.78,
-      1.55,
-      2.82
+      9.82,
+      1.75,
+      2.9
     ],
     "target": [
-      8.27,
-      0.45,
-      1.32
+      7.7,
+      0.6,
+      0.85
     ],
     "fovY": 42,
     "near": 0.05,
@@ -483,6 +512,20 @@
     "hdri": null,
     "ceiling": "auto",
     "roomLights": false,
+    "litRooms": [
+      {
+        "id": "hall",
+        "power": 24
+      },
+      {
+        "id": "bath2",
+        "power": 13
+      },
+      {
+        "id": "bath1",
+        "power": 13
+      }
+    ],
     "interior": []
   },
   "render": {

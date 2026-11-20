@@ -5,7 +5,7 @@
     "app": "atelier-60",
     "version": "1"
   },
-  "createdAt": "2026-11-20T19:37:34.984Z",
+  "createdAt": "2026-11-20T19:49:39.815Z",
   "units": "m",
   "upAxis": "Y",
   "handedness": "right",
@@ -13,15 +13,15 @@
   "project": {
     "id": "atelier-60-demo",
     "name": "Mi piso nórdico",
-    "contentHash": "b2505eba4283100fc7de17f5cd4def7ee9f430432f2dfd6fb7061dc90fb994be",
+    "contentHash": "f068e932a0a24d4164d15bcd8c4c2b04c51fa24f8825a477416f9b9601d1376b",
     "wallHeight": 2.55,
     "width": 10,
     "depth": 6
   },
   "geometry": {
     "file": "scene.glb",
-    "sha256": "dd627d683425586ad878c1c12c6269fbf8ed781ec78d6a846fdb54e1931c3c66",
-    "bytes": 4869368
+    "sha256": "49b526e5e954e5cf068622f8efe938ce4c02ab31267d8a15243677fd7241510c",
+    "bytes": 5833588
   },
   "rooms": [
     {
@@ -298,6 +298,11 @@
       "kind": "window"
     },
     {
+      "id": "kitchen-window",
+      "type": "opening",
+      "kind": "window"
+    },
+    {
       "id": "bed3-window",
       "type": "opening",
       "kind": "window"
@@ -361,6 +366,30 @@
       "type": "furniture",
       "kind": "table",
       "name": "Mesa de comedor"
+    },
+    {
+      "id": "chair-1",
+      "type": "furniture",
+      "kind": "chair",
+      "name": "Silla"
+    },
+    {
+      "id": "chair-2",
+      "type": "furniture",
+      "kind": "chair",
+      "name": "Silla"
+    },
+    {
+      "id": "chair-3",
+      "type": "furniture",
+      "kind": "chair",
+      "name": "Silla"
+    },
+    {
+      "id": "chair-4",
+      "type": "furniture",
+      "kind": "chair",
+      "name": "Silla"
     },
     {
       "id": "kitchen-1",

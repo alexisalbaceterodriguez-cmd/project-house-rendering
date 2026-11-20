@@ -14,19 +14,20 @@
   "sun": true
  },
  "ceiling": true,
- "portals": 4,
+ "portals": 5,
  "interiorLights": 3,
  "materials": {
-  "glass": 8,
+  "glass": 9,
   "doors": 7,
-  "shades": 0
+  "shades": 0,
+  "translucent": 2
  },
- "objects": 47,
+ "objects": 52,
  "outputs": [
   "beauty.png"
  ],
- "renderSeconds": 16.42,
- "totalSeconds": 17.66,
+ "renderSeconds": 20.86,
+ "totalSeconds": 22.33,
  "image": {
   "meanLuminance": 0.6366,
   "clippedRatio": 0.0,

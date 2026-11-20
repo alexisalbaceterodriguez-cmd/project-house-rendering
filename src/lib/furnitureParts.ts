@@ -163,25 +163,48 @@ export function chairParts(w:number,d:number,h:number):FurniturePart[]{
 
 /**
  * Linear kitchen inside `w × d × h` (hob, sink and tap stand on the worktop): recessed plinth,
- * carcass, ~60 cm doors with bar handles and a worktop over the full footprint.
+ * carcass, ~60 cm doors with bar handles, a worktop cut around an undermounted steel basin,
+ * an induction hob with four marked zones and a round mixer whose spout reaches the basin.
  */
 export function kitchenParts(w:number,d:number,h:number):FurniturePart[]{
   const top=.04,plinth=.1,door=.018,face=d/2-.022;
   const body=face-door-.002+d/2,height=h-top-plinth,n=Math.max(1,Math.round(w/.6));
+  const sw=Math.min(.5,w*.25),sd=Math.min(.4,d-.2),sx=w*.24,sz=Math.min(.02,face-door-.002-sd/2-.02),basin=Math.min(.18,height-.05),wall=.008;
+  const left=sx-sw/2+w/2,right=w/2-sx-sw/2,back=sz-sd/2+d/2,front=d/2-sz-sd/2,steel={color:'#a6adab',material:'metal' as const};
+  const worktop={color:'#b2aa9e',bevel:.004},carcass={color:'#ebe6dc',bevel:.003};
   const parts:FurniturePart[]=[
-    part('Encimera',[w,top,d],0,h-top,0,{color:'#b2aa9e',bevel:.004}),
-    part('Cuerpo',[w,height,body],0,plinth,-d/2+body/2,{color:'#ebe6dc',bevel:.003}),
+    part('Encimera izquierda',[left,top,d],-w/2+left/2,h-top,0,worktop),
+    part('Encimera derecha',[right,top,d],w/2-right/2,h-top,0,worktop),
+    part('Encimera trasera',[sw,top,back],sx,h-top,-d/2+back/2,{...worktop,bevel:0}),
+    part('Encimera frontal',[sw,top,front],sx,h-top,d/2-front/2,{...worktop,bevel:0}),
+    part('Cuerpo',[left,height,body],-w/2+left/2,plinth,-d/2+body/2,carcass),
+    part('Cuerpo derecho',[right,height,body],w/2-right/2,plinth,-d/2+body/2,carcass),
+    part('Cuerpo bajo fregadero',[sw,height-basin-.004,body],sx,plinth,-d/2+body/2,{...carcass,bevel:0}),
     part('Zócalo',[w-.02,plinth,body-.06],0,0,-d/2+(body-.06)/2,{color:'#c9c3b8',bevel:.002}),
+    part('Fondo fregadero',[sw,.004,sd],sx,h-basin,sz,{...steel,bevel:.001}),
+    part('Pared fregadero trasera',[sw,basin-.004,wall],sx,h-basin+.004,sz-sd/2+wall/2,{...steel,bevel:.001}),
+    part('Pared fregadero frontal',[sw,basin-.004,wall],sx,h-basin+.004,sz+sd/2-wall/2,{...steel,bevel:.001}),
+    part('Pared fregadero izquierda',[wall,basin-.004,sd-2*wall],sx-sw/2+wall/2,h-basin+.004,sz,{...steel,bevel:.001}),
+    part('Pared fregadero derecha',[wall,basin-.004,sd-2*wall],sx+sw/2-wall/2,h-basin+.004,sz,{...steel,bevel:.001}),
+    turned('Desagüe fregadero',DISC,[.07,.003,.07],sx,h-basin+.003,sz,{color:'#7f8583',material:'metal'}),
   ];
   fronts(w,n).forEach(({x,size},i)=>{
     parts.push(part(`Puerta ${i+1}`,[size,height-2*HINGE_GAP,door],x,plinth+HINGE_GAP,face-door/2,{color:'item',bevel:.003}));
     parts.push(...barHandle(`Tirador ${i+1}`,x,h-top-.06,Math.min(.16,size*.4),face,d/2,true));
   });
-  const hob=Math.min(.58,w*.3),sink=Math.min(.5,w*.25),tapZ=-d/2+.08;
-  parts.push(part('Placa',[hob,.006,Math.min(.51,d-.12)],-w*.24,h,0,{color:'#262829',bevel:.003}));
-  parts.push(part('Fregadero',[sink,.004,Math.min(.4,d-.2)],w*.24,h,.02,{color:'#a6adab',material:'metal',bevel:.002}));
-  parts.push(part('Grifo',[.028,.26,.028],w*.24,h,tapZ,{color:METAL,material:'metal',bevel:.008}));
-  parts.push(part('Caño',[.024,.024,.17],w*.24,h+.226,tapZ+.075,{color:METAL,material:'metal',bevel:.008}));
+  const hob=Math.min(.58,w*.3),hobD=Math.min(.51,d-.12),hx=-w*.24,glass=.006;
+  parts.push(part('Placa',[hob,glass,hobD],hx,h,0,{color:'#262829',bevel:.003}));
+  const ring:Profile=[[.93,0],[1,0],[1,1],[.93,1],[.93,0]];
+  [[-1,-1,.2],[-1,1,.16],[1,-1,.16],[1,1,.2]].forEach(([sx2,sz2,size],i)=>{
+    const r=Math.min(size,hob*.42,hobD*.42);
+    parts.push(turned(`Zona ${i+1}`,ring,[r,.0012,r],hx+sx2*hob/4,h+glass-.0005,sz2*hobD/4,{color:'#5d6163'}));
+  });
+  const tapZ=Math.max(-d/2+.035,sz-sd/2-.045),tapH=.28,spout=Math.min(.2,sz-tapZ+.02);
+  parts.push(turned('Base grifo',DISC,[.06,.012,.06],sx,h,tapZ,{color:METAL,material:'metal'}));
+  parts.push(turned('Grifo',[[0,0],[1,0],[.8,.05],[.8,1],[0,1]],[.042,tapH-.012,.042],sx,h+.012,tapZ,{color:METAL,material:'metal'}));
+  parts.push(part('Caño',[.022,.022,spout],sx,h+tapH-.034,tapZ+spout/2,{color:METAL,material:'metal',bevel:.0105}));
+  parts.push(part('Boquilla',[.024,.035,.024],sx,h+tapH-.06,tapZ+spout-.015,{color:METAL,material:'metal',bevel:.008}));
+  parts.push(part('Maneta',[.07,.012,.012],sx+.016+.035,h+tapH-.11,tapZ,{color:METAL,material:'metal',bevel:.005}));
   return parts;
 }
 

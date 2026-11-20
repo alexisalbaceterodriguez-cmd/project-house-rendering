@@ -14,21 +14,22 @@
   "sun": true
  },
  "ceiling": true,
- "portals": 4,
- "interiorLights": 0,
+ "portals": 5,
+ "interiorLights": 3,
  "materials": {
-  "glass": 8,
+  "glass": 9,
   "doors": 7,
-  "shades": 0
+  "shades": 0,
+  "translucent": 2
  },
- "objects": 47,
+ "objects": 52,
  "outputs": [
   "beauty.png"
  ],
- "renderSeconds": 10.04,
- "totalSeconds": 11.06,
+ "renderSeconds": 14.46,
+ "totalSeconds": 15.91,
  "image": {
-  "meanLuminance": 0.4001,
+  "meanLuminance": 0.4944,
   "clippedRatio": 0.0,
   "blackRatio": 0.0
  }

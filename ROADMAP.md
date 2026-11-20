@@ -112,7 +112,7 @@ Motor local independiente en [`render-engine/`](render-engine/README.md): el edi
 | R9 | Ediciones IA controladas que preservan la arquitectura | Pendiente |
 | R10 | Presentación cinematográfica (recorridos, variantes) | Pendiente |
 
-Hecho (20/11): aristas biseladas en sofá, cama, mesa, silla y armario; mobiliario paramétrico por piezas (tapicería de sofá y cama, armario, mesa, silla, isla, cocina, frigorífico, inodoro, lavabo, ducha, lámpara y planta, con piezas torneadas) compartido por visor y GLB dentro de la huella del plano; luz de techo diurna en recintos sin ventana (`lighting.litRooms`); hojas y pantallas translúcidas en Cycles. Siguiente paso: demo de cocina-comedor y ajuste de sus piezas; después texturas escaneadas con licencia libre donde aporten realismo.
+Hecho (20/11): aristas biseladas en sofá, cama, mesa, silla y armario; mobiliario paramétrico por piezas (tapicería de sofá y cama, armario, mesa, silla, isla, cocina, frigorífico, inodoro, lavabo, ducha, lámpara y planta, con piezas torneadas) compartido por visor y GLB dentro de la huella del plano; luz de techo diurna en recintos sin ventana (`lighting.litRooms`); hojas y pantallas translúcidas en Cycles; cocina con cubeta bajo encimera, placa con zonas y grifo torneado, y demo de cocina-comedor. Siguiente paso: calibrar metales del visor WebGL contra Cycles; después texturas escaneadas CC0 donde aporten realismo.
 
 ### Arquitectura común y secuencia
 

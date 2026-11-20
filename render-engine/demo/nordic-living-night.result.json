@@ -12,22 +12,22 @@
   "sunElevationDeg": 10.0
  },
  "ceiling": true,
- "portals": 4,
+ "portals": 5,
  "interiorLights": 8,
  "materials": {
-  "glass": 8,
+  "glass": 9,
   "doors": 7,
   "shades": 1,
   "translucent": 3
  },
- "objects": 49,
+ "objects": 54,
  "outputs": [
   "beauty.png"
  ],
- "renderSeconds": 15.59,
- "totalSeconds": 16.88,
+ "renderSeconds": 15.73,
+ "totalSeconds": 17.24,
  "image": {
-  "meanLuminance": 0.5655,
+  "meanLuminance": 0.5557,
   "clippedRatio": 0.0,
   "blackRatio": 0.0
  }
