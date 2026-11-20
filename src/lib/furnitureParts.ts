@@ -1168,7 +1168,7 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
-export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books']);
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant']);
 // Wall-only or soft items that never carry a tabletop object.
 const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack']);
 
@@ -1259,4 +1259,53 @@ export function bookStackParts(w:number,d:number,h:number):FurniturePart[]{
     y+=t;
   }
   return parts;
+}
+
+const BALL:Profile=[[0,0],[.5,.067],[.866,.25],[1,.5],[.866,.75],[.5,.933],[0,1]];
+
+/**
+ * Fruit bowl inside `w × d × h`: a turned ceramic bowl holding a ring of three pieces of fruit on its
+ * floor and a fourth resting on them, whose top is `h`.
+ */
+export function fruitBowlParts(w:number,d:number,h:number):FurniturePart[]{
+  const f=clamp(Math.min(w,d)*.3,.04,.09),bowl=Math.min(h*.6,Math.max(h-f*.5,.03)),r=Math.min(w,d)*.19,floor=bowl*.22;
+  const fruit=[['Manzana','#b8432f'],['Naranja','#e08a2c'],['Limón','#e6c84a'],['Pera','#a9b54a']] as const;
+  const parts:FurniturePart[]=[turned('Cuenco',VESSEL,[w,bowl,d],0,0,0,{color:'item'})];
+  for(let i=0;i<3;i++){
+    const a=Math.PI/2+i*2*Math.PI/3;
+    parts.push(turned(fruit[i][0],BALL,[f,f,f],r*Math.cos(a),floor,r*Math.sin(a),{color:fruit[i][1]}));
+  }
+  parts.push(turned(fruit[3][0],BALL,[f,f,f],0,h-f,0,{color:fruit[3][1]}));
+  return parts;
+}
+
+const TRAY:Profile=[[0,0],[1,0],[1,1],[.92,1],[.9,.4],[0,.4]];
+
+/** Candle tray inside `w × d × h`: a turned metal tray with a rim and three unlit pillar candles of falling heights with their wicks. */
+export function candleParts(w:number,d:number,h:number):FurniturePart[]{
+  const tray=.012,base=tray*.4,wick=.01,c=clamp(Math.min(w,d)*.3,.035,.07),tall=h-base-wick;
+  const parts:FurniturePart[]=[turned('Bandeja',TRAY,[w,tray,d],0,0,0,{color:'item',material:'metal'})];
+  for(const [i,x,z,k] of [[1,-w*.2,-d*.12,1],[2,w*.18,-d*.08,.72],[3,w*.02,d*.18,.5]] as const){
+    const ch=tall*k;
+    parts.push(turned(`Vela ${i}`,ROD,[c,ch,c],x,base,z,{color:'#f2ecdf'}));
+    parts.push(turned(`Mecha ${i}`,ROD,[.003,wick,.003],x,base+ch,z,{color:'#2b2723'}));
+  }
+  return parts;
+}
+
+/**
+ * Standing photo frame inside `w × d × h` (picture facing +z): a low wooden foot across the depth,
+ * a frame of four bars across `w`, a recessed mat and a print set into it.
+ */
+export function photoFrameParts(w:number,d:number,h:number):FurniturePart[]{
+  const base=.012,t=Math.min(.018,w*.1),fd=Math.min(.018,d*.3),H=h-base,m=Math.min(.02,w*.08),frame={color:'item',bevel:.002};
+  return [
+    part('Peana',[w*.7,base,d],0,0,0,{color:'item',surface:'woodgrain',bevel:.002}),
+    part('Marco inferior',[w,t,fd],0,base,0,frame),
+    part('Marco superior',[w,t,fd],0,h-t,0,frame),
+    part('Marco izquierdo',[t,H-2*t,fd],-w/2+t/2,base+t,0,frame),
+    part('Marco derecho',[t,H-2*t,fd],w/2-t/2,base+t,0,frame),
+    part('Paspartú',[w-2*t,H-2*t,fd*.4],0,base+t,-fd*.1,{color:'#f5f2ea',bevel:0}),
+    part('Fotografía',[w-2*t-2*m,H-2*t-2*m,fd*.4],0,base+t+m,fd*.05,{color:'#7f949a',bevel:0}),
+  ];
 }

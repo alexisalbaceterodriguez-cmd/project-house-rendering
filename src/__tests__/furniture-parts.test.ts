@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, tableLampParts, vaseParts, bookStackParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, candleParts, photoFrameParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -77,6 +77,9 @@ const builders={
   'books':[bookStackParts,[[.26,.2,.12],[.22,.16,.06],[.32,.24,.2]]],
   'table-lamp':[tableLampParts,[[.3,.3,.48],[.25,.25,.4],[.4,.4,.6]]],
   'sheer-curtain':[sheerCurtainParts,[[1.8,.15,2.5],[1.2,.12,2.2],[3,.2,2.7]]],
+  'fruit-bowl':[fruitBowlParts,[[.3,.3,.18],[.22,.22,.14],[.4,.4,.22]]],
+  'photo-frame':[photoFrameParts,[[.18,.08,.23],[.13,.06,.18],[.25,.1,.3]]],
+  candles:[candleParts,[[.24,.16,.22],[.16,.12,.2],[.32,.2,.3]]],
   'corner-sofa':[cornerSofaParts,[[2.6,1.6,.85],[2.2,1.5,.8],[3.2,1.8,.9]]],
   'corner-sofa-left':[cornerSofaLeftParts,[[2.6,1.6,.85],[2.2,1.5,.8],[3.2,1.8,.9]]],
   pouf:[poufParts,[[.5,.5,.42],[.4,.4,.38],[.6,.45,.45]]],

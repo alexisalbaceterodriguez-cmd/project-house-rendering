@@ -17,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, fruitBowlParts, candleParts, photoFrameParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -272,6 +272,10 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'corner-sofa':return <Parts parts={cornerSofaParts(w,d,h)} item={item} wood={wood}/>;
     case 'corner-sofa-left':return <Parts parts={cornerSofaLeftParts(w,d,h)} item={item} wood={wood}/>;
     case 'vase':return <Parts parts={vaseParts(w,d,h)} item={item} wood={wood}/>;
+    case 'fruit-bowl':return <Parts parts={fruitBowlParts(w,d,h)} item={item} wood={wood}/>;
+    case 'photo-frame':return <Parts parts={photoFrameParts(w,d,h)} item={item} wood={wood}/>;
+    case 'table-plant':return <Plant item={item} wood={wood}/>;
+    case 'candles':return <Parts parts={candleParts(w,d,h)} item={item} wood={wood}/>;
     case 'books':return <Parts parts={bookStackParts(w,d,h)} item={item} wood={wood}/>;
     case 'pouf':return <Parts parts={poufParts(w,d,h)} item={item} wood={wood}/>;
     case 'console-table':return <Parts parts={consoleTableParts(w,d,h)} item={item} wood={wood}/>;
