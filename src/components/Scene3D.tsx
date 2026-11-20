@@ -17,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, cornerSofaParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, placedElevation, cornerSofaParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -266,6 +266,7 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'coffee-table':return <Parts parts={coffeeTableParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv-unit':return <Parts parts={tvUnitParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv':return <Parts parts={tvParts(w,d,h)} item={item} wood={wood}/>;
+    case 'table-lamp':return <><Parts parts={tableLampParts(w,d,h)} item={item} wood={wood}/><pointLight position={[0,h-tableLampShadeHeight(h)*.55,0]} intensity={.08} color="#fff2d3" distance={1.6}/></>;
     case 'corner-sofa':return <Parts parts={cornerSofaParts(w,d,h)} item={item} wood={wood}/>;
     case 'pouf':return <Parts parts={poufParts(w,d,h)} item={item} wood={wood}/>;
     case 'console-table':return <Parts parts={consoleTableParts(w,d,h)} item={item} wood={wood}/>;
@@ -307,15 +308,15 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
 }
 function ObjectModel({item,project,selected,onSelect}:{item:Furniture;project:Project;selected:boolean;onSelect:()=>void}){
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]} userData={{atelierId:item.id,atelierType:'furniture',atelierKind:item.kind}} onClick={e=>{e.stopPropagation();onSelect();}} onPointerOver={()=>{document.body.style.cursor='pointer';}} onPointerOut={()=>{document.body.style.cursor='';}}>
-    <SurfaceContext.Provider value={item.materialId}><group position={[0,item.module?0:furnitureElevation(item,project.wallHeight),0]}><FurnitureShape item={item} project={project} selected={selected}/></group></SurfaceContext.Provider>
+    <SurfaceContext.Provider value={item.materialId}><group position={[0,item.module?0:placedElevation(item,project.furniture,project.wallHeight),0]}><FurnitureShape item={item} project={project} selected={selected}/></group></SurfaceContext.Provider>
     {selected&&<mesh userData={{editorOverlay:true}} rotation={[-Math.PI/2,0,0]} position={[0,.03,0]}><ringGeometry args={[Math.max(item.w,item.d)*.66,Math.max(item.w,item.d)*.68,40]}/><meshBasicMaterial color="#2b9071" side={THREE.DoubleSide}/></mesh>}
   </group>;
 }
 // Approximate near-floor occlusion from the placed footprint. Unlike a projected
 // key-light shadow it stays under the furniture as the studio light rotates.
-function FloorContact({item,wallHeight}:{item:Furniture;wallHeight:number}){
+function FloorContact({item,furniture,wallHeight}:{item:Furniture;furniture:Furniture[];wallHeight:number}){
   const lift=Math.max(0,item.modelElevation??0);
-  if(item.kind==='rug'||furnitureElevation(item,wallHeight)>0||lift>=.45)return null;
+  if(item.kind==='rug'||placedElevation(item,furniture,wallHeight)>0||lift>=.45)return null;
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]}>
     <mesh raycast={()=>{}} userData={{renderExclude:true}} position={[item.modelOffsetX??0,.031,item.modelOffsetZ??0]} rotation={[-Math.PI/2,0,0]} scale={[item.w*1.45,item.d*1.45,1]}>
       <planeGeometry/>
@@ -466,7 +467,7 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       </>}
       {(subject?[subject]:project.furniture).map(item=><ObjectModel key={item.id} item={item} project={project} selected={selection?.type==='furniture'&&selection.id===item.id} onSelect={()=>setSelection({type:'furniture',id:item.id})}/>)}
       {subject?<group userData={{renderExclude:true}}><ContactShadows key={JSON.stringify([subject.id,subject.w,subject.d,subject.h,subject.x,subject.y,subject.rotation,ground])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={.35} blur={2.5} far={span*2}/></group>
-        :project.furniture.map(item=><FloorContact key={item.id} item={item} wallHeight={project.wallHeight}/>)}
+        :project.furniture.map(item=><FloorContact key={item.id} item={item} furniture={project.furniture} wallHeight={project.wallHeight}/>)}
 
     </Canvas>
     <div className="scene-navigation">{render.walk&&!subject?'WASD para caminar · Esc para liberar el cursor':'Arrastra para orbitar · Rueda para acercar · Mayús + clic para editar un material'}</div>

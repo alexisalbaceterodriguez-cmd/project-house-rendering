@@ -72,6 +72,15 @@ describe('render package', () => {
     expect(windowlessRooms(glazed).map(r=>r.id).sort()).toEqual(['bath2','hall']);
   });
 
+  it('lights a table lamp at night inside its shade, on top of its support', () => {
+    const p=structuredClone(demoProject);
+    p.furniture.push({id:'tl',kind:'table-lamp',name:'Lámpara de mesa',x:p.furniture.find(f=>f.id==='night-main-l')!.x,y:.62,w:.3,d:.3,h:.48,rotation:0,color:'#efe6d4'});
+    const night=buildManifest(p,camera,{preset:'night',quality:'draft',width:960,height:540},geometry,'hash');
+    const light=night.lighting.interior.find(l=>l.id==='tl')!;
+    expect(light.position[1]).toBeCloseTo(.5+.48-.2016*.55);
+    expect(light.position[1]).toBeLessThan(.5+.48);
+  });
+
   it('switches presets without touching the geometry', () => {
     const night=buildManifest(demoProject,camera,{preset:'night',quality:'draft',width:960,height:540},geometry,'hash');
     expect(night.lighting).toMatchObject({sun:{strength:0},roomLights:true});

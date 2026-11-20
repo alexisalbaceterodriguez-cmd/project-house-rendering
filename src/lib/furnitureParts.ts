@@ -1143,3 +1143,45 @@ export function curtainParts(w:number,d:number,h:number):FurniturePart[]{
   }
   return parts;
 }
+
+/** Height of a table lamp's shade (the night light sits inside it, see renderPackage.ts). */
+export const tableLampShadeHeight=(h:number)=>Math.min(.24,h*.42);
+
+/** Table lamp inside `w × d × h`: a turned ceramic body, a brass neck and a drum shade lit at night. */
+export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
+  const shade=tableLampShadeHeight(h),body=Math.min(h-shade-.02,h*.5),neck=h-shade*.6-body;
+  return [
+    turned('Cuerpo',VASE,[w*.55,body,d*.55],0,0,0,{color:CERAMIC}),
+    turned('Cuello',ROD,[.018,neck,.018],0,body,0,{color:'#b08d57',material:'metal'}),
+    turned('Pantalla',[[1,0],[.86,1],[.84,1],[.98,0],[1,0]],[w,shade,d],0,h-shade,0,{color:'item',role:'lampshade'}),
+  ];
+}
+
+/** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp']);
+// Wall-only or soft items that never carry a tabletop object.
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack']);
+
+type Placed={id:string;kind:string;x:number;y:number;w:number;d:number;h:number;rotation:number;module?:{family:ModuleFamily}};
+
+/**
+ * Top height of the furniture under `item`'s centre (its elevation plus its overall height `h`),
+ * or 0 when it stands on the floor. Uses each support's full bounding height, so a desk with a
+ * hutch carries the lamp on its hutch top, not on the worktop.
+ */
+export function supportTop(item:Placed,furniture:readonly Placed[],wallHeight:number):number{
+  let top=0;
+  for(const f of furniture){
+    if(f.id===item.id||NO_SUPPORT.has(f.kind)||TABLETOP_KINDS.has(f.kind))continue;
+    const a=-f.rotation*Math.PI/180,dx=item.x-f.x,dy=item.y-f.y;
+    const u=dx*Math.cos(a)-dy*Math.sin(a),v=dx*Math.sin(a)+dy*Math.cos(a);
+    if(Math.abs(u)>f.w/2+1e-9||Math.abs(v)>f.d/2+1e-9)continue;
+    top=Math.max(top,furnitureElevation(f,wallHeight)+f.h);
+  }
+  return top;
+}
+
+/** Height of `item`'s base above the floor: hung kinds by `furnitureElevation`, tabletop kinds on their support. */
+export function placedElevation(item:Placed,furniture:readonly Placed[],wallHeight:number):number{
+  return TABLETOP_KINDS.has(item.kind)?supportTop(item,furniture,wallHeight):furnitureElevation(item,wallHeight);
+}

@@ -40,6 +40,7 @@ export const catalog: CatalogItem[] = [
   {kind:'shower', name:'Ducha',w:.9,d:.9,h:2,color:'#eae8e1',icon:'▧',category:'Baño'},
   {kind:'fridge', name:'Frigorífico',w:.65,d:.65,h:1.9,color:'#ebebe8',icon:'▣',category:'Cocina'},
   {kind:'plant', name:'Planta interior',w:.55,d:.55,h:1.1,color:'#64886c',icon:'✿',category:'Decoración'},
+  {kind:'table-lamp', name:'Lámpara de mesa',w:.3,d:.3,h:.48,color:'#efe6d4',icon:'✧',category:'Decoración'},
   {kind:'lamp', name:'Lámpara de pie',w:.4,d:.4,h:1.65,color:'#ddd3bd',icon:'✧',category:'Decoración'},
   {kind:'pendant', name:'Lámpara colgante',w:.42,d:.42,h:.8,color:'#ece4d4',icon:'◒',category:'Decoración'},
   {kind:'console-table', name:'Consola de recibidor',w:1,d:.35,h:.8,color:'#b98d62',icon:'▭',category:'Decoración'},
