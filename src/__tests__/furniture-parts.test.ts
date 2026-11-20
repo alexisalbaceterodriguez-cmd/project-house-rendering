@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, armchairParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -53,6 +53,8 @@ const builders={
   desk:[deskParts,[[1,.5,.75],[1.4,.7,.76],[.9,.5,.74],[1.6,.8,.6]]],
   nightstand:[nightstandParts,[[.45,.38,.52],[.6,.45,.6],[.35,.3,.4]]],
   bookshelf:[bookshelfParts,[[.8,.32,1.9],[1.2,.4,2.2],[.6,.25,.9],[.4,.3,.35]]],
+  armchair:[armchairParts,[[.78,.82,.8],[.65,.7,.72],[.95,.9,.95]]],
+  sideboard:[sideboardParts,[[1.6,.45,.75],[1.2,.4,.5],[2.2,.5,.85],[.9,.42,.8]]],
   island:[islandParts,[[1.5,.8,.9],[2.4,1,.9]]],
   chair:[chairParts,[[.52,.55,.85],[.45,.5,.8]]],
   kitchen:[kitchenParts,[[2.6,.65,.9],[1.2,.6,.9]]],
@@ -86,7 +88,7 @@ describe('parametric furniture', () => {
     }
   });
 
-  const moduleSizes={base:[.6,.6,.88],sink:[.8,.6,.88],hob:[.6,.6,.88],oven:[.6,.6,.88],vanity:[.6,.46,.85],wall:[.8,.35,.72],column:[.6,.6,2.1]} as const;
+  const moduleSizes={base:[.6,.6,.88],sink:[.8,.6,.88],hob:[.6,.6,.88],oven:[.6,.6,.88],vanity:[.6,.46,.85],wall:[.8,.35,.72],column:[.6,.6,2.1],hood:[.6,.5,.8]} as const;
   for(const [family,[w,d,h]] of Object.entries(moduleSizes))for(const handles of ['bar','none'] as const)for(const scale of [1,.75,1.5])it(`${family} module ${handles} handles at ${scale} × width stays in its footprint`, () => {
     const width=w*scale,parts=moduleParts(family as keyof typeof moduleSizes,width,d,h,handles),[min,max]=partsBounds(parts);
     expect(min[0]).toBeCloseTo(-width/2,9);expect(max[0]).toBeCloseTo(width/2,9);
@@ -100,13 +102,13 @@ describe('parametric furniture', () => {
     for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)for(let a=0;a<3;a++)
       expect(overlapArea(boxes[i],boxes[j],a),`${boxes[i].name} / ${boxes[j].name} axis ${a}`).toBeLessThan(1e-9);
     // Floor modules keep the worktop at h with its finish role; bar handles only when asked for (ovens always have one).
-    if(family!=='wall'&&family!=='column'){
+    if(family!=='wall'&&family!=='column'&&family!=='hood'){
       const top=parts.filter(p=>p.role==='worktop');
       expect(top.length).toBeGreaterThan(0);
       for(const t of top)expect(t.position[1]+t.size[1]/2).toBeCloseTo(h,9);
     }
     const bars=parts.filter(p=>p.name.startsWith('Tirador')&&!p.name.includes('soporte')).map(p=>p.name);
-    if(handles==='none')expect(bars).toEqual(family==='oven'?['Tirador horno']:[]);
+    if(handles==='none'||family==='hood')expect(bars).toEqual(family==='oven'?['Tirador horno']:[]);
     else expect(bars.length).toBeGreaterThan(0);
   });
 

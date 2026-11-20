@@ -405,7 +405,9 @@ export function partsBounds(parts:FurniturePart[]):[Vec3,Vec3]{
   return [min,max];
 }
 
-export type ModuleFamily='base'|'wall'|'column'|'sink'|'hob'|'oven'|'vanity';
+export type ModuleFamily='base'|'wall'|'column'|'sink'|'hob'|'oven'|'vanity'|'hood';
+/** Height of a module's underside above the floor: wall cabinets at 1.45 m, hoods 70 cm over a 90 cm worktop. */
+export const moduleHangHeight=(family:ModuleFamily)=>family==='wall'?1.45:family==='hood'?1.6:0;
 const VESSEL:Profile=[[0,0],[.55,0],[.62,.03],[.8,.35],[.94,.75],[1,1],[.93,1],[.88,.8],[.74,.42],[.5,.22],[0,.2]];
 const HOB_RING:Profile=[[.93,0],[1,0],[1,1],[.93,1],[.93,0]];
 /** Round mixer standing on `y` at (x, z) with a spout reaching `spout` towards +z. */
@@ -433,6 +435,21 @@ export function moduleParts(family:ModuleFamily,w:number,d:number,h:number,handl
   const carcass={color:'#ebe6dc',bevel:.002},steel={color:'#a6adab',material:'metal' as const,bevel:.001};
   const n=w>.65?2:1,parts:FurniturePart[]=[];
   const handle=(name:string,x:number,y:number,length:number,face:number,horizontal=true)=>{if(bar)parts.push(...barHandle(name,x,y,length,face,d/2,horizontal));};
+
+  if(family==='hood'){
+    // Chimney hood: a slim steel canopy with grease filter, two lights and a control strip,
+    // and a chimney flush with the wall that reaches the top of `h`.
+    const canopy=.06,filter=.006,cw=Math.min(.3,w*.5),cd=Math.min(.26,d*.55),fz0=-d/2+.03,fz1=d/2-.08;
+    const steelHood={color:'#b4b9b7',material:'metal' as const,bevel:.002};
+    parts.push(
+      part('Campana',[w,canopy,d-.004],0,filter,-.002,steelHood),
+      part('Filtro',[w-.08,filter,fz1-fz0],0,0,(fz0+fz1)/2,{color:'#8e9391',material:'metal',bevel:0}),
+      part('Chimenea',[cw,h-canopy-filter,cd],0,canopy+filter,-d/2+cd/2,{...steelHood,bevel:.001}),
+      part('Mandos campana',[Math.min(.16,w*.3),.02,.004],w*.25,filter+.02,d/2-.002,{color:'#1b1e1f',material:'glass',bevel:0}),
+    );
+    for(const s of [-1,1])parts.push(turned(`Luz ${s<0?'izquierda':'derecha'}`,DISC,[.06,.005,.06],s*w/4,0,d/2-.045,{color:'#fbf6e9'}));
+    return parts;
+  }
 
   if(family==='wall'){
     const face=bar?d/2-.022:d/2,lip=bar?0:.025,body=face-door-.002+d/2,y0=bar?gap:0;
@@ -527,5 +544,58 @@ export function moduleParts(family:ModuleFamily,w:number,d:number,h:number,handl
       handle(`Tirador ${i+1}`,x,y1-.05,Math.min(.16,size*.4),face);
     });
   }
+  return parts;
+}
+
+/** Tapered leg turned from a 4 cm top to a 2.8 cm foot. */
+const TAPER:Profile=[[0,0],[.7,0],[1,1],[0,1]];
+
+/**
+ * Upholstered armchair inside `w × d × h` (front +z): tapered wooden legs, arms that define the
+ * width and depth, a back reaching `h`, a seat base and separate crowned seat and back cushions
+ * with 1 cm gaps. The seat top stays near 44 cm whatever the leg height.
+ */
+export function armchairParts(w:number,d:number,h:number):FurniturePart[]{
+  const leg=clamp(h*.2,.1,.18),arm=clamp(w*.12,.08,.14),inner=w-2*arm,back=Math.min(.16,d*.2);
+  const armTop=Math.min(h-.12,.64),seatTop=Math.min(.44,armTop-.04),cushion=Math.min(.12,seatTop-leg-.075);
+  const fabric={color:'item',surface:'textile'} as const;
+  const parts:FurniturePart[]=[];
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(turned(`Pata ${x} ${z}`,TAPER,[.04,leg,.04],x*(w/2-arm/2),0,z*(d/2-.06),{color:'wood'}));
+  for(const x of [-1,1])parts.push(part(`Brazo ${x}`,[arm,armTop-leg,d],x*(w-arm)/2,leg,0,{...fabric,bevel:.035}));
+  parts.push(part('Respaldo',[w-2*FACE_GAP,h-leg-FACE_GAP,back],0,leg+FACE_GAP,-d/2+FACE_GAP+back/2,{...fabric,bevel:.035}));
+  const front=d/2-.015,rear=-d/2+FACE_GAP+back+FACE_GAP*.5,depth=front-rear,z=(front+rear)/2;
+  const base=seatTop-cushion-leg-.015,backCushion=Math.min(.15,depth*.28);
+  parts.push(part('Zócalo',[inner-FACE_GAP,base,depth],0,leg+.015,z,{...fabric,bevel:.02}));
+  parts.push(part('Cojín de asiento',[inner-2*FACE_GAP,cushion,depth],0,seatTop-cushion,z,{...fabric,bevel:.045,crown:{axis:'y',amount:.012}}));
+  parts.push(part('Cojín de respaldo',[inner-2*FACE_GAP,Math.min(.42,h-seatTop-.05),backCushion],0,seatTop,rear+backCushion/2,{...fabric,bevel:.05,crown:{axis:'z',amount:.02}}));
+  return parts;
+}
+
+/**
+ * Sideboard or TV unit inside `w × d × h`: tapered wooden legs, a carcass, a wood-grain top that
+ * defines the full footprint and height, and two to four columns of doors (about 45 cm each),
+ * topped by a drawer row when the front is taller than 45 cm. Doors carry short vertical bars
+ * on their paired edges, drawers horizontal ones.
+ */
+export function sideboardParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.025,feet=clamp(h*.18,.08,.16),under=h-top,door=.018,back=-d/2+.01,face=d/2-.02;
+  const bw=w-.02,body=face-door-.002-back,zc=back+body/2,gap=HINGE_GAP,outer=d/2-.002;
+  const parts:FurniturePart[]=[
+    part('Tablero',[w,top,d],0,under,0,{color:'item',surface:'woodgrain',bevel:.005}),
+    part('Cuerpo',[bw,under-feet,body],0,feet,zc,{color:'item',bevel:.004}),
+  ];
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(turned(`Pata ${x} ${z}`,TAPER,[.04,feet,.04],x*(bw/2-.05),0,zc+z*(body/2-.05),{color:'wood'}));
+  const span=under-feet-2*gap,drawer=span>.45?Math.min(.15,span*.25):0,doorH=span-(drawer?drawer+gap:0);
+  const n=clamp(Math.round(bw/.45),2,4);
+  fronts(bw,n).forEach(({x,size},i)=>{
+    parts.push(part(`Puerta ${i+1}`,[size,doorH,door],x,feet+gap,face-door/2,{color:'item',surface:'woodgrain',bevel:.003}));
+    const length=Math.min(.14,doorH*.35),hx=i%2===0?x+size/2-.035:x-size/2+.035;
+    parts.push(...barHandle(`Tirador ${i+1}`,hx,feet+gap+doorH-.04-length/2,length,face,outer));
+    if(drawer){
+      const y=feet+gap+doorH+gap;
+      parts.push(part(`Cajón ${i+1}`,[size,drawer,door],x,y,face-door/2,{color:'item',surface:'woodgrain',bevel:.003}));
+      parts.push(...barHandle(`Tirador cajón ${i+1}`,x,y+drawer/2,Math.min(.12,size*.4),face,outer,true));
+    }
+  });
   return parts;
 }

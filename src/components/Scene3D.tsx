@@ -16,7 +16,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -183,8 +183,8 @@ function ModelShape({item,selected}:{item:Furniture;selected:boolean}){
 function ModuleModel({item,wood}:{item:Furniture;wood:string}){
   const m=item.module!;
   const parts=useMemo(()=>moduleParts(m.family,item.w,item.d,item.h,m.handles),[m.family,m.handles,item.w,item.d,item.h]);
-  // Wall cabinets hang with their underside at 1.45 m; the rest stand on the floor.
-  return <group position={[0,m.family==='wall'?1.45:0,0]}><Parts parts={parts} item={{...item,color:m.front}} wood={wood} worktop={m.worktop}/></group>;
+  // Wall cabinets and hoods hang (moduleHangHeight); the rest stand on the floor.
+  return <group position={[0,moduleHangHeight(m.family),0]}><Parts parts={parts} item={{...item,color:m.front}} wood={wood} worktop={m.worktop}/></group>;
 }
 // Parametric furniture is built from parts (src/lib/furnitureParts.ts), all inside the plan footprint.
 function Parts({parts,item,wood,worktop}:{parts:FurniturePart[];item:Furniture;wood:string;worktop?:string}){
@@ -246,6 +246,8 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'table':return <Parts parts={tableParts(w,d,h)} item={item} wood={wood}/>;
     case 'desk':return <Parts parts={deskParts(w,d,h)} item={item} wood={wood}/>;
     case 'nightstand':return <Parts parts={nightstandParts(w,d,h)} item={item} wood={wood}/>;
+    case 'armchair':return <Parts parts={armchairParts(w,d,h)} item={item} wood={wood}/>;
+    case 'sideboard':return <Parts parts={sideboardParts(w,d,h)} item={item} wood={wood}/>;
     case 'bookshelf':return <Parts parts={bookshelfParts(w,d,h)} item={item} wood={wood}/>;
     case 'island':return <Parts parts={islandParts(w,d,h)} item={item} wood={wood}/>;
     case 'chair':return <Parts parts={chairParts(w,d,h)} item={item} wood={wood}/>;
@@ -271,7 +273,7 @@ function ObjectModel({item,project,selected,onSelect}:{item:Furniture;project:Pr
 // key-light shadow it stays under the furniture as the studio light rotates.
 function FloorContact({item}:{item:Furniture}){
   const lift=Math.max(0,item.modelElevation??0);
-  if(item.kind==='rug'||item.module?.family==='wall'||lift>=.45)return null;
+  if(item.kind==='rug'||(item.module&&moduleHangHeight(item.module.family)>0)||lift>=.45)return null;
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]}>
     <mesh raycast={()=>{}} userData={{renderExclude:true}} position={[item.modelOffsetX??0,.031,item.modelOffsetZ??0]} rotation={[-Math.PI/2,0,0]} scale={[item.w*1.45,item.d*1.45,1]}>
       <planeGeometry/>

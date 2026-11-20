@@ -10,7 +10,7 @@ const material=(a:unknown)=>a===undefined||(typeof a==='string'&&a.length<=120);
 const vector=(a:unknown)=>Array.isArray(a)&&a.length===3&&a.every(n=>num(n,-500,500));
 const kinds:Set<RoomKind>=new Set(['living','bedroom','bathroom','hall']);
 const finishes:Set<FloorFinish>=new Set(['oak','ash','walnut','stone','terrazzo','concrete']);
-const furnitureKinds:Set<FurnitureKind>=new Set(['sofa','bed','single-bed','table','chair','wardrobe','desk','nightstand','bookshelf','kitchen','island','sink','fridge','toilet','shower','plant','lamp','rug','model']);
+const furnitureKinds:Set<FurnitureKind>=new Set(['sofa','bed','single-bed','table','chair','wardrobe','desk','nightstand','bookshelf','armchair','sideboard','kitchen','island','sink','fridge','toilet','shower','plant','lamp','rug','model']);
 const validModelFinish=(f:unknown)=>object(f)&&color(f.color)&&num(f.roughness,0,1)&&num(f.metalness,0,1)&&material(f.materialId)&&(f.materialName===undefined||(typeof f.materialName==='string'&&f.materialName.length<=120));
 /** Strict structural validation; geometric feasibility is reported separately. */
 export function isProject(a:unknown):a is Project{
@@ -54,7 +54,7 @@ export function isProject(a:unknown):a is Project{
     if(f.modelElevation!==undefined&&!num(f.modelElevation,-3,6))return false;
     if(f.modelOffsetX!==undefined&&!num(f.modelOffsetX,-5,5))return false;
     if(f.modelOffsetZ!==undefined&&!num(f.modelOffsetZ,-5,5))return false;
-    if(f.module!==undefined){const m=f.module;if(!object(m)||!['base','wall','column','sink','hob','oven','vanity'].includes(m.family as string)||!color(m.front)||!material(m.worktop)||!['bar','none'].includes(m.handles as string))return false;}
+    if(f.module!==undefined){const m=f.module;if(!object(m)||!['base','wall','column','sink','hob','oven','vanity','hood'].includes(m.family as string)||!color(m.front)||!material(m.worktop)||!['bar','none'].includes(m.handles as string))return false;}
   }
   if(walls.some(w=>wallLength(w)<.1))return false;
   if((a.openings as Project['openings']).some(o=>!wallIds.has(o.wallId)))return false;

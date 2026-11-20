@@ -13,7 +13,7 @@ export type ProductSource = {
   modelUrl?: string;
 };
 export const productSources: ProductSource[] = [
-  ['sofa','Salón'],['table','Salón'],['chair','Salón'],['rug','Salón'],['bookshelf','Salón'],
+  ['sofa','Salón'],['table','Salón'],['chair','Salón'],['rug','Salón'],['bookshelf','Salón'],['armchair','Salón'],['sideboard','Salón'],
   ['bed','Dormitorio'],['single-bed','Dormitorio'],['wardrobe','Dormitorio'],['desk','Dormitorio'],['nightstand','Dormitorio'],
   ['kitchen','Cocina'],['island','Cocina'],['fridge','Cocina'],
   ['sink','Baño'],['toilet','Baño'],['shower','Baño'],

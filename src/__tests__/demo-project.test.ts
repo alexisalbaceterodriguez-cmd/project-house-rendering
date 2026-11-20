@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoProject } from '../data/defaultProject';
+import { moduleHangHeight } from '../lib/furnitureParts';
 
 /** Plan footprint of a piece turned by a multiple of 90°. */
 function footprint(f:typeof demoProject.furniture[number]){
@@ -22,7 +23,7 @@ describe('demo project', () => {
   });
 
   it('keeps furniture inside the plan and apart, except chairs tucked under a table', () => {
-    const boxes=demoProject.furniture.filter(f=>f.kind!=='rug').map(f=>({id:f.id,kind:f.kind,hung:f.module?.family==='wall',...footprint(f)}));
+    const boxes=demoProject.furniture.filter(f=>f.kind!=='rug').map(f=>({id:f.id,kind:f.kind,hung:!!f.module&&moduleHangHeight(f.module.family)>0,...footprint(f)}));
     const tucked=(a:{kind:string},b:{kind:string})=>a.kind==='chair'&&['table','desk','island'].includes(b.kind);
     for(const b of boxes){
       expect(b.x0,b.id).toBeGreaterThanOrEqual(0);expect(b.y0,b.id).toBeGreaterThanOrEqual(0);

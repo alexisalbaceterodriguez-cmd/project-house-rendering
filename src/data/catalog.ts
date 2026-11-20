@@ -3,6 +3,8 @@ export type CatalogItem = { kind: FurnitureKind; name: string; w: number; d: num
 export const catalog: CatalogItem[] = [
   {kind:'sofa', name:'Sofá de 3 plazas',w:2.2,d:.9,h:.85,color:'#d4c8b8',icon:'🛋',category:'Salón'},
   {kind:'table', name:'Mesa de comedor',w:1.5,d:.85,h:.75,color:'#caa77d',icon:'▦',category:'Salón'},
+  {kind:'armchair', name:'Butaca tapizada',w:.78,d:.82,h:.8,color:'#b9a58c',icon:'◫',category:'Salón'},
+  {kind:'sideboard', name:'Aparador',w:1.6,d:.45,h:.75,color:'#c9a57c',icon:'▭',category:'Salón'},
   {kind:'chair', name:'Silla nórdica',w:.52,d:.55,h:.85,color:'#c4a47d',icon:'◈',category:'Salón'},
   {kind:'rug', name:'Alfombra',w:2.2,d:1.5,h:.025,color:'#ded6c7',icon:'▤',category:'Salón'},
   {kind:'bed', name:'Cama doble',w:1.6,d:2,h:.55,color:'#e2d7ca',icon:'▣',category:'Dormitorio'},

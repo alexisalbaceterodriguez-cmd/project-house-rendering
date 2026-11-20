@@ -63,7 +63,7 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
     catch(error){setMessage((error as Error).message);}
   };
   const addModule=(kind:ModuleSettings['family'],name:string)=>{
-    const id=makeId(),h=kind==='wall'?.72:kind==='column'?2.1:.88,d=kind==='wall'?.35:.6;
+    const id=makeId(),h=kind==='wall'?.72:kind==='hood'?.8:kind==='column'?2.1:.88,d=kind==='wall'?.35:kind==='hood'?.5:.6;
     change(p=>{
       const last=p.furniture.filter(f=>f.module).at(-1);const x=last?last.x+last.w/2+moduleWidth/2:moduleWidth/2+.2;
       p.furniture.push({id,kind:kind==='vanity'?'sink':'kitchen',name,x:Math.min(x,p.width-moduleWidth/2),y:p.depth-d/2-.15,w:moduleWidth,d,h,rotation:180,color:front,productId:`atelier60:module:${kind}`,module:{family:kind,front,worktop,handles}});
@@ -132,7 +132,7 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
     {tab==='modules'&&<>
       <h3>Cocinas y baños modulares</h3><p>Módulos paramétricos propios. Sus medidas y acabados se guardan por instancia; puedes combinar importaciones de fabricantes.</p>
       <label>Ancho del módulo<select aria-label="Ancho del módulo" value={moduleWidth} onChange={e=>setModuleWidth(Number(e.target.value))}>{[.3,.4,.45,.6,.8,.9,1.2].map(w=><option key={w} value={w}>{Math.round(w*100)} cm</option>)}</select></label>
-      <div className="studio-module-list">{([['base','Módulo bajo'],['wall','Módulo alto'],['column','Columna'],['sink','Fregadero'],['hob','Placa'],['oven','Horno'],['vanity','Mueble lavabo']] as const).map(([key,label])=><button key={key} disabled={busy} onClick={()=>addModule(key,label)}>Añadir {label}</button>)}</div>
+      <div className="studio-module-list">{([['base','Módulo bajo'],['wall','Módulo alto'],['column','Columna'],['sink','Fregadero'],['hob','Placa'],['oven','Horno'],['vanity','Mueble lavabo'],['hood','Campana']] as const).map(([key,label])=><button key={key} disabled={busy} onClick={()=>addModule(key,label)}>Añadir {label}</button>)}</div>
       <h4>Acabados del módulo</h4><label>Color de frentes<input type="color" aria-label="Color de frentes" value={front} onChange={e=>setFront(e.target.value)}/></label>
       <label>Encimera<select aria-label="Material de encimera" value={worktop} onChange={e=>setWorktop(e.target.value)}>{[...materialCatalog.filter(m=>m.id==='wood'||m.id==='tile'),...(project.materials??[])].map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
       <label>Tiradores<select aria-label="Tiradores de módulo" value={handles} onChange={e=>setHandles(e.target.value as ModuleSettings['handles'])}><option value="bar">Barra metálica</option><option value="none">Frente sin tirador</option></select></label>
