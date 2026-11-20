@@ -5,7 +5,7 @@
     "app": "atelier-60",
     "version": "1"
   },
-  "createdAt": "2026-11-20T20:12:48.511Z",
+  "createdAt": "2026-11-20T20:22:26.448Z",
   "units": "m",
   "upAxis": "Y",
   "handedness": "right",
@@ -13,15 +13,15 @@
   "project": {
     "id": "atelier-60-demo",
     "name": "Mi piso nórdico",
-    "contentHash": "57d41c80bf0d6666b1f76292a4768d353d41d30a41117d47c55928dc8f0254de",
+    "contentHash": "7b23a0a761eb238f1e1b2f21cda9045484fe3730cf92c4e44367caade9d0b238",
     "wallHeight": 2.55,
     "width": 10,
     "depth": 6
   },
   "geometry": {
     "file": "scene.glb",
-    "sha256": "84fdd119858dcdf8abe2351eafd5163566827d02ee981301a119089f6b3fcfa2",
-    "bytes": 7050916
+    "sha256": "5c40dada31d5904c1321314a5f94456a436195946a213b6b00cd8a494a30e393",
+    "bytes": 7358644
   },
   "rooms": [
     {
@@ -396,6 +396,18 @@
       "type": "furniture",
       "kind": "kitchen",
       "name": "Cocina lineal"
+    },
+    {
+      "id": "wall-1",
+      "type": "furniture",
+      "kind": "kitchen",
+      "name": "Mueble alto 1"
+    },
+    {
+      "id": "wall-2",
+      "type": "furniture",
+      "kind": "kitchen",
+      "name": "Mueble alto 2"
     },
     {
       "id": "fridge-1",

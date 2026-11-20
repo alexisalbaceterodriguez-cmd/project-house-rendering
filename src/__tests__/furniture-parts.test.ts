@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -84,6 +84,30 @@ describe('parametric furniture', () => {
       expect(Math.max(...p.lathe!.map(([r])=>r)),p.name).toBe(1);
       expect(Math.min(...p.lathe!.map(([,y])=>y)),p.name).toBe(0);expect(Math.max(...p.lathe!.map(([,y])=>y)),p.name).toBe(1);
     }
+  });
+
+  const moduleSizes={base:[.6,.6,.88],sink:[.8,.6,.88],hob:[.6,.6,.88],oven:[.6,.6,.88],vanity:[.6,.46,.85],wall:[.8,.35,.72],column:[.6,.6,2.1]} as const;
+  for(const [family,[w,d,h]] of Object.entries(moduleSizes))for(const handles of ['bar','none'] as const)for(const scale of [1,.75,1.5])it(`${family} module ${handles} handles at ${scale} × width stays in its footprint`, () => {
+    const width=w*scale,parts=moduleParts(family as keyof typeof moduleSizes,width,d,h,handles),[min,max]=partsBounds(parts);
+    expect(min[0]).toBeCloseTo(-width/2,9);expect(max[0]).toBeCloseTo(width/2,9);
+    expect(min[2]).toBeGreaterThanOrEqual(-d/2-1e-9);expect(max[2]).toBeLessThanOrEqual(d/2+1e-9);
+    expect(min[1]).toBeCloseTo(0,9);
+    // Hob glass, taps and vessel basins stand on the worktop, above `h`.
+    if(['sink','hob','vanity'].includes(family))expect(max[1]).toBeLessThan(h+.35);else expect(max[1]).toBeCloseTo(h,9);
+    expect(new Set(parts.map(p=>p.name)).size).toBe(parts.length);
+    for(const p of parts)expect(Math.min(...p.size)).toBeGreaterThan(0);
+    const boxes=parts.filter(p=>!p.lathe);
+    for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)for(let a=0;a<3;a++)
+      expect(overlapArea(boxes[i],boxes[j],a),`${boxes[i].name} / ${boxes[j].name} axis ${a}`).toBeLessThan(1e-9);
+    // Floor modules keep the worktop at h with its finish role; bar handles only when asked for (ovens always have one).
+    if(family!=='wall'&&family!=='column'){
+      const top=parts.filter(p=>p.role==='worktop');
+      expect(top.length).toBeGreaterThan(0);
+      for(const t of top)expect(t.position[1]+t.size[1]/2).toBeCloseTo(h,9);
+    }
+    const bars=parts.filter(p=>p.name.startsWith('Tirador')&&!p.name.includes('soporte')).map(p=>p.name);
+    if(handles==='none')expect(bars).toEqual(family==='oven'?['Tirador horno']:[]);
+    else expect(bars.length).toBeGreaterThan(0);
   });
 
   it('gives a wardrobe ~50 cm doors with 3 mm gaps and handles on the meeting edges', () => {

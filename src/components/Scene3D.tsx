@@ -16,7 +16,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -180,21 +180,15 @@ function ModelShape({item,selected}:{item:Furniture;selected:boolean}){
   const fallback=<group><Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#d2b7a4"/><Html center position={[0,item.h+.15,0]}><span className="model-unavailable">{item.name}: modelo no disponible</span></Html></group>;
   return url?<ErrorBoundary key={url} fallback={fallback}><Suspense fallback={<Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#ddd5c5"/>}><ImportedModel url={url} item={item} selected={selected}/></Suspense></ErrorBoundary>:fallback;
 }
-function ModuleModel({item}:{item:Furniture}){
-  const m=item.module!;const elevation=m.family==='wall'?1.45:0;
-  return <group position={[0,elevation,0]}>
-    <Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#ece7dd"/>
-    <Box position={[0,item.h/2,item.d/2+.012]} size={[item.w-.025,item.h-.035,.025]} color={m.front}/>
-    {m.handles==='bar'&&<Box position={[item.w*.28,item.h*.7,item.d/2+.04]} size={[.14,.018,.025]} color="#68665f" material="metal"/>}
-    {m.family!=='wall'&&m.family!=='column'&&<Box position={[0,item.h+.018,0]} size={[item.w+.025,.036,item.d+.04]} color="#c4c0b6" finishId={m.worktop}/>}
-    {(m.family==='sink'||m.family==='vanity')&&<><Box position={[0,item.h+.04,0]} size={[item.w*.65,.025,item.d*.55]} color="#b4b9b5" material="metal"/><Box position={[0,item.h+.16,-item.d*.3]} size={[.025,.27,.025]} color="#878d8a" material="metal"/></>}
-    {m.family==='hob'&&<Box position={[0,item.h+.045,0]} size={[item.w*.8,.02,item.d*.7]} color="#272a29"/>}
-    {m.family==='oven'&&<Box position={[0,item.h*.5,item.d/2+.035]} size={[item.w*.8,item.h*.65,.025]} color="#343a39"/>}
-  </group>;
+function ModuleModel({item,wood}:{item:Furniture;wood:string}){
+  const m=item.module!;
+  const parts=useMemo(()=>moduleParts(m.family,item.w,item.d,item.h,m.handles),[m.family,m.handles,item.w,item.d,item.h]);
+  // Wall cabinets hang with their underside at 1.45 m; the rest stand on the floor.
+  return <group position={[0,m.family==='wall'?1.45:0,0]}><Parts parts={parts} item={{...item,color:m.front}} wood={wood} worktop={m.worktop}/></group>;
 }
 // Parametric furniture is built from parts (src/lib/furnitureParts.ts), all inside the plan footprint.
-function Parts({parts,item,wood}:{parts:FurniturePart[];item:Furniture;wood:string}){
-  return <>{parts.map(p=><Box key={p.name} position={p.position} size={p.size} color={p.color==='item'?item.color:p.color==='wood'?wood:p.color} surface={p.surface} material={p.material} role={p.role} bevel={p.bevel} crown={p.crown} lathe={p.lathe}/>)}</>;
+function Parts({parts,item,wood,worktop}:{parts:FurniturePart[];item:Furniture;wood:string;worktop?:string}){
+  return <>{parts.map(p=><Box key={p.name} finishId={p.role==='worktop'?worktop:undefined} position={p.position} size={p.size} color={p.color==='item'?item.color:p.color==='wood'?wood:p.color} surface={p.surface} material={p.material} role={p.role} bevel={p.bevel} crown={p.crown} lathe={p.lathe}/>)}</>;
 }
 function WovenRug({item}:{item:Furniture}){
   const weave=useMemo(()=>{
@@ -243,7 +237,7 @@ function Plant({item,wood}:{item:Furniture;wood:string}){
   </>;
 }
 function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;selected:boolean}){
-  if(item.module)return <ModuleModel item={item}/>;
+  if(item.module)return <ModuleModel item={item} wood={project.palette.wood}/>;
   const {w,d,h}=item;
   const wood=project.palette.wood;
   switch(item.kind){

@@ -283,11 +283,7 @@ export function kitchenParts(w:number,d:number,h:number):FurniturePart[]{
     parts.push(turned(`Zona ${i+1}`,ring,[r,.0012,r],hx+sx2*hob/4,h+glass-.0005,sz2*hobD/4,{color:'#5d6163'}));
   });
   const tapZ=Math.max(-d/2+.035,sz-sd/2-.045),tapH=.28,spout=Math.min(.2,sz-tapZ+.02);
-  parts.push(turned('Base grifo',DISC,[.06,.012,.06],sx,h,tapZ,{color:METAL,material:'metal'}));
-  parts.push(turned('Grifo',[[0,0],[1,0],[.8,.05],[.8,1],[0,1]],[.042,tapH-.012,.042],sx,h+.012,tapZ,{color:METAL,material:'metal'}));
-  parts.push(part('Caño',[.022,.022,spout],sx,h+tapH-.034,tapZ+spout/2,{color:METAL,material:'metal',bevel:.0105}));
-  parts.push(part('Boquilla',[.024,.035,.024],sx,h+tapH-.06,tapZ+spout-.015,{color:METAL,material:'metal',bevel:.008}));
-  parts.push(part('Maneta',[.07,.012,.012],sx+.016+.035,h+tapH-.11,tapZ,{color:METAL,material:'metal',bevel:.005}));
+  parts.push(...mixer(sx,h,tapZ,tapH,spout));
   return parts;
 }
 
@@ -407,4 +403,129 @@ export function partsBounds(parts:FurniturePart[]):[Vec3,Vec3]{
   const min:Vec3=[Infinity,Infinity,Infinity],max:Vec3=[-Infinity,-Infinity,-Infinity];
   for(const p of parts)for(let a=0;a<3;a++){min[a]=Math.min(min[a],p.position[a]-p.size[a]/2);max[a]=Math.max(max[a],p.position[a]+p.size[a]/2);}
   return [min,max];
+}
+
+export type ModuleFamily='base'|'wall'|'column'|'sink'|'hob'|'oven'|'vanity';
+const VESSEL:Profile=[[0,0],[.55,0],[.62,.03],[.8,.35],[.94,.75],[1,1],[.93,1],[.88,.8],[.74,.42],[.5,.22],[0,.2]];
+const HOB_RING:Profile=[[.93,0],[1,0],[1,1],[.93,1],[.93,0]];
+/** Round mixer standing on `y` at (x, z) with a spout reaching `spout` towards +z. */
+function mixer(x:number,y:number,z:number,height:number,spout:number):FurniturePart[]{
+  const steel={color:METAL,material:'metal'} as const;
+  return [
+    turned('Base grifo',DISC,[.06,.012,.06],x,y,z,steel),
+    turned('Grifo',[[0,0],[1,0],[.8,.05],[.8,1],[0,1]],[.042,height-.012,.042],x,y+.012,z,steel),
+    part('Caño',[.022,.022,spout],x,y+height-.034,z+spout/2,{...steel,bevel:.0105}),
+    part('Boquilla',[.024,.035,.024],x,y+height-.06,z+spout-.015,{...steel,bevel:.008}),
+    part('Maneta',[.07,.012,.012],x+.051,y+height-.11,z,{...steel,bevel:.005}),
+  ];
+}
+
+/**
+ * Kitchen or bathroom module inside `w × d × h` (front +z). Floor modules stand on a recessed
+ * plinth with the worktop's top at `h`; a wall cabinet's box spans 0…h and the viewer hangs it.
+ * Fronts are `item` with 3 mm gaps; the worktop carries role `worktop` so the viewer applies the
+ * module's worktop finish. `handles: 'none'` swaps bar handles for a recessed gola channel
+ * (floor modules) or fronts that drop 2.5 cm below the box (wall cabinets); ovens keep their bar.
+ * Hob glass, taps and vessel basins stand above `h`, like the linear kitchen's.
+ */
+export function moduleParts(family:ModuleFamily,w:number,d:number,h:number,handles:'bar'|'none'='bar'):FurniturePart[]{
+  const door=.018,gap=HINGE_GAP,bar=handles==='bar',front={color:'item',bevel:.003};
+  const carcass={color:'#ebe6dc',bevel:.002},steel={color:'#a6adab',material:'metal' as const,bevel:.001};
+  const n=w>.65?2:1,parts:FurniturePart[]=[];
+  const handle=(name:string,x:number,y:number,length:number,face:number,horizontal=true)=>{if(bar)parts.push(...barHandle(name,x,y,length,face,d/2,horizontal));};
+
+  if(family==='wall'){
+    const face=bar?d/2-.022:d/2,lip=bar?0:.025,body=face-door-.002+d/2,y0=bar?gap:0;
+    parts.push(part('Cuerpo',[w,h-lip,body],0,lip,-d/2+body/2,carcass));
+    fronts(w,n).forEach(({x,size},i)=>{
+      parts.push(part(`Puerta ${i+1}`,[size,h-gap-y0,door],x,y0,face-door/2,front));
+      handle(`Tirador ${i+1}`,x,y0+.05,Math.min(.16,size*.4),face);
+    });
+    return parts;
+  }
+
+  const plinth=.1,face=d/2-.022,body=face-door-.002+d/2,zc=-d/2+body/2;
+  parts.push(part('Zócalo',[w,plinth,.018],0,0,face-.06,{color:'#c9c3b8',bevel:.002}));
+  if(family==='column'){
+    const split=plinth+(h-plinth)*.4,length=Math.min(.3,(split-plinth)*.6);
+    parts.push(part('Cuerpo',[w,h-plinth,body],0,plinth,zc,carcass));
+    fronts(w,n).forEach(({x,size},i)=>{
+      const hx=n===1||i===1?x-size/2+.04:x+size/2-.04;
+      parts.push(part(`Puerta inferior ${i+1}`,[size,split-plinth-1.5*gap,door],x,plinth+gap,face-door/2,front));
+      parts.push(part(`Puerta superior ${i+1}`,[size,h-gap-split-gap/2,door],x,split+gap/2,face-door/2,front));
+      handle(`Tirador inferior ${i+1}`,hx,split-.04-length/2,length,face,false);
+      handle(`Tirador superior ${i+1}`,hx,split+.04+length/2,length,face,false);
+    });
+    return parts;
+  }
+
+  // Floor modules: carcass, optional gola recess, fronts between the plinth and the worktop.
+  const top=.036,gola=bar?0:.035,y0=plinth+gap,y1=h-top-gola-gap,zone=y1-y0;
+  const basin=Math.min(.18,zone-.05),sw=Math.min(.5,w-.12),sd=Math.min(.4,d-.2);
+  const sz=Math.min(.02,face-door-.002-sd/2-.02),worktop={color:'#c4c0b6',role:'worktop',bevel:.003};
+  if(family==='sink'){
+    const floor=h-basin-.004,side=.018;
+    parts.push(part('Cuerpo',[w,floor-plinth,body],0,plinth,zc,carcass));
+    for(const s of [-1,1])parts.push(part(`Costado ${s<0?'izquierdo':'derecho'}`,[side,h-top-floor,body],s*(w/2-side/2),floor,zc,carcass));
+    const left=(w-sw)/2,back=sz-sd/2+d/2,frontStrip=d/2-sz-sd/2;
+    parts.push(
+      part('Encimera izquierda',[left,top,d],-w/2+left/2,h-top,0,worktop),
+      part('Encimera derecha',[left,top,d],w/2-left/2,h-top,0,worktop),
+      part('Encimera trasera',[sw,top,back],0,h-top,-d/2+back/2,{...worktop,bevel:0}),
+      part('Encimera frontal',[sw,top,frontStrip],0,h-top,d/2-frontStrip/2,{...worktop,bevel:0}),
+      part('Fondo fregadero',[sw,.004,sd],0,h-basin,sz,steel),
+      part('Pared fregadero trasera',[sw,basin-.004,.008],0,h-basin+.004,sz-sd/2+.004,steel),
+      part('Pared fregadero frontal',[sw,basin-.004,.008],0,h-basin+.004,sz+sd/2-.004,steel),
+      part('Pared fregadero izquierda',[.008,basin-.004,sd-.016],-sw/2+.004,h-basin+.004,sz,steel),
+      part('Pared fregadero derecha',[.008,basin-.004,sd-.016],sw/2-.004,h-basin+.004,sz,steel),
+      turned('Desagüe fregadero',DISC,[.07,.003,.07],0,h-basin+.003,sz,{color:'#7f8583',material:'metal'}),
+    );
+    const tapZ=Math.max(-d/2+.035,sz-sd/2-.045);
+    parts.push(...mixer(0,h,tapZ,.28,Math.min(.2,sz-tapZ+.02)));
+  }else{
+    parts.push(part('Cuerpo',[w,h-top-gola-plinth,body],0,plinth,zc,carcass));
+    if(gola)parts.push(part('Fondo gola',[w,gola,body-.03],0,h-top-gola,-d/2+(body-.03)/2,{...carcass,bevel:0}));
+    parts.push(part('Encimera',[w,top,d],0,h-top,0,worktop));
+  }
+  if(gola)parts.push(part('Perfil gola',[family==='sink'?w-.04:w-.004,.008,.028],0,h-top-gola,face-door-.016,{color:'#9a9d9b',material:'metal',bevel:.001}));
+
+  const drawers=(ratios:number[],from:number,to:number)=>{
+    const total=ratios.reduce((a,b)=>a+b,0),free=to-from-(ratios.length-1)*gap;let y=from;
+    ratios.forEach((r,i)=>{
+      const height=free*r/total;
+      parts.push(part(`Cajón ${i+1}`,[w-2*gap,height,door],0,y,face-door/2,front));
+      handle(`Tirador cajón ${i+1}`,0,y+height-.045,Math.min(.3,w*.45),face);
+      y+=height+gap;
+    });
+  };
+  if(family==='hob'){
+    drawers([.45,.33,.22],y0,y1);
+    const hob=Math.min(.58,w-.04),hobD=Math.min(.51,d-.1);
+    parts.push(part('Placa',[hob,.006,hobD],0,h,0,{color:'#262829',bevel:.003}));
+    [[-1,-1,.2],[-1,1,.16],[1,-1,.16],[1,1,.2]].forEach(([sx,sz2,size],i)=>{
+      const r=Math.min(size,hob*.42,hobD*.42);
+      parts.push(turned(`Zona ${i+1}`,HOB_RING,[r,.0012,r],sx*hob/4,h+.0055,sz2*hobD/4,{color:'#5d6163'}));
+    });
+  }else if(family==='oven'){
+    const oven=Math.min(.6,zone-.12),panel=.075,base=y1-oven;
+    drawers([1],y0,base-gap);
+    parts.push(part('Frente horno',[w-2*gap,oven,door],0,base,face-door/2,{color:'#2a2d2e',bevel:.003}));
+    parts.push(part('Cristal horno',[w*.72,oven-panel-.15,.004],0,base+.05,face+.002,{color:'#101416',material:'glass',bevel:0}));
+    parts.push(part('Pantalla horno',[.09,.026,.003],0,y1-panel/2-.013,face+.0015,{color:'#0c0f10',material:'glass',bevel:0}));
+    for(const s of [-1,1])parts.push(part(`Mando ${s<0?'izquierdo':'derecho'}`,[.036,.036,.018],s*w*.32,y1-panel/2-.018,face+.009,{color:METAL,material:'metal',bevel:.017}));
+    parts.push(...barHandle('Tirador horno',0,y1-panel-.035,w*.7,face,d/2,true));
+  }else if(family==='vanity'){
+    drawers([1,1],y0,y1);
+    const vessel=.14,basinW=Math.min(w*.7,.52),basinD=Math.min(d*.78,.4),basinZ=Math.min(.03,d/2-basinD/2-.01);
+    parts.push(turned('Lavabo',VESSEL,[basinW,vessel,basinD],0,h,basinZ,{color:CERAMIC}));
+    parts.push(turned('Desagüe',DISC,[.04,.004,.04],0,h+vessel*.2-.001,basinZ,{color:'#b9bcbb',material:'metal'}));
+    const tapZ=Math.max(-d/2+.035,basinZ-basinD/2-.04);
+    parts.push(...mixer(0,h,tapZ,vessel+.18,Math.min(.17,basinZ-tapZ)));
+  }else{
+    fronts(w,n).forEach(({x,size},i)=>{
+      parts.push(part(`Puerta ${i+1}`,[size,zone,door],x,y0,face-door/2,front));
+      handle(`Tirador ${i+1}`,x,y1-.05,Math.min(.16,size*.4),face);
+    });
+  }
+  return parts;
 }

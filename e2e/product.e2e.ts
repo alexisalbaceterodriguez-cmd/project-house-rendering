@@ -59,9 +59,9 @@ test('guarda y restaura tres cocinas con acabados distintos sin mover paredes ni
     await expect(page.getByText('Versión guardada con geometría, modelos, acabados y cámara.',{exact:true})).toBeVisible();
   }
   await page.getByRole('button',{name:'Restaurar Cocina A',exact:true}).click();await expect(page.getByText(/Restaurada «Cocina A»/)).toBeVisible();await closeStudio(page);
-  const a=await exported(page);expect(a.furniture.find((f:{module?:unknown})=>f.module)?.module.front).toBe('#aabbcc');expect(a.walls).toEqual(base.walls);expect(a.render.camera).toBeTruthy();
+  const a=await exported(page);expect(a.furniture.find((f:{productId?:string})=>f.productId==='atelier60:module:base')?.module.front).toBe('#aabbcc');expect(a.walls).toEqual(base.walls);expect(a.render.camera).toBeTruthy();
   await studio(page,'Versiones');await page.getByRole('button',{name:'Restaurar Cocina C',exact:true}).click();await expect(page.getByText(/Restaurada «Cocina C»/)).toBeVisible();await closeStudio(page);
-  const c=await exported(page);expect(c.furniture.find((f:{module?:unknown})=>f.module)?.module.front).toBe('#445566');expect(c.render.camera).toEqual(a.render.camera);expect(c.walls).toEqual(a.walls);
+  const c=await exported(page);expect(c.furniture.find((f:{productId?:string})=>f.productId==='atelier60:module:base')?.module.front).toBe('#445566');expect(c.render.camera).toEqual(a.render.camera);expect(c.walls).toEqual(a.walls);
   await page.reload();await studio(page,'Versiones');await expect(page.getByRole('button',{name:'Restaurar Cocina B',exact:true})).toBeVisible();
 });
 

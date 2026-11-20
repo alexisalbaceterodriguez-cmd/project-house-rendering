@@ -22,7 +22,7 @@ describe('demo project', () => {
   });
 
   it('keeps furniture inside the plan and apart, except chairs tucked under a table', () => {
-    const boxes=demoProject.furniture.filter(f=>f.kind!=='rug').map(f=>({id:f.id,kind:f.kind,...footprint(f)}));
+    const boxes=demoProject.furniture.filter(f=>f.kind!=='rug').map(f=>({id:f.id,kind:f.kind,hung:f.module?.family==='wall',...footprint(f)}));
     const tucked=(a:{kind:string},b:{kind:string})=>a.kind==='chair'&&['table','desk','island'].includes(b.kind);
     for(const b of boxes){
       expect(b.x0,b.id).toBeGreaterThanOrEqual(0);expect(b.y0,b.id).toBeGreaterThanOrEqual(0);
@@ -30,7 +30,8 @@ describe('demo project', () => {
     }
     for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){
       const a=boxes[i],b=boxes[j];
-      if(tucked(a,b)||tucked(b,a))continue;
+      // Wall cabinets hang above the worktop, so only other hung cabinets can clash with them.
+      if(tucked(a,b)||tucked(b,a)||a.hung!==b.hung)continue;
       const overlap=a.x0<b.x1-1e-9&&a.x1>b.x0+1e-9&&a.y0<b.y1-1e-9&&a.y1>b.y0+1e-9;
       expect(overlap,`${a.id} overlaps ${b.id}`).toBe(false);
     }

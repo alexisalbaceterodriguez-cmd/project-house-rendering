@@ -51,6 +51,9 @@ export const demoProject: Project = {
     furniture('chair-3','chair','Silla',1.8,4.33,.48,.52,.85,180,'#c4a47d'),
     furniture('chair-4','chair','Silla',2.4,4.33,.48,.52,.85,180,'#c4a47d'),
     furniture('kitchen-1','kitchen','Cocina lineal',1.43,5.62,2.7,.65,.9,180,'#ece7dd'),
+    // Wall cabinets hang at 1.45 m beside the kitchen window, over the hob end of the run.
+    {...furniture('wall-1','kitchen','Mueble alto 1',1.7,5.735,.7,.35,.72,180,'#ece7dd'),module:{family:'wall',front:'#ece7dd',worktop:'wood',handles:'bar'}},
+    {...furniture('wall-2','kitchen','Mueble alto 2',2.4,5.735,.7,.35,.72,180,'#ece7dd'),module:{family:'wall',front:'#ece7dd',worktop:'wood',handles:'bar'}},
     furniture('fridge-1','fridge','Frigorífico',3.38,5.61,.65,.65,1.9,180,'#eeeae4'),
     furniture('bed-main','bed','Cama doble',8.7,1.42,1.6,2,.55,0,'#e0d5c4'),
     furniture('night-main-l','nightstand','Mesilla izquierda',7.65,.62,.4,.36,.5,0,'#d3bb98'),
