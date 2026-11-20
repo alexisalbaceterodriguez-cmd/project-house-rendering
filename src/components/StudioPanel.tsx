@@ -66,7 +66,7 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
     const id=makeId(),h=kind==='wall'?.72:kind==='column'?2.1:.88,d=kind==='wall'?.35:.6;
     change(p=>{
       const last=p.furniture.filter(f=>f.module).at(-1);const x=last?last.x+last.w/2+moduleWidth/2:moduleWidth/2+.2;
-      p.furniture.push({id,kind:kind==='vanity'?'sink':'kitchen',name,x:Math.min(x,p.width-moduleWidth/2),y:p.depth-d/2-.15,w:moduleWidth,d,h,rotation:0,color:front,productId:`atelier60:module:${kind}`,module:{family:kind,front,worktop,handles}});
+      p.furniture.push({id,kind:kind==='vanity'?'sink':'kitchen',name,x:Math.min(x,p.width-moduleWidth/2),y:p.depth-d/2-.15,w:moduleWidth,d,h,rotation:180,color:front,productId:`atelier60:module:${kind}`,module:{family:kind,front,worktop,handles}});
     });setSelection({type:'furniture',id});setMessage(`${name} añadido. Ajusta posición y giro desde Propiedades.`);
   };
   const saveVersion=()=>run(async()=>{

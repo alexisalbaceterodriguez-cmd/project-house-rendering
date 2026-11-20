@@ -15,18 +15,20 @@ import { registerCapture, registerSceneSource } from '../lib/sceneCapture';
 import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '../lib/studioRender';
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
-import { EDGE_RADIUS, physicalBox } from '../lib/boxGeometry';
+import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
+import { bedParts, chairParts, fridgeParts, islandParts, kitchenParts, lampParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
 
 // `role` names the material (atelier:<role>) so the Cycles engine can recognise
 // window glass or door leaves after the scene is exported to glTF.
 // `surface` adds metre-scaled image maps (textile weave, wood grain) that also travel in the render GLB.
-// `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); the GLB carries the same mesh.
-function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number}) {
+// `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); `crown` domes a cushion face. The GLB carries the same mesh.
+function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
-  const geometry=useMemo(()=>physicalBox(size,bevel),[...size,bevel]);
+  const geometry=useMemo(()=>lathe?latheGeometry(lathe,size):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,lathe]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh castShadow={material!=='glass'} receiveShadow position={position}>
     <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} transparent={opacity<1} opacity={opacity}/>}
@@ -190,13 +192,9 @@ function ModuleModel({item}:{item:Furniture}){
     {m.family==='oven'&&<Box position={[0,item.h*.5,item.d/2+.035]} size={[item.w*.8,item.h*.65,.025]} color="#343a39"/>}
   </group>;
 }
-function Bed({item}:{item:Furniture}){
-  return <><Box position={[0,.20,0]} size={[item.w,.35,item.d]} color="#c0a489" bevel={EDGE_RADIUS.wood}/>
-    <Box position={[0,.44,0]} size={[item.w*.94,.16,item.d*.94]} color={item.color} surface="textile" bevel={EDGE_RADIUS.upholstery}/>
-    <Box position={[0,.55,-item.d*.36]} size={[item.w*.8,.13,item.d*.21]} color="#f8f5f0" surface="textile" bevel={EDGE_RADIUS.upholstery}/>
-    <Box position={[0,.65,-item.d*.52]} size={[item.w,.95,.095]} color="#bc9c80" bevel={EDGE_RADIUS.wood}/>
-    <Box position={[0,.54,item.d*.17]} size={[item.w*.84,.08,item.d*.40]} color="#c7b4a0" surface="textile" bevel={EDGE_RADIUS.cushion}/>
-  </>;
+// Parametric furniture is built from parts (src/lib/furnitureParts.ts), all inside the plan footprint.
+function Parts({parts,item,wood}:{parts:FurniturePart[];item:Furniture;wood:string}){
+  return <>{parts.map(p=><Box key={p.name} position={p.position} size={p.size} color={p.color==='item'?item.color:p.color==='wood'?wood:p.color} surface={p.surface} material={p.material} role={p.role} bevel={p.bevel} crown={p.crown} lathe={p.lathe}/>)}</>;
 }
 function WovenRug({item}:{item:Furniture}){
   const weave=useMemo(()=>{
@@ -232,36 +230,36 @@ function WovenRug({item}:{item:Furniture}){
     </mesh>
   </group>;
 }
+// Turned pot plus seeded foliage (src/lib/plantGeometry.ts): the same item id always grows the same plant.
+function Plant({item,wood}:{item:Furniture;wood:string}){
+  const {w,d,h}=item;
+  const foliage=useMemo(()=>plantGeometry(w,d,h,plantSoilHeight(h),seedFrom(item.id)),[w,d,h,item.id]);
+  useEffect(()=>()=>{foliage.stems.dispose();for(const g of foliage.leaves)g.dispose();},[foliage]);
+  const tones=useMemo(()=>[new THREE.Color(item.color).offsetHSL(0,0,-.05).getStyle(),new THREE.Color(item.color).offsetHSL(.02,.04,.06).getStyle()],[item.color]);
+  return <>
+    <Parts parts={plantPotParts(w,d,h)} item={item} wood={wood}/>
+    <mesh castShadow geometry={foliage.stems}><meshStandardMaterial color="#6a5d45" roughness={.9}/></mesh>
+    {foliage.leaves.map((g,i)=><mesh key={i} castShadow receiveShadow geometry={g}><meshStandardMaterial name="atelier:leaf" color={tones[i]} roughness={.55} side={THREE.DoubleSide}/></mesh>)}
+  </>;
+}
 function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;selected:boolean}){
   if(item.module)return <ModuleModel item={item}/>;
   const {w,d,h}=item;
   const wood=project.palette.wood;
   switch(item.kind){
-    case 'bed':case 'single-bed':return <Bed item={item}/>;
-    case 'sofa':return <>
-      {/* Seat sits 1.5 cm behind the arms' front face: coplanar faces z-fought (flickering patch); the arms keep the full depth. */}
-      <Box position={[0,.27,0]} size={[w,.48,d-.03]} color={item.color} surface="textile" bevel={EDGE_RADIUS.upholstery}/>
-      <Box position={[0,.60,-d*.37]} size={[w,.58,.19]} color={item.color} surface="textile" bevel={EDGE_RADIUS.upholstery}/>
-      {[-1,1].map(v=><Box key={v} position={[v*(w/2-.14),.48,0]} size={[.24,.45,d]} color="#c4b7a9" surface="textile" bevel={EDGE_RADIUS.upholstery}/>)}
-      <Box position={[0,.55,.13]} size={[w*.69,.10,d*.53]} color="#e4ddd3" surface="textile" bevel={EDGE_RADIUS.cushion}/>
-    </>;
-    case 'table':case 'desk':case 'island':return <>
-      <Box position={[0,h-.055,0]} size={[w,.11,d]} color={item.color} surface="woodgrain" bevel={EDGE_RADIUS.wood}/>
-      {[-1,1].flatMap(x=>[-1,1].map(z=><Box key={`${x}-${z}`} position={[x*(w/2-.13),h/2-.03,z*(d/2-.12)]} size={[.075,h-.1,.075]} color={wood} bevel={EDGE_RADIUS.wood}/>))}
-      {item.kind==='island'&&<Box position={[0,h*.48,0]} size={[w*.9,h*.72,d*.75]} color="#e5e0d8" bevel={EDGE_RADIUS.carcass}/>}
-    </>;
-    case 'chair':return <><Box position={[0,.45,0]} size={[w,.08,d]} color={item.color} bevel={EDGE_RADIUS.wood}/><Box position={[0,.70,-d*.43]} size={[w,.52,.08]} color={item.color} bevel={EDGE_RADIUS.wood}/>{[-1,1].flatMap(x=>[-1,1].map(z=><Box key={`${x}-${z}`} position={[x*w*.37,.22,z*d*.36]} size={[.045,.44,.045]} color={wood} bevel={EDGE_RADIUS.wood}/>))}</>;
-    case 'wardrobe':return <><Box position={[0,h/2,0]} size={[w,h,d]} color={item.color} bevel={EDGE_RADIUS.carcass}/><Box position={[0,h/2,d/2+.003]} size={[.016,h*.94,.008]} color="#b1aa9f"/><Box position={[-.08,h/2,d/2+.016]} size={[.018,.19,.018]} color="#a59b8e" material="metal"/><Box position={[.08,h/2,d/2+.016]} size={[.018,.19,.018]} color="#a59b8e" material="metal"/></>;
-    case 'kitchen':return <><Box position={[0,h/2,0]} size={[w,h,d]} color={item.color}/><Box position={[0,h-.025,0]} size={[w+.03,.05,d+.035]} color="#b2aa9e"/><Box position={[0,h*.45,d/2+.004]} size={[.02,h*.83,.015]} color="#c9c3b7"/>
-      <Box position={[-w*.24,h+.006,0]} size={[.55,.012,.37]} color="#3b3c3c"/>
-      <Box position={[w*.24,h+.005,0]} size={[.48,.012,.33]} color="#9da6a4"/>
-    </>;
-    case 'fridge':return <><Box position={[0,h/2,0]} size={[w,h,d]} color={item.color}/><Box position={[0,h*.47,d/2+.01]} size={[w*.88,.016,.012]} color="#acb1ad"/><Box position={[w*.34,h*.72,d/2+.018]} size={[.024,.18,.02]} color="#8d9390" material="metal"/></>;
-    case 'sink':return <><Box position={[0,h/2,0]} size={[w,h,d]} color={wood}/><Box position={[0,h+.02,0]} size={[w,.06,d]} color="#eeeae4"/><mesh position={[0,h+.05,0]} rotation={[-Math.PI/2,0,0]}><circleGeometry args={[Math.min(w,d)*.3,28]}/><meshStandardMaterial color="#d2d6d3"/></mesh><Box position={[0,h+.12,-d*.25]} size={[.02,.16,.02]} color="#8b9898" material="metal"/></>;
-    case 'toilet':return <><Box position={[0,.27,-d*.29]} size={[w,.5,d*.27]} color="#f5f5f2"/><mesh castShadow position={[0,.42,d*.10]}><cylinderGeometry args={[w*.42,w*.36,.13,24]}/><meshStandardMaterial color="#f6f6f4"/></mesh><mesh position={[0,.50,d*.10]}><torusGeometry args={[w*.3,.045,9,25]}/><meshStandardMaterial color="#f8f8f5"/></mesh></>;
-    case 'shower':return <><Box position={[0,.04,0]} size={[w,.08,d]} color="#f0f0ee"/><Box position={[w/2,.99,0]} size={[.018,1.95,d]} color="#b3d5db" material="glass"/><Box position={[0,.99,d/2]} size={[w,1.95,.018]} color="#b3d5db" material="glass"/><Box position={[-w*.35,1.1,-d*.35]} size={[.04,2.08,.04]} color="#8d9696" material="metal"/><mesh position={[-w*.32,2.08,-d*.35]}><cylinderGeometry args={[.13,.13,.025,24]}/><meshStandardMaterial color="#a1a5a2" metalness={.7}/></mesh></>;
-    case 'plant':return <><mesh castShadow position={[0,.24,0]}><cylinderGeometry args={[w*.27,w*.2,.48,12]}/><meshStandardMaterial color="#b7a185"/></mesh>{[[0,.75,0],[.12,.98,.12],[-.13,.95,-.08],[0,1.2,.02]].map((p,i)=><mesh key={i} position={p as [number,number,number]}><sphereGeometry args={[.23,9,7]}/><meshStandardMaterial color={i%2?'#4f8060':'#6d9875'}/></mesh>)}</>;
-    case 'lamp':return <><mesh castShadow position={[0,.04,0]}><cylinderGeometry args={[.16,.16,.08,24]}/><meshStandardMaterial color="#7b7871"/></mesh><Box position={[0,h/2,0]} size={[.027,h,.027]} color="#797875" material="metal"/><mesh position={[0,h-.12,0]}><coneGeometry args={[.27,.34,24,1,true]}/><meshStandardMaterial name="atelier:lampshade" color="#eae0cd" side={THREE.DoubleSide}/></mesh><pointLight position={[0,h-.15,0]} intensity={.13} color="#fff2d3" distance={2}/></>;
+    case 'bed':case 'single-bed':return <Parts parts={bedParts(w,d)} item={item} wood={wood}/>;
+    case 'sofa':return <Parts parts={sofaParts(w,d)} item={item} wood={wood}/>;
+    case 'table':case 'desk':return <Parts parts={tableParts(w,d,h)} item={item} wood={wood}/>;
+    case 'island':return <Parts parts={islandParts(w,d,h)} item={item} wood={wood}/>;
+    case 'chair':return <Parts parts={chairParts(w,d,h)} item={item} wood={wood}/>;
+    case 'wardrobe':return <Parts parts={wardrobeParts(w,d,h)} item={item} wood={wood}/>;
+    case 'kitchen':return <Parts parts={kitchenParts(w,d,h)} item={item} wood={wood}/>;
+    case 'fridge':return <Parts parts={fridgeParts(w,d,h)} item={item} wood={wood}/>;
+    case 'sink':return <Parts parts={sinkParts(w,d,h)} item={item} wood={wood}/>;
+    case 'toilet':return <Parts parts={toiletParts(w,d,h)} item={item} wood={wood}/>;
+    case 'shower':return <Parts parts={showerParts(w,d,h)} item={item} wood={wood}/>;
+    case 'plant':return <Plant item={item} wood={wood}/>;
+    case 'lamp':return <><Parts parts={lampParts(w,d,h)} item={item} wood={wood}/><pointLight position={[0,h-.15,0]} intensity={.13} color="#fff2d3" distance={2}/></>;
     case 'rug':return item.materialId?<Box position={[0,.014,0]} size={[w,.028,d]} color={item.color}/>:<WovenRug item={item}/>;
     case 'model':return <ModelShape item={item} selected={selected}/>;
   }

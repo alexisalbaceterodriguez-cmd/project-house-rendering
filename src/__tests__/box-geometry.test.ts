@@ -34,3 +34,55 @@ describe('physicalBox', () => {
     expect(diagonal).toBeGreaterThan(0);
   });
 });
+
+describe('cushion crown', () => {
+  it('domes the top inside the box and keeps the bottom flat', () => {
+    const size=[.6,.16,.7] as const,g=physicalBox(size,.05,{axis:'y',amount:.015});
+    const [x,y,z]=extent(g);
+    expect(x).toBeCloseTo(.6,6);expect(z).toBeCloseTo(.7,6);
+    expect(y).toBeLessThanOrEqual(.16+1e-9);expect(y).toBeGreaterThan(.16-.002);
+    g.computeBoundingBox();expect(g.boundingBox!.min.y).toBeCloseTo(-.08,6);
+  });
+
+  it('tilts top normals outward towards the edges, matching the surface', () => {
+    const g=physicalBox([.6,.16,.7],.05,{axis:'y',amount:.015}),pos=g.attributes.position,n=g.attributes.normal;
+    let checked=0;
+    for(let i=0;i<pos.count;i++){
+      const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
+      // Expected slope dL/dx = amount·2u(1 - v²)/hx, so n.x ≈ slope on the dome (≈ 3° here).
+      if(n.getY(i)>.9&&Math.abs(z)<.01&&x>.1&&x<.2&&y>0){
+        expect(n.getX(i)/n.getY(i)).toBeCloseTo(.015*2*(x/.3)/.3,3);checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+    for(let i=0;i<n.count;i++)expect(Math.hypot(n.getX(i),n.getY(i),n.getZ(i))).toBeCloseTo(1,6);
+  });
+
+  it('bulges a back cushion forward (+z) without passing its front plane', () => {
+    const g=physicalBox([.6,.36,.17],.06,{axis:'z',amount:.025});g.computeBoundingBox();
+    expect(g.boundingBox!.max.z).toBeLessThanOrEqual(.085+1e-9);
+    expect(g.boundingBox!.min.z).toBeCloseTo(-.085,6);
+  });
+});
+
+describe('latheGeometry', () => {
+  it('fills an oval envelope exactly and winds its faces outward', async () => {
+    const { latheGeometry } = await import('../lib/boxGeometry');
+    const THREE = await import('three');
+    const g=latheGeometry([[0,0],[1,0],[1,1],[0,1]],[.4,.3,.6]),box=g.boundingBox!;
+    expect(box.min.x).toBeCloseTo(-.2,6);expect(box.max.x).toBeCloseTo(.2,6);
+    expect(box.min.z).toBeCloseTo(-.3,6);expect(box.max.z).toBeCloseTo(.3,6);
+    expect(box.min.y).toBeCloseTo(-.15,6);expect(box.max.y).toBeCloseTo(.15,6);
+    const p=g.attributes.position,index=g.index!,side=new THREE.Vector3(),n=new THREE.Vector3();
+    let inward=0;
+    for(let t=0;t<index.count;t+=3){
+      const [a,b,c]=[0,1,2].map(k=>new THREE.Vector3().fromBufferAttribute(p,index.getX(t+k)));
+      n.subVectors(b,a).cross(side.subVectors(c,a));
+      const centre=a.add(b).add(c).multiplyScalar(1/3);
+      if(n.lengthSq()<1e-14||Math.abs(centre.y)>.149)continue;
+      if(n.x*centre.x+n.z*centre.z<0)inward++;
+    }
+    expect(inward).toBe(0);
+  });
+});
+

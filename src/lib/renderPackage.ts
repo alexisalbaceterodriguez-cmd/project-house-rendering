@@ -72,17 +72,37 @@ export function sunDirection(project:Project,target:Point,preset:SunPreset):Vec3
   return vec([n.x*Math.cos(el),Math.sin(el),n.y*Math.cos(el)]);
 }
 
+/**
+ * Rooms with no window of their own (bathrooms, halls): no window opening has a point just
+ * inside the room on either side of its wall. Daylight presets switch their ceiling light on,
+ * with a power proportional to the floor area, so they do not render black.
+ */
+export const LIT_ROOM_WATTS_PER_M2=4;
+export function windowlessRooms(project:Project){
+  const probes=project.openings.filter(o=>o.kind==='window').flatMap(o=>{
+    const wall=project.walls.find(w=>w.id===o.wallId);if(!wall)return [];
+    const dx=wall.b.x-wall.a.x,dy=wall.b.y-wall.a.y,length=Math.hypot(dx,dy);if(length<1e-6)return [];
+    const center={x:wall.a.x+dx*o.offset,y:wall.a.y+dy*o.offset},n={x:-dy/length,y:dx/length},step=wall.thickness/2+.1;
+    return [{x:center.x+n.x*step,y:center.y+n.y*step},{x:center.x-n.x*step,y:center.y-n.y*step}];
+  });
+  return project.rooms.flatMap(room=>{
+    const polygon=roomVertices(room);if(probes.some(p=>pointInPolygon(p,polygon)))return [];
+    const area=Math.abs(polygon.reduce((sum,p,i)=>{const q=polygon[(i+1)%polygon.length];return sum+p.x*q.y-q.x*p.y;},0))/2;
+    return [{id:room.id,power:Math.round(LIT_ROOM_WATTS_PER_M2*area)}];
+  });
+}
+
 export function buildLighting(project:Project,camera:PackageCamera,preset:CyclesPreset,exposure=0){
   const target={x:camera.target[0],y:camera.target[2]};
   const lamps=project.furniture.filter(f=>f.kind==='lamp').map(f=>({id:f.id,position:vec([f.x,Math.max(.3,f.h-.15),f.y]),power:60,temperature:2700,radius:.06}));
-  if(preset==='studio')return {preset,exposure,sun:{direction:[.3,.8,.5] as Vec3,strength:0,angle:1.5,temperature:5600},sky:{strength:1},hdri:'studio',ceiling:'off',roomLights:false,interior:[]};
+  if(preset==='studio')return {preset,exposure,sun:{direction:[.3,.8,.5] as Vec3,strength:0,angle:1.5,temperature:5600},sky:{strength:1},hdri:'studio',ceiling:'off',roomLights:false,litRooms:[] as {id:string;power:number}[],interior:[]};
   if(preset==='night'){
     const direction=sunDirection(project,target,{...SUN.day,elevation:10});
-    return {preset,exposure,sun:{direction,strength:0,angle:1.5,temperature:4000},sky:{strength:.02},hdri:null,ceiling:'auto',roomLights:true,interior:lamps};
+    return {preset,exposure,sun:{direction,strength:0,angle:1.5,temperature:4000},sky:{strength:.02},hdri:null,ceiling:'auto',roomLights:true,litRooms:[] as {id:string;power:number}[],interior:lamps};
   }
   const sun=SUN[preset];
   // windowPull (EV): the engine darkens only the sky seen through the glazing, not the light it casts.
-  return {preset,exposure,windowPull:sun.windowPull,sun:{direction:sunDirection(project,target,sun),strength:sun.strength,angle:sun.angle,temperature:sun.temperature},sky:{strength:sun.sky},hdri:null,ceiling:'auto',roomLights:false,interior:[]};
+  return {preset,exposure,windowPull:sun.windowPull,sun:{direction:sunDirection(project,target,sun),strength:sun.strength,angle:sun.angle,temperature:sun.temperature},sky:{strength:sun.sky},hdri:null,ceiling:'auto',roomLights:false,litRooms:windowlessRooms(project),interior:[]};
 }
 
 export function buildManifest(project:Project,camera:PackageCamera,options:PackageOptions,geometry:{sha256:string;bytes:number},contentHash:string,createdAt=new Date().toISOString()){

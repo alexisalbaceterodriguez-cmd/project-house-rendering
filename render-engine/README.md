@@ -79,6 +79,8 @@ El importador glTF de Blender asigna color base, metalicidad, rugosidad, normal,
 | `night` | Sin sol; lámparas del proyecto a 2700 K y relleno tenue por estancia; balance de blancos 3800 K | AgX |
 | `studio` | HDRI `public/environment/studio.hdr` del editor, sin techo | AgX |
 
+**Recintos sin ventana** (`lighting.litRooms`, lista de `{id, power}` en W; cada `id` debe existir en `rooms`): con los presets de día el editor enciende la luz de techo de los recintos que no tienen ventana propia (baños, distribuidor) con 4 W/m² a 5000 K, para que no salgan negros. De noche todos los recintos llevan el relleno tenue de siempre (1,5 W/m², 3200 K).
+
 **Window pull** (`lighting.windowPull`, 0–4 EV; por defecto 1,5 en `afternoon`/`day` y 0 en el resto): como la mezcla de exposición de un fotógrafo de interiores, el cielo se oscurece solo en los caminos que lo *ven* (cámara, a través del vidrio o en reflejos especulares) y conserva su intensidad en los rebotes difusos y rayos de sombra, de modo que la luz que entra en la sala no cambia. `result.json` incluye `image.zones` (proporción de ventana, recorte en ventana e interior y luminancias medias) cuando hay pase de ID de objeto.
 
 Calidades: `draft` 64, `standard` 256, `high` 1024 muestras con denoiser OpenImageDenoise. Opción de corregir verticales (lens shift).
@@ -91,10 +93,12 @@ Calidades: `draft` 64, `standard` 256, `high` 1024 muestras con denoiser OpenIma
 
 | Preset | Imagen | Render | Total | Luminancia media | Recortado |
 |---|---|---|---|---|---|
-| Tarde (aristas biseladas) | `nordic-living-afternoon-cycles.jpg` vs `-webgl.jpg` | 9,38 s | 10,33 s | 0,536 | 0 % (antes 11,3 % sin window pull) |
+| Tarde (tapicería por piezas) | `nordic-living-afternoon-cycles.jpg` vs `-webgl.jpg` | 9,42 s | 10,45 s | 0,535 | 0 % (antes 11,3 % sin window pull) |
+| Tarde, dormitorio principal | `nordic-bedroom-afternoon-cycles.jpg` vs `-webgl.jpg` | 10,04 s | 11,06 s | 0,400 | 0 % |
+| Tarde, baño 1 (sin ventana, luz de techo) | `nordic-bathroom-afternoon-cycles.jpg` vs `-webgl.jpg` | 16,42 s | 17,66 s | 0,637 | 0 % |
 | Noche | `nordic-living-night-cycles.jpg` | 11,22 s | 12,09 s | 0,511 | 0 % |
 
-1280 × 720, 256 muestras, OptiX en RTX 5070 Laptop, Blender 4.5.16 LTS. La mesa de centro, la lámpara y el giro del sofá de la demo se añadieron en tiempo de ejecución; no forman parte del proyecto por defecto. Desde el 20/11 el sofá, la cama, la mesa, la silla y el armario tienen aristas redondeadas dentro de sus medidas exteriores (`src/lib/boxGeometry.ts`); el GLB lleva la misma malla que el visor.
+1280 × 720, 256 muestras, OptiX en RTX 5070 Laptop, Blender 4.5.16 LTS. La mesa de centro, la lámpara y el giro del sofá de la demo se añadieron en tiempo de ejecución; no forman parte del proyecto por defecto. Desde el 20/11 el sofá, la cama, la mesa, la silla y el armario tienen aristas redondeadas dentro de sus medidas exteriores (`src/lib/boxGeometry.ts`); el GLB lleva la misma malla que el visor. El mobiliario se compone de piezas paramétricas (`src/lib/furnitureParts.ts`): zócalo, brazos, respaldo y cojines de asiento y respaldo separados con holgura de 1 cm y tapa abombada; cabecero, canapé, colchón, almohadas y edredón dentro de la huella del plano. También armario (puertas con holgura, tiradores y zócalo), mesa, isla, silla, cocina lineal (muebles bajos y altos, encimera, placa, fregadero y grifo), frigorífico, inodoro, mueble de lavabo suspendido con lavabo de sobre encimera, ducha con mampara y rociador, lámpara de pie y maceta; las piezas torneadas (taza, lavabo, grifería, pantalla, maceta) son sólidos de revolución (`latheGeometry`) y la planta tiene follaje generado de forma determinista a partir del id del objeto (`src/lib/plantGeometry.ts`), siempre dentro de la huella y la altura del plano. El frente de cada pieza mira a +z con giro 0; el proyecto de ejemplo gira los muebles apoyados en muros y=fondo o x=0 para que miren a la sala, pero los proyectos guardados conservan sus giros. Las cifras de salón y dormitorio se tomaron antes de encender la luz de techo del distribuidor en los presets de día. Siguen siendo volúmenes paramétricos: no hay costuras, arrugas ni caída de tela simuladas, y las hojas no tienen translucidez propia.
 
 ## Seguridad
 

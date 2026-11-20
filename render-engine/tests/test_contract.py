@@ -33,6 +33,16 @@ class ManifestTests(unittest.TestCase):
         with self.assertRaises(contract.PackageError):
             contract.validate_manifest(data)
 
+    def test_lit_rooms_must_name_existing_rooms(self):
+        self.assertEqual(contract.validate_manifest(self.manifest)["lighting"]["litRooms"], [])
+        data = copy.deepcopy(self.manifest)
+        data["lighting"]["litRooms"] = [{"id": "room-1", "power": 48}]
+        self.assertEqual(contract.validate_manifest(data)["lighting"]["litRooms"], [{"id": "room-1", "power": 48}])
+        for bad in ([{"id": "ghost", "power": 10}], [{"id": "room-1", "power": 9000}], ["room-1"], {"id": "room-1"}):
+            data["lighting"]["litRooms"] = bad
+            with self.assertRaises(contract.PackageError):
+                contract.validate_manifest(data)
+
     def test_rejects_wrong_format_and_version(self):
         for key, value, code in (("format", "other", "invalid_manifest"), ("schemaVersion", 2, "unsupported_version")):
             bad = copy.deepcopy(self.manifest)

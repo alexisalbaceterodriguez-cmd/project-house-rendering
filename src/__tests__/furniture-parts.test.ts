@@ -1,0 +1,145 @@
+import { describe, expect, it } from 'vitest';
+import { FACE_GAP, bedParts, chairParts, cushionCount, fridgeParts, fronts, islandParts, kitchenParts, lampParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { plantGeometry, seedFrom } from '../lib/plantGeometry';
+
+const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
+  // Faces of a and b on the same plane, perpendicular to `axis`, sharing area (z-fighting).
+  const others=[0,1,2].filter(x=>x!==axis);
+  const sameFace=[-1,1].some(sa=>[-1,1].some(sb=>sa===sb&&Math.abs(a.position[axis]+sa*a.size[axis]/2-(b.position[axis]+sb*b.size[axis]/2))<1e-6));
+  if(!sameFace)return 0;
+  return others.reduce((area,x)=>area*Math.max(0,Math.min(a.position[x]+a.size[x]/2,b.position[x]+b.size[x]/2)-Math.max(a.position[x]-a.size[x]/2,b.position[x]-b.size[x]/2)),1);
+};
+
+describe('sofaParts', () => {
+  for(const [w,d] of [[2.1,.9],[1.6,.85],[3,1]] as const)it(`fits exactly the ${w} × ${d} m footprint`, () => {
+    const parts=sofaParts(w,d),[min,max]=partsBounds(parts);
+    expect(min[0]).toBeCloseTo(-w/2,9);expect(max[0]).toBeCloseTo(w/2,9);
+    expect(min[2]).toBeCloseTo(-d/2,9);expect(max[2]).toBeCloseTo(d/2,9);
+    expect(min[1]).toBeCloseTo(0,9);expect(max[1]).toBeCloseTo(.87,9);
+    expect(parts.filter(p=>p.name.startsWith('Cojín de asiento'))).toHaveLength(cushionCount(w-2*Math.min(.2,Math.max(.12,w*.09))));
+  });
+
+  it('splits the seat into separate cushions with a 1 cm gap', () => {
+    const seats=sofaParts(2.3,.95).filter(p=>p.name.startsWith('Cojín de asiento')).sort((a,b)=>a.position[0]-b.position[0]);
+    expect(seats.length).toBe(3);
+    for(let i=1;i<seats.length;i++)expect(seats[i].position[0]-seats[i].size[0]/2-(seats[i-1].position[0]+seats[i-1].size[0]/2)).toBeCloseTo(FACE_GAP,9);
+    expect(seats.every(p=>p.crown?.axis==='y')).toBe(true);
+  });
+
+  it('never puts two part faces on the same plane', () => {
+    for(const parts of [sofaParts(2.1,.9),bedParts(1.6,2),bedParts(.9,1.9)])
+      for(let i=0;i<parts.length;i++)for(let j=i+1;j<parts.length;j++)for(let a=0;a<3;a++)
+        expect(overlapArea(parts[i],parts[j],a),`${parts[i].name} / ${parts[j].name} axis ${a}`).toBeLessThan(1e-9);
+  });
+});
+
+describe('bedParts', () => {
+  it('keeps the headboard inside the footprint and the bed within w × d', () => {
+    const [min,max]=partsBounds(bedParts(1.6,2));
+    expect(min[0]).toBeCloseTo(-.8,9);expect(max[0]).toBeCloseTo(.8,9);
+    expect(min[2]).toBeCloseTo(-1,9);expect(max[2]).toBeLessThanOrEqual(1);
+    expect(max[1]).toBeCloseTo(1.1,9);
+  });
+
+  it('uses two pillows on a double bed and one on a single bed', () => {
+    expect(bedParts(1.6,2).filter(p=>p.name.startsWith('Almohada'))).toHaveLength(2);
+    expect(bedParts(.9,1.9).filter(p=>p.name.startsWith('Almohada'))).toHaveLength(1);
+  });
+});
+
+const builders={
+  wardrobe:[wardrobeParts,[[1.5,.62,2.25],[.6,.6,2],[3,.65,2.4]]],
+  table:[tableParts,[[1.5,.85,.75],[.9,.5,.4],[1.2,.6,.76]]],
+  island:[islandParts,[[1.5,.8,.9],[2.4,1,.9]]],
+  chair:[chairParts,[[.52,.55,.85],[.45,.5,.8]]],
+  kitchen:[kitchenParts,[[2.6,.65,.9],[1.2,.6,.9]]],
+  fridge:[fridgeParts,[[.65,.65,1.9],[.6,.6,1.8]]],
+  sink:[sinkParts,[[.8,.5,.85],[.65,.5,.84],[1.2,.46,.9]]],
+  toilet:[toiletParts,[[.4,.6,.65],[.43,.65,.65],[.36,.7,.8]]],
+  shower:[showerParts,[[.9,.9,2],[.72,.74,2],[1.4,.8,2.1]]],
+  lamp:[lampParts,[[.4,.4,1.65],[.5,.45,1.4]]],
+} as const;
+
+describe('parametric furniture', () => {
+  for(const [kind,[build,sizes]] of Object.entries(builders))for(const [w,d,h] of sizes)it(`${kind} ${w} × ${d} × ${h} stays in its footprint without coplanar faces`, () => {
+    const parts=build(w,d,h),[min,max]=partsBounds(parts);
+    expect(min[0]).toBeCloseTo(-w/2,9);expect(max[0]).toBeCloseTo(w/2,9);
+    expect(min[2]).toBeGreaterThanOrEqual(-d/2-1e-9);expect(max[2]).toBeLessThanOrEqual(d/2+1e-9);
+    // The washbasin unit hangs 30 cm above the floor; its mixer, like the kitchen's hob, sink and
+    // tap, stands above `h`. The shower's glass and head stay just under `h`.
+    expect(min[1]).toBeCloseTo(kind==='sink'?.3:0,9);
+    if(kind==='kitchen'||kind==='sink')expect(max[1]).toBeLessThan(h+.3);
+    else if(kind==='shower')expect(max[1]).toBeLessThanOrEqual(h);
+    else expect(max[1]).toBeCloseTo(h,9);
+    expect(new Set(parts.map(p=>p.name)).size).toBe(parts.length);
+    for(const p of parts)expect(Math.min(...p.size)).toBeGreaterThan(0);
+    const boxes=parts.filter(p=>!p.lathe);
+    for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)for(let a=0;a<3;a++)
+      expect(overlapArea(boxes[i],boxes[j],a),`${boxes[i].name} / ${boxes[j].name} axis ${a}`).toBeLessThan(1e-9);
+    // Turned parts fill their size exactly: the profile spans radius 1 and heights 0 to 1.
+    for(const p of parts.filter(p=>p.lathe)){
+      expect(Math.max(...p.lathe!.map(([r])=>r)),p.name).toBe(1);
+      expect(Math.min(...p.lathe!.map(([,y])=>y)),p.name).toBe(0);expect(Math.max(...p.lathe!.map(([,y])=>y)),p.name).toBe(1);
+    }
+  });
+
+  it('gives a wardrobe ~50 cm doors with 3 mm gaps and handles on the meeting edges', () => {
+    const parts=wardrobeParts(1.5,.62,2.25),doors=parts.filter(p=>/^Puerta \d$/.test(p.name));
+    expect(doors).toHaveLength(3);
+    const gaps=doors.slice(1).map((door,i)=>door.position[0]-door.size[0]/2-(doors[i].position[0]+doors[i].size[0]/2));
+    gaps.forEach(gap=>expect(gap).toBeCloseTo(.003,9));
+    const bars=parts.filter(p=>/^Tirador \d$/.test(p.name)).map(p=>p.position[0]);
+    // Doors 1 and 2 are a pair (handles face each other); door 3 opens on its own.
+    expect(bars[0]).toBeGreaterThan(doors[0].position[0]);expect(bars[1]).toBeLessThan(doors[1].position[0]);
+    expect(bars[0]).toBeLessThan(bars[1]);
+    expect(parts.filter(p=>p.material==='metal').every(p=>p.position[2]+p.size[2]/2<=.31+1e-9)).toBe(true);
+  });
+
+  it('splits fronts evenly with equal gaps at both ends', () => {
+    const f=fronts(1.2,2,.003);
+    expect(f[0].size).toBeCloseTo((1.2-.009)/2,9);
+    expect(f[0].x-f[0].size/2).toBeCloseTo(-.6+.003,9);expect(f[1].x+f[1].size/2).toBeCloseTo(.6-.003,9);
+  });
+});
+
+describe('bathroom, lamp and plant', () => {
+  it('closes the toilet lid over the bowl and keeps the flush button on the cistern top', () => {
+    const parts=toiletParts(.4,.6,.65),get=(name:string)=>parts.find(p=>p.name===name)!;
+    const bowl=get('Taza'),lid=get('Tapa'),cistern=get('Tapa cisterna'),button=get('Pulsador');
+    expect(lid.position[1]-lid.size[1]/2).toBeGreaterThan(bowl.position[1]+bowl.size[1]/2);
+    expect(lid.position[2]+lid.size[2]/2).toBeLessThanOrEqual(.3);
+    expect(button.position[1]-button.size[1]/2).toBeCloseTo(cistern.position[1]+cistern.size[1]/2,9);
+    expect(cistern.position[2]).toBeLessThan(bowl.position[2]);
+  });
+
+  it('puts the washbasin on the top with the mixer spout over the basin', () => {
+    const parts=sinkParts(.65,.5,.84),get=(name:string)=>parts.find(p=>p.name===name)!;
+    const basin=get('Lavabo'),top=get('Encimera'),spout=get('Boquilla');
+    expect(basin.position[1]-basin.size[1]/2).toBeCloseTo(top.position[1]+top.size[1]/2,9);
+    expect(basin.position[1]+basin.size[1]/2).toBeCloseTo(.84,9);
+    expect(Math.abs(spout.position[2]-basin.position[2])).toBeLessThan(basin.size[2]/2);
+    expect(spout.position[1]-spout.size[1]/2).toBeGreaterThan(.84);
+  });
+
+  it('marks the lamp shade so the night render can light it', () => {
+    expect(lampParts(.4,.4,1.65).find(p=>p.name==='Pantalla')?.role).toBe('lampshade');
+  });
+
+  for(const [w,d,h] of [[.5,.5,1.2],[.55,.55,1.1],[.9,.6,1.8]] as const)it(`grows a ${w} × ${d} × ${h} m plant inside its footprint`, () => {
+    const plant=plantGeometry(w,d,h,plantSoilHeight(h),seedFrom('plant-1'));
+    const pot=partsBounds(plantPotParts(w,d,h));
+    expect(plant.leaves[0].attributes.position.count+plant.leaves[1].attributes.position.count).toBeGreaterThan(400);
+    for(const g of [plant.stems,...plant.leaves]){
+      const box=g.boundingBox!;
+      expect(box.min.x).toBeGreaterThanOrEqual(-w/2);expect(box.max.x).toBeLessThanOrEqual(w/2);
+      expect(box.min.z).toBeGreaterThanOrEqual(-d/2);expect(box.max.z).toBeLessThanOrEqual(d/2);
+      expect(box.max.y).toBeLessThanOrEqual(h);expect(box.min.y).toBeGreaterThan(pot[1][1]*.8);
+    }
+  });
+
+  it('grows the same plant from the same id and a different one from another id', () => {
+    const a=plantGeometry(.5,.5,1.2,.45,seedFrom('plant-1')),b=plantGeometry(.5,.5,1.2,.45,seedFrom('plant-1')),c=plantGeometry(.5,.5,1.2,.45,seedFrom('plant-2'));
+    expect(Array.from(a.leaves[0].attributes.position.array)).toEqual(Array.from(b.leaves[0].attributes.position.array));
+    expect(Array.from(a.leaves[0].attributes.position.array)).not.toEqual(Array.from(c.leaves[0].attributes.position.array));
+  });
+});

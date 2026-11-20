@@ -204,6 +204,22 @@ def validate_manifest(manifest) -> dict:
         "roomLights": bool(lighting.get("roomLights", False)),
         "interior": [],
     }
+    # Rooms whose ceiling light is on even by day (no window of their own): id + power in W.
+    lit_rooms = lighting.get("litRooms", [])
+    room_ids = {room["id"] for room in clean_rooms}
+    if not isinstance(lit_rooms, list) or len(lit_rooms) > 500:
+        _fail("invalid_manifest", "lighting.litRooms debe ser una lista de hasta 500 recintos.")
+    clean_lighting["litRooms"] = []
+    for i, lit in enumerate(lit_rooms):
+        if not isinstance(lit, dict):
+            _fail("invalid_manifest", f"lighting.litRooms[{i}] no es válido.")
+        room_id = _ident(lit.get("id"), f"lighting.litRooms[{i}].id")
+        if room_id not in room_ids:
+            _fail("invalid_manifest", f"lighting.litRooms[{i}].id no corresponde a ningún recinto.")
+        clean_lighting["litRooms"].append({
+            "id": room_id,
+            "power": _num(lit.get("power", 60), f"lighting.litRooms[{i}].power", 0, 5000),
+        })
     for i, light in enumerate(interior):
         if not isinstance(light, dict):
             _fail("invalid_manifest", f"lighting.interior[{i}] no es válido.")

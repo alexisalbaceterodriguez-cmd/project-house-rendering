@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoProject } from '../data/defaultProject';
-import { assemblePackage, buildManifest, crc32, mainWindow, packageKey, pointInPolygon, sha256Hex, storedZip, type PackageCamera } from '../lib/renderPackage';
+import { assemblePackage, buildManifest, crc32, LIT_ROOM_WATTS_PER_M2, mainWindow, packageKey, pointInPolygon, sha256Hex, storedZip, windowlessRooms, type PackageCamera } from '../lib/renderPackage';
 
 const camera:PackageCamera={position:[3.4,1.5,4.8],target:[1.6,1.1,1.2],fovY:55};
 const geometry={sha256:'a'.repeat(64),bytes:10};
@@ -56,6 +56,20 @@ describe('render package', () => {
     expect(sun[2]).toBeLessThan(-.5);
     // Daylight presets ask the engine to pull the window view 1.5 EV (night/studio leave it to the default 0).
     expect(manifest.lighting).toMatchObject({windowPull:1.5});
+  });
+
+  it('switches on the ceiling light of windowless rooms by day only', () => {
+    // Hall and both bathrooms have no window of their own; living room and bedrooms do.
+    const lit=windowlessRooms(demoProject);
+    expect(lit.map(r=>r.id).sort()).toEqual(['bath1','bath2','hall']);
+    expect(lit.find(r=>r.id==='bath1')!.power).toBe(Math.round(LIT_ROOM_WATTS_PER_M2*1.6*2));
+    const day=buildManifest(demoProject,camera,{preset:'afternoon',quality:'draft',width:960,height:540},geometry,'hash');
+    expect(day.lighting).toMatchObject({roomLights:false,litRooms:lit});
+    const night=buildManifest(demoProject,camera,{preset:'night',quality:'draft',width:960,height:540},geometry,'hash');
+    expect(night.lighting.litRooms).toEqual([]);
+    const glazed=structuredClone(demoProject);
+    glazed.openings.push({id:'bath1-window',wallId:'s',kind:'window',offset:.76,width:.6,height:.6,sill:1.4});
+    expect(windowlessRooms(glazed).map(r=>r.id).sort()).toEqual(['bath2','hall']);
   });
 
   it('switches presets without touching the geometry', () => {

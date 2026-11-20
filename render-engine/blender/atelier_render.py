@@ -466,9 +466,14 @@ def add_interior_lights(manifest: dict) -> int:
         obj.location = Vector(contract.to_blender(spec["position"]))
         bpy.context.scene.collection.objects.link(obj)
         count += 1
-    if lighting["roomLights"]:
+    # Day presets switch on the ceiling light of rooms without a window of their own (a bathroom
+    # or hall would otherwise render black); at night every room gets a dim fill.
+    lit = {spec["id"]: spec["power"] for spec in lighting.get("litRooms", [])}
+    if lighting["roomLights"] or lit:
         height = manifest["project"]["wallHeight"]
         for room in manifest["rooms"]:
+            if not lighting["roomLights"] and room["id"] not in lit:
+                continue
             xs = [p[0] for p in room["polygon"]]
             ys = [p[1] for p in room["polygon"]]
             w, d = max(xs) - min(xs), max(ys) - min(ys)
@@ -478,8 +483,8 @@ def add_interior_lights(manifest: dict) -> int:
             lamp.shape = "RECTANGLE"
             lamp.size, lamp.size_y = w * 0.35, d * 0.35
             # Dim ambient fill (≈1.5 W/m²): the floor lamps stay the key light at night.
-            lamp.energy = 1.5 * w * d
-            lamp.color = kelvin_to_rgb(3200)
+            lamp.energy = lit.get(room["id"], 1.5 * w * d)
+            lamp.color = kelvin_to_rgb(3200 if room["id"] not in lit else 5000)
             obj = bpy.data.objects.new(lamp.name, lamp)
             obj.location = Vector(((min(xs) + max(xs)) / 2, -(min(ys) + max(ys)) / 2, height - 0.03))
             bpy.context.scene.collection.objects.link(obj)

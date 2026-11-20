@@ -25,10 +25,10 @@
  "outputs": [
   "beauty.png"
  ],
- "renderSeconds": 9.38,
- "totalSeconds": 10.33,
+ "renderSeconds": 9.42,
+ "totalSeconds": 10.45,
  "image": {
-  "meanLuminance": 0.5362,
+  "meanLuminance": 0.5347,
   "clippedRatio": 0.0,
   "blackRatio": 0.0
  }
