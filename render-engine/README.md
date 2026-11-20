@@ -91,10 +91,10 @@ Calidades: `draft` 64, `standard` 256, `high` 1024 muestras con denoiser OpenIma
 
 | Preset | Imagen | Render | Total | Luminancia media | Recortado |
 |---|---|---|---|---|---|
-| Tarde | `nordic-living-afternoon-cycles.jpg` vs `-webgl.jpg` | 9,55 s | 10,54 s | 0,535 | 0 % (antes 11,3 % sin window pull) |
+| Tarde (aristas biseladas) | `nordic-living-afternoon-cycles.jpg` vs `-webgl.jpg` | 9,38 s | 10,33 s | 0,536 | 0 % (antes 11,3 % sin window pull) |
 | Noche | `nordic-living-night-cycles.jpg` | 11,22 s | 12,09 s | 0,511 | 0 % |
 
-1280 × 720, 256 muestras, OptiX en RTX 5070 Laptop, Blender 4.5.16 LTS. La mesa de centro, la lámpara y el giro del sofá de la demo se añadieron en tiempo de ejecución; no forman parte del proyecto por defecto.
+1280 × 720, 256 muestras, OptiX en RTX 5070 Laptop, Blender 4.5.16 LTS. La mesa de centro, la lámpara y el giro del sofá de la demo se añadieron en tiempo de ejecución; no forman parte del proyecto por defecto. Desde el 20/11 el sofá, la cama, la mesa, la silla y el armario tienen aristas redondeadas dentro de sus medidas exteriores (`src/lib/boxGeometry.ts`); el GLB lleva la misma malla que el visor.
 
 ## Seguridad
 
