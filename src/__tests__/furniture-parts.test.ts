@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, candleParts, photoFrameParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, candleParts, photoFrameParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -238,6 +238,16 @@ describe('hung furniture', () => {
     expect(furnitureElevation({kind:'radiator',h:.6},2.55)).toBeCloseTo(.12);
     expect(furnitureElevation({kind:'floating-nightstand',h:.25},2.55)).toBeCloseTo(.35);
     expect(furnitureElevation({kind:'dresser',h:.8},2.55)).toBe(0);
+  });
+});
+
+describe('handed kinds', () => {
+  it('pairs the right- and left-hand corner sofa both ways', () => {
+    expect(handOf('corner-sofa')).toBe('right');
+    expect(handOf('corner-sofa-left')).toBe('left');
+    expect(HANDED_KINDS['corner-sofa'].left).toBe('corner-sofa-left');
+    expect(HANDED_KINDS['corner-sofa-left'].right).toBe('corner-sofa');
+    expect(handOf('sofa')).toBeUndefined();
   });
 });
 

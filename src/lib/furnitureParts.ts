@@ -1,4 +1,5 @@
 import type { Crown, Profile } from './boxGeometry';
+import type { FurnitureKind } from '../types';
 
 type Vec3=[number,number,number];
 /**
@@ -1102,6 +1103,13 @@ export function cornerSofaParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Corner sofa with the chaise on −x and the arm on +x: `cornerSofaParts` mirrored across x = 0. */
+/** Kinds that come in a right- and a left-hand version, by side; the properties panel swaps between them. */
+export const HANDED_KINDS:Readonly<Record<string,{right:FurnitureKind;left:FurnitureKind}>>=(()=>{
+  const pair={right:'corner-sofa',left:'corner-sofa-left'} as const;
+  return {'corner-sofa':pair,'corner-sofa-left':pair};
+})();
+/** Side (`right` or `left`) of a handed kind, or undefined for kinds with a single hand. */
+export const handOf=(kind:string)=>{const pair=HANDED_KINDS[kind];return pair?(pair.right===kind?'right':'left'):undefined;};
 export const cornerSofaLeftParts=(w:number,d:number,h:number):FurniturePart[]=>
   cornerSofaParts(w,d,h).map(p=>({...p,position:[-p.position[0],p.position[1],p.position[2]]}));
 
