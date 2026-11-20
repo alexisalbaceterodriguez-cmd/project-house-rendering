@@ -7,7 +7,7 @@ import { furnitureCollisions } from '../lib/diagnostics';
 import type { Furniture, Point, Wall } from '../types';
 
 function iconFor(item: Furniture) {
-  if (item.kind === 'bed' || item.kind === 'single-bed') return <><rect x={-item.w*.45} y={-item.d*.44} width={item.w*.9} height={item.d*.88} rx=".09" fill="#f3efe7" stroke="#beb6aa" strokeWidth=".024"/><rect x={-item.w*.38} y={-item.d*.39} width={item.w*.76} height={Math.min(.43,item.d*.25)} rx=".06" fill="#d1c2b2"/></>;
+  if (item.kind === 'bed' || item.kind === 'single-bed' || item.kind === 'storage-bed') return <><rect x={-item.w*.45} y={-item.d*.44} width={item.w*.9} height={item.d*.88} rx=".09" fill="#f3efe7" stroke="#beb6aa" strokeWidth=".024"/><rect x={-item.w*.38} y={-item.d*.39} width={item.w*.76} height={Math.min(.43,item.d*.25)} rx=".06" fill="#d1c2b2"/></>;
   if (item.kind === 'sofa') return <><rect x={-item.w*.46} y={-item.d*.44} width={item.w*.92} height={item.d*.88} rx=".13" fill={item.color} stroke="#968877" strokeWidth=".03"/><rect x={-item.w*.4} y={-item.d*.4} width={item.w*.8} height=".17" rx=".05" fill="#b8a99b"/></>;
   if (item.kind === 'plant') return <><circle r={item.w*.4} fill="#e3d1bb"/><circle r={item.w*.3} fill="#759477"/><path d={`M 0 ${-item.w*.26} Q ${item.w*.3} 0 0 ${item.w*.25} Q ${-item.w*.3} 0 0 ${-item.w*.26}`} fill="#4f7054"/></>;
   if (item.kind === 'toilet') return <><rect x={-item.w*.4} y={-item.d*.43} width={item.w*.8} height={item.d*.28} rx=".03" fill="#e8e5df"/><ellipse cy={item.d*.09} rx={item.w*.3} ry={item.d*.28} fill="#f9f9f7" stroke="#bec6c3" strokeWidth=".025"/></>;

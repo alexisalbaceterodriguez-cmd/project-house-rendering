@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, armchairParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -27,7 +27,7 @@ describe('sofaParts', () => {
   });
 
   it('never puts two part faces on the same plane', () => {
-    for(const parts of [sofaParts(2.1,.9),bedParts(1.6,2),bedParts(.9,1.9)])
+    for(const parts of [sofaParts(2.1,.9),bedParts(1.6,2),bedParts(.9,1.9),bedParts(1.5,2,true),bedParts(.9,1.9,true)])
       for(let i=0;i<parts.length;i++)for(let j=i+1;j<parts.length;j++)for(let a=0;a<3;a++)
         expect(overlapArea(parts[i],parts[j],a),`${parts[i].name} / ${parts[j].name} axis ${a}`).toBeLessThan(1e-9);
   });
@@ -44,6 +44,16 @@ describe('bedParts', () => {
   it('uses two pillows on a double bed and one on a single bed', () => {
     expect(bedParts(1.6,2).filter(p=>p.name.startsWith('Almohada'))).toHaveLength(2);
     expect(bedParts(.9,1.9).filter(p=>p.name.startsWith('Almohada'))).toHaveLength(1);
+  });
+
+  it('replaces the legs with a plinth and two side drawers per side on the storage bed', () => {
+    const parts=bedParts(1.5,2,true),[min,max]=partsBounds(parts);
+    expect(min[0]).toBeCloseTo(-.75,9);expect(max[0]).toBeCloseTo(.75,9);expect(min[1]).toBeCloseTo(0,9);expect(max[2]).toBeLessThanOrEqual(1);
+    expect(parts.some(p=>p.name.startsWith('Pata'))).toBe(false);
+    const drawers=parts.filter(p=>p.name.startsWith('Cajón'));
+    expect(drawers).toHaveLength(4);
+    for(const p of drawers)expect(Math.abs(p.position[0])+p.size[0]/2).toBeLessThan(.75);
+    expect(new Set(parts.map(p=>p.name)).size).toBe(parts.length);
   });
 });
 
@@ -63,6 +73,10 @@ const builders={
   toilet:[toiletParts,[[.4,.6,.65],[.43,.65,.65],[.36,.7,.8]]],
   shower:[showerParts,[[.9,.9,2],[.72,.74,2],[1.4,.8,2.1]]],
   lamp:[lampParts,[[.4,.4,1.65],[.5,.45,1.4]]],
+  bench:[benchParts,[[1.2,.4,.45],[.9,.35,.42],[1.6,.45,.5]]],
+  'side-table':[sideTableParts,[[.45,.45,.55],[.35,.35,.5],[.6,.6,.65]]],
+  'coat-rack':[coatRackParts,[[.45,.45,1.75],[.35,.35,1.6],[.55,.5,1.9]]],
+  bathtub:[bathtubParts,[[1.7,.75,.58],[1.5,.7,.55],[1.9,.8,.6]]],
   'coffee-table':[coffeeTableParts,[[1,.55,.4],[.6,.6,.35],[1.4,.8,.45],[.8,.5,.22]]],
   'tv-unit':[tvUnitParts,[[1.8,.4,.45],[1.2,.38,.4],[2.4,.45,.55]]],
   tv:[tvParts,[[1.23,.05,.71],[.73,.06,.43],[1.66,.04,.95]]],

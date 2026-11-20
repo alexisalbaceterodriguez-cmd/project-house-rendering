@@ -17,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -256,7 +256,7 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
   const {w,d,h}=item;
   const wood=project.palette.wood;
   switch(item.kind){
-    case 'bed':case 'single-bed':return <Parts parts={bedParts(w,d)} item={item} wood={wood}/>;
+    case 'bed':case 'single-bed':case 'storage-bed':return <Parts parts={bedParts(w,d,item.kind==='storage-bed')} item={item} wood={wood}/>;
     case 'sofa':return <Parts parts={sofaParts(w,d)} item={item} wood={wood}/>;
     case 'table':return <Parts parts={tableParts(w,d,h)} item={item} wood={wood}/>;
     case 'desk':return <Parts parts={deskParts(w,d,h)} item={item} wood={wood}/>;
@@ -266,6 +266,10 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'coffee-table':return <Parts parts={coffeeTableParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv-unit':return <Parts parts={tvUnitParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv':return <Parts parts={tvParts(w,d,h)} item={item} wood={wood}/>;
+    case 'bench':return <Parts parts={benchParts(w,d,h)} item={item} wood={wood}/>;
+    case 'side-table':return <Parts parts={sideTableParts(w,d,h)} item={item} wood={wood}/>;
+    case 'coat-rack':return <Parts parts={coatRackParts(w,d,h)} item={item} wood={wood}/>;
+    case 'bathtub':return <Parts parts={bathtubParts(w,d,h)} item={item} wood={wood}/>;
     case 'mirror':return <Mirror item={item} wood={wood}/>;
     case 'artwork':return <Parts parts={artworkParts(w,d,h)} item={item} wood={wood}/>;
     case 'pendant':return <><Parts parts={pendantParts(w,d,h)} item={item} wood={wood}/><pointLight position={[0,pendantShadeHeight(w,h)*.35,0]} intensity={.13} color="#fff2d3" distance={2.4}/></>;

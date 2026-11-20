@@ -48,16 +48,25 @@ export function sofaParts(w:number,d:number):FurniturePart[]{
  * Parametric bed inside its footprint `w × d` (front/foot +z): wooden feet, a headboard
  * inside the footprint, an upholstered base, a separate mattress, pillows and a duvet.
  */
-export function bedParts(w:number,d:number):FurniturePart[]{
+/** Bed with a headboard and an upholstered base; `drawers` swaps the legs for a recessed plinth and two drawers per side. */
+export function bedParts(w:number,d:number,drawers=false):FurniturePart[]{
   const head=.09,leg=.1,baseTop=.34,mattressTop=.54;
   const rear=-d/2+head+FACE_GAP*.5,front=d/2-.005,depth=front-rear,z=(front+rear)/2;
   const pillows=w<1.25?1:2,pillow=(w-.14-.04*(pillows-1))/pillows;
   const duvet=Math.min(d*.62,depth-.05);
   const textile={surface:'textile'} as const;
   const parts:FurniturePart[]=[];
-  for(const x of [-1,1])for(const zz of [-1,1])parts.push(part(`Pata ${x} ${zz}`,[.05,leg,.05],x*(w/2-.08),0,zz*(d/2-.08),{color:'wood',bevel:.006}));
   parts.push(part('Cabecero',[w,.98,head],0,.12,-d/2+head/2,{color:'#bc9c80',bevel:.02}));
-  parts.push(part('Canapé',[w-2*FACE_GAP,baseTop-leg,depth],0,leg,z,{color:'#c0a489',bevel:.03}));
+  if(drawers){
+    const plinth=.06,front=.02,inset=.022,bottom=plinth+.02,top=baseTop-.02;
+    parts.push(part('Zócalo',[w-.1,plinth,depth-.1],0,0,z,{color:'#2f2c29',bevel:.003}));
+    parts.push(part('Canapé',[w-2*inset,baseTop-plinth,depth],0,plinth,z,{color:'#c0a489',bevel:.03}));
+    for(const s of [-1,1])for(const [i,f] of fronts(depth-.12,2,.004).entries())
+      parts.push(part(`Cajón ${s} ${i+1}`,[front,top-bottom,f.size],s*(w/2-inset+front/2),bottom,z+f.x,{color:'#c0a489',bevel:.006}));
+  }else{
+    for(const x of [-1,1])for(const zz of [-1,1])parts.push(part(`Pata ${x} ${zz}`,[.05,leg,.05],x*(w/2-.08),0,zz*(d/2-.08),{color:'wood',bevel:.006}));
+    parts.push(part('Canapé',[w-2*FACE_GAP,baseTop-leg,depth],0,leg,z,{color:'#c0a489',bevel:.03}));
+  }
   parts.push(part('Colchón',[w-.06,mattressTop-baseTop,depth-.04],0,baseTop,z,{color:'item',...textile,bevel:.05,crown:{axis:'y',amount:.01}}));
   for(let i=0;i<pillows;i++){
     const x=-(pillows-1)/2*(pillow+.04)+i*(pillow+.04);
@@ -719,4 +728,65 @@ export function furnitureElevation(item:{kind:string;h:number;module?:{family:Mo
     case 'tv':return Math.max(0,1.2-item.h/2);
     default:return 0;
   }
+}
+
+/**
+ * Upholstered bench inside `w × d × h`: four tapered legs, a wooden frame rail under the seat and
+ * a crowned textile cushion whose top reaches `h`.
+ */
+export function benchParts(w:number,d:number,h:number):FurniturePart[]{
+  const cushion=Math.min(.09,h*.25),frame=.05,leg=h-cushion-frame;
+  const parts:FurniturePart[]=[
+    part('Bastidor',[w,frame,d],0,leg,0,{color:'wood',surface:'woodgrain',bevel:.006}),
+    part('Cojín',[w-2*FACE_GAP,cushion,d-2*FACE_GAP],0,leg+frame,0,{color:'item',surface:'textile',bevel:.03,crown:{axis:'y',amount:.01}}),
+  ];
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(turned(`Pata ${x} ${z}`,TAPER,[.04,leg,.04],x*(w/2-.05),0,z*(d/2-.05),{color:'wood'}));
+  return parts;
+}
+
+/** Round side table inside `w × d × h`: turned top, a slim pedestal and a weighted disc foot. */
+export function sideTableParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.025,foot=.02;
+  return [
+    turned('Tablero',[[0,0],[.97,0],[1,.4],[1,1],[0,1]],[w,top,d],0,h-top,0,{color:'item',surface:'woodgrain'}),
+    turned('Pie',[[0,0],[.6,0],[.45,.5],[1,1],[0,1]],[.07,h-top-foot,.07],0,foot,0,{color:'wood'}),
+    turned('Base',DISC,[w*.6,foot,d*.6],0,0,0,{color:'#4a4743',material:'metal'}),
+  ];
+}
+
+/**
+ * Coat stand inside `w × d × h`: turned metal foot, a wooden pole and two crossed rows of
+ * rounded pegs near the top whose ends define the footprint.
+ */
+export function coatRackParts(w:number,d:number,h:number):FurniturePart[]{
+  const pole=.035,peg=.022,parts:FurniturePart[]=[
+    turned('Base',DISC,[w*.8,.025,d*.8],0,0,0,{color:'#3d3b38',material:'metal'}),
+    turned('Mástil',ROD,[pole,h-.025,pole],0,.025,0,{color:'wood'}),
+  ];
+  for(const [i,y] of [h-.12,h-.3].entries()){
+    const along=i===0;
+    for(const s of [-1,1]){
+      const length=(along?w:d)/2-pole/2+.003;
+      const centre=s*(pole/2-.003+length/2);
+      parts.push(part(`Colgador ${i+1} ${s}`,along?[length,peg,peg]:[peg,peg,length],along?centre:0,y,along?0:centre,{color:'wood',bevel:.01}));
+    }
+  }
+  return parts;
+}
+
+/**
+ * Built-in bathtub inside `w × d × h` (front apron at +z): ceramic walls with a 7 cm rim, a
+ * basin floor 10 cm up, a chrome drain at the foot end (-x) and an overflow plate above it.
+ */
+export function bathtubParts(w:number,d:number,h:number):FurniturePart[]{
+  const t=.07,base=.1,iw=w-2*t,id=d-2*t,ceramic={color:CERAMIC,bevel:.008} as const;
+  return [
+    part('Pared izquierda',[t,h,d],-(w-t)/2,0,0,ceramic),
+    part('Pared derecha',[t,h,d],(w-t)/2,0,0,ceramic),
+    part('Pared trasera',[iw,h,t],0,0,-(d-t)/2,ceramic),
+    part('Faldón',[iw,h,t],0,0,(d-t)/2,ceramic),
+    part('Fondo',[iw,base,id],0,0,0,{color:CERAMIC,bevel:0}),
+    turned('Desagüe',DISC,[.05,.004,.05],-iw/2+.12,base,0,{color:METAL,material:'metal'}),
+    part('Rebosadero',[.006,.07,.07],-w/2+t+.003,h-.16,0,{color:METAL,material:'metal',bevel:.003}),
+  ];
 }

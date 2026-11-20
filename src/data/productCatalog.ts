@@ -13,10 +13,10 @@ export type ProductSource = {
   modelUrl?: string;
 };
 export const productSources: ProductSource[] = [
-  ['sofa','Salón'],['table','Salón'],['chair','Salón'],['rug','Salón'],['bookshelf','Salón'],['armchair','Salón'],['sideboard','Salón'],['coffee-table','Salón'],['tv-unit','Salón'],['tv','Salón'],
-  ['bed','Dormitorio'],['single-bed','Dormitorio'],['wardrobe','Dormitorio'],['desk','Dormitorio'],['nightstand','Dormitorio'],
+  ['sofa','Salón'],['table','Salón'],['chair','Salón'],['rug','Salón'],['bookshelf','Salón'],['armchair','Salón'],['sideboard','Salón'],['coffee-table','Salón'],['tv-unit','Salón'],['tv','Salón'],['side-table','Salón'],['bench','Dormitorio'],['coat-rack','Decoración'],
+  ['bed','Dormitorio'],['single-bed','Dormitorio'],['storage-bed','Dormitorio'],['wardrobe','Dormitorio'],['desk','Dormitorio'],['nightstand','Dormitorio'],
   ['kitchen','Cocina'],['island','Cocina'],['fridge','Cocina'],
-  ['sink','Baño'],['toilet','Baño'],['shower','Baño'],
+  ['sink','Baño'],['toilet','Baño'],['shower','Baño'],['bathtub','Baño'],
   ['plant','Decoración'],['lamp','Decoración'],['pendant','Decoración'],['mirror','Decoración'],['artwork','Decoración'],
 ].map(([kind,category])=>({
   id:`atelier60:parametric:${kind}`,
