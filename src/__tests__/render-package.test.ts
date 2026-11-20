@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { demoProject } from '../data/defaultProject';
 import { assemblePackage, buildManifest, crc32, LIT_ROOM_WATTS_PER_M2, mainWindow, packageKey, pointInPolygon, sha256Hex, storedZip, windowlessRooms, type PackageCamera } from '../lib/renderPackage';
+import { Vector3 } from 'three';
+import { candleFlames } from '../lib/furnitureParts';
 
 const camera:PackageCamera={position:[3.4,1.5,4.8],target:[1.6,1.1,1.2],fovY:55};
 const geometry={sha256:'a'.repeat(64),bytes:10};
@@ -81,14 +83,21 @@ describe('render package', () => {
     expect(light.position[1]).toBeLessThan(.5+.48);
   });
 
-  it('lights a candle tray at night from its tallest flame, warmer and weaker than a lamp', () => {
-    const p=structuredClone(demoProject);
-    p.furniture.push({id:'cv',kind:'candles',name:'Portavelas',x:p.furniture.find(f=>f.id==='night-main-l')!.x,y:.62,w:.24,d:.16,h:.22,rotation:0,color:'#b08d57'});
+  it('lights every candle at night from its own flame, rotated with the tray, warmer and weaker than a lamp', () => {
+    const p=structuredClone(demoProject),x=p.furniture.find(f=>f.id==='night-main-l')!.x;
+    p.furniture.push({id:'cv',kind:'candles',name:'Portavelas',x,y:.62,w:.24,d:.16,h:.22,rotation:90,color:'#b08d57'});
     const night=buildManifest(p,camera,{preset:'night',quality:'draft',width:960,height:540},geometry,'hash');
-    const light=night.lighting.interior.find(l=>l.id==='cv')!;
-    expect(light.position[1]).toBeCloseTo(.5+.22-.026*.6);
-    expect(light.temperature).toBeLessThan(2700);
-    expect(light.power).toBeLessThan(10);
+    const lights=night.lighting.interior.filter(l=>l.id.startsWith('cv:'));
+    expect(lights.map(l=>l.id)).toEqual(['cv:llama-1','cv:llama-2','cv:llama-3']);
+    // Same turn as the viewer's group (rotation −90° about +y), standing on the nightstand (top at .5).
+    candleFlames(.24,.16,.22).forEach(([lx,ly,lz],i)=>{
+      const v=new Vector3(lx,ly,lz).applyAxisAngle(new Vector3(0,1,0),-Math.PI/2);
+      expect(lights[i].position[0]).toBeCloseTo(x+v.x,3);
+      expect(lights[i].position[1]).toBeCloseTo(.5+v.y,3);
+      expect(lights[i].position[2]).toBeCloseTo(.62+v.z,3);
+    });
+    expect(Math.max(...lights.map(l=>l.position[1]))).toBeCloseTo(.5+.22-.026/2,3);
+    for(const light of lights){expect(light.temperature).toBeLessThan(2700);expect(light.power).toBeLessThan(5);}
     const day=buildManifest(p,camera,{preset:'afternoon',quality:'draft',width:960,height:540},geometry,'hash');
     expect(day.lighting.interior).toEqual([]);
   });

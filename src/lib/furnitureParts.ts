@@ -1298,12 +1298,18 @@ const TRAY:Profile=[[0,0],[1,0],[1,1],[.92,1],[.9,.4],[0,.4]];
  * turned flame (role `flame`, emissive in the viewer and in Cycles) whose tip reaches `h`. */
 const FLAME:Profile=[[0,0],[.55,.08],[1,.3],[.85,.6],[.4,.88],[0,1]];
 const CANDLE={tray:.012,wick:.01,flame:.026};
-/** Height of the tallest candle's flame centre above the tray's foot (the night light sits there, see renderPackage.ts). */
-export const candleFlameY=(h:number)=>h-CANDLE.flame*.6;
+/** Candle layout inside `w × d × h`: local x and z of each candle and its height relative to the tallest. */
+const candleLayout=(w:number,d:number)=>[[1,-w*.2,-d*.12,1],[2,w*.18,-d*.08,.72],[3,w*.02,d*.18,.5]] as const;
+const candleTall=(h:number)=>h-CANDLE.tray*.4-CANDLE.wick*.6-CANDLE.flame;
+/** Local centre `[x, y, z]` of every flame of a candle tray (one night light each, see renderPackage.ts and Scene3D.tsx). */
+export function candleFlames(w:number,d:number,h:number):[number,number,number][]{
+  const {tray,wick,flame}=CANDLE,tall=candleTall(h);
+  return candleLayout(w,d).map(([,x,z,k])=>[x,tray*.4+tall*k+wick*.6+flame/2,z]);
+}
 export function candleParts(w:number,d:number,h:number):FurniturePart[]{
-  const {tray,wick,flame}=CANDLE,base=tray*.4,c=clamp(Math.min(w,d)*.3,.035,.07),tall=h-base-wick*.6-flame;
+  const {tray,wick,flame}=CANDLE,base=tray*.4,c=clamp(Math.min(w,d)*.3,.035,.07),tall=candleTall(h);
   const parts:FurniturePart[]=[turned('Bandeja',TRAY,[w,tray,d],0,0,0,{color:'item',material:'metal'})];
-  for(const [i,x,z,k] of [[1,-w*.2,-d*.12,1],[2,w*.18,-d*.08,.72],[3,w*.02,d*.18,.5]] as const){
+  for(const [i,x,z,k] of candleLayout(w,d)){
     const ch=tall*k;
     parts.push(turned(`Vela ${i}`,ROD,[c,ch,c],x,base,z,{color:'#f2ecdf'}));
     parts.push(turned(`Mecha ${i}`,ROD,[.003,wick,.003],x,base+ch,z,{color:'#2b2723'}));

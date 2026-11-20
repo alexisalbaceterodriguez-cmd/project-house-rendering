@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, candleParts, photoFrameParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, candleParts, candleFlames, photoFrameParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -278,6 +278,12 @@ describe('candle flames', () => {
       expect(flame.position[1]).toBeGreaterThan(wick.position[1]);
       expect(flame.position[1]-flame.size[1]/2).toBeLessThan(wick.position[1]+wick.size[1]/2);
     }
+  });
+
+  it('places one light at the centre of every flame', () => {
+    const flames=candleParts(.32,.2,.3).filter(p=>p.role==='flame'),lights=candleFlames(.32,.2,.3);
+    expect(lights).toHaveLength(flames.length);
+    lights.forEach((p,i)=>p.forEach((v,k)=>expect(v).toBeCloseTo(flames[i].position[k])));
   });
 });
 
