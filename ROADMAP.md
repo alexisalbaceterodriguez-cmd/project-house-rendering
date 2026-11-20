@@ -105,14 +105,14 @@ Motor local independiente en [`render-engine/`](render-engine/README.md): el edi
 | R2 | Exportación del paquete, incluidos GLB de IndexedDB | Implementado |
 | R3 | Motor Blender headless, cola, API, errores estructurados, idempotencia | Implementado (MVP local) |
 | R4 | PBR → Principled BSDF | Implementado (base): suelos, tejidos, vetas y alfombra horneados como texturas sintéticas con escala real |
-| R5 | Presets tarde/día/noche/estudio, cámara, verticales, AgX | Implementado |
+| R5 | Presets tarde/día/noche/estudio, cámara, verticales, AgX, window pull | Implementado |
 | R6 | «Generar render» → API → Cycles → galería en el editor | Implementado (local) |
 | R7 | Pases EXR float multicapa (profundidad, normal, IDs, albedo) | Implementado (base) |
 | R8 | Proveedores de IA | Pendiente |
 | R9 | Ediciones IA controladas que preservan la arquitectura | Pendiente |
 | R10 | Presentación cinematográfica (recorridos, variantes) | Pendiente |
 
-Siguiente paso: exposición de la tarde sin recortar la ventana (R5) y, después, texturas escaneadas con licencia libre para sustituir las sintéticas donde aporten realismo.
+Siguiente paso: aristas biseladas en el mobiliario del editor para que Cycles no muestre bloques, y después texturas escaneadas con licencia libre donde aporten realismo.
 
 ### Arquitectura común y secuencia
 

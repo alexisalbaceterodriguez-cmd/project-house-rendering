@@ -74,10 +74,12 @@ El importador glTF de Blender asigna color base, metalicidad, rugosidad, normal,
 
 | Preset | Luz | Cámara |
 |---|---|---|
-| `afternoon` | Cielo Nishita + sol 18°, 4700 K, portales en ventanas | AgX Medium High Contrast |
-| `day` | Cielo Nishita + sol 48°, 5600 K, portales en ventanas | AgX |
+| `afternoon` | Cielo Nishita + sol 18°, 4700 K, portales en ventanas, window pull 1,5 EV | AgX Medium High Contrast |
+| `day` | Cielo Nishita + sol 48°, 5600 K, portales en ventanas, window pull 1,5 EV | AgX |
 | `night` | Sin sol; lámparas del proyecto a 2700 K y relleno tenue por estancia; balance de blancos 3800 K | AgX |
 | `studio` | HDRI `public/environment/studio.hdr` del editor, sin techo | AgX |
+
+**Window pull** (`lighting.windowPull`, 0–4 EV; por defecto 1,5 en `afternoon`/`day` y 0 en el resto): como la mezcla de exposición de un fotógrafo de interiores, el cielo se oscurece solo en los caminos que lo *ven* (cámara, a través del vidrio o en reflejos especulares) y conserva su intensidad en los rebotes difusos y rayos de sombra, de modo que la luz que entra en la sala no cambia. `result.json` incluye `image.zones` (proporción de ventana, recorte en ventana e interior y luminancias medias) cuando hay pase de ID de objeto.
 
 Calidades: `draft` 64, `standard` 256, `high` 1024 muestras con denoiser OpenImageDenoise. Opción de corregir verticales (lens shift).
 
@@ -89,7 +91,7 @@ Calidades: `draft` 64, `standard` 256, `high` 1024 muestras con denoiser OpenIma
 
 | Preset | Imagen | Render | Total | Luminancia media | Recortado |
 |---|---|---|---|---|---|
-| Tarde | `nordic-living-afternoon-cycles.jpg` vs `-webgl.jpg` | 9,74 s | 10,64 s | 0,545 | 11,3 % (ventana) |
+| Tarde | `nordic-living-afternoon-cycles.jpg` vs `-webgl.jpg` | 9,55 s | 10,54 s | 0,535 | 0 % (antes 11,3 % sin window pull) |
 | Noche | `nordic-living-night-cycles.jpg` | 11,22 s | 12,09 s | 0,511 | 0 % |
 
 1280 × 720, 256 muestras, OptiX en RTX 5070 Laptop, Blender 4.5.16 LTS. La mesa de centro, la lámpara y el giro del sofá de la demo se añadieron en tiempo de ejecución; no forman parte del proyecto por defecto.
@@ -104,5 +106,5 @@ Calidades: `draft` 64, `standard` 256, `high` 1024 muestras con denoiser OpenIma
 ## Límites actuales
 
 - Mobiliario con la geometría simplificada del editor; texturas de suelo y textiles sintéticas (la trama textil apenas se distingue a distancia de salón).
-- La ventana de la tarde se recorta (sin exposición automática por zonas).
+- El window pull es una mezcla de exposición fija por preset, no una exposición automática por zonas; el exterior es un cielo procedimental sin paisaje.
 - Sin IA (R8/R9) ni animación (R10). Sin autenticación: uso local de un solo usuario.

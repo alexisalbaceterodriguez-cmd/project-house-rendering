@@ -10,6 +10,7 @@
  "world": {
   "world": "sky",
   "sunElevationDeg": 18.0,
+  "windowPullEV": 1.5,
   "sun": true
  },
  "ceiling": true,
@@ -25,11 +26,18 @@
   "beauty.png",
   "passes.exr"
  ],
- "renderSeconds": 9.74,
- "totalSeconds": 10.64,
+ "renderSeconds": 9.55,
+ "totalSeconds": 10.54,
  "image": {
-  "meanLuminance": 0.5447,
-  "clippedRatio": 0.1129,
-  "blackRatio": 0.0
+  "meanLuminance": 0.5351,
+  "clippedRatio": 0.0,
+  "blackRatio": 0.0,
+  "zones": {
+   "windowRatio": 0.2082,
+   "clippedWindow": 0.0001,
+   "clippedInterior": 0.0,
+   "meanInterior": 0.4452,
+   "meanWindow": 0.8772
+  }
  }
 }

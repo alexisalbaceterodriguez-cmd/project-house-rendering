@@ -54,6 +54,8 @@ describe('render package', () => {
     // Afternoon sun: low (≈18°) and outside the north window (towards -z in three space).
     expect(Math.asin(sun[1])*180/Math.PI).toBeCloseTo(18,1);
     expect(sun[2]).toBeLessThan(-.5);
+    // Daylight presets ask the engine to pull the window view 1.5 EV (night/studio leave it to the default 0).
+    expect(manifest.lighting).toMatchObject({windowPull:1.5});
   });
 
   it('switches presets without touching the geometry', () => {

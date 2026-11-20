@@ -40,6 +40,7 @@ MAX_SAMPLES = 4096
 MAX_INTERIOR_LIGHTS = 64
 MAX_OBJECTS = 20000
 LIGHTING_PRESETS = {"day", "afternoon", "night", "studio"}
+DEFAULT_WINDOW_PULL = {"afternoon": 1.5, "day": 1.5}
 QUALITIES = {"draft", "standard", "high", "custom"}
 PASSES = {"beauty", "depth", "normal", "object_id", "material_id", "albedo"}
 HDRI_WHITELIST = {"studio"}
@@ -187,6 +188,10 @@ def validate_manifest(manifest) -> dict:
     clean_lighting = {
         "preset": preset,
         "exposure": _num(lighting.get("exposure", 0), "lighting.exposure", -10, 10),
+        # Window pull (EV): darkens only the sky seen directly through the glazing,
+        # like an architectural photographer's exposure blend; room light is unchanged.
+        "windowPull": _num(lighting.get("windowPull", DEFAULT_WINDOW_PULL.get(preset, 0) if hdri is None else 0),
+                           "lighting.windowPull", 0, 4),
         "sun": {
             "direction": [v / norm for v in sun_dir],
             "strength": _num(sun.get("strength", 3), "lighting.sun.strength", 0, 100),

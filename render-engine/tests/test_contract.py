@@ -20,6 +20,19 @@ class ManifestTests(unittest.TestCase):
         self.assertAlmostEqual(sum(v * v for v in direction), 1.0, places=6)
         self.assertEqual(clean["project"]["wallHeight"], 2.5)
 
+    def test_window_pull_defaults_by_preset_and_is_bounded(self):
+        self.assertEqual(contract.validate_manifest(self.manifest)["lighting"]["windowPull"], 1.5)
+        for preset, hdri, expected in (("night", None, 0), ("studio", "studio", 0), ("day", None, 1.5)):
+            data = copy.deepcopy(self.manifest)
+            data["lighting"].update(preset=preset, hdri=hdri)
+            self.assertEqual(contract.validate_manifest(data)["lighting"]["windowPull"], expected, preset)
+        data = copy.deepcopy(self.manifest)
+        data["lighting"]["windowPull"] = 0
+        self.assertEqual(contract.validate_manifest(data)["lighting"]["windowPull"], 0)
+        data["lighting"]["windowPull"] = 9
+        with self.assertRaises(contract.PackageError):
+            contract.validate_manifest(data)
+
     def test_rejects_wrong_format_and_version(self):
         for key, value, code in (("format", "other", "invalid_manifest"), ("schemaVersion", 2, "unsupported_version")):
             bad = copy.deepcopy(self.manifest)

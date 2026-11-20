@@ -313,6 +313,35 @@ def setup_camera(manifest: dict) -> bpy.types.Object:
     return camera
 
 
+def add_window_pull(tree, background, strength: float, ev: float) -> None:
+    """Darken the sky only where it is *seen* (camera rays, also through glass or
+    in a mirror-like reflection), never where it *lights* the room.
+
+    A path that has not bounced off a diffuse surface and is not a shadow ray is a
+    view of the exterior; diffuse bounces and light-sampling shadow rays keep the
+    full sky, so interior illumination is identical to the unpulled render.
+    """
+    path = tree.nodes.new("ShaderNodeLightPath")
+    lit = tree.nodes.new("ShaderNodeMath")  # max(shadow, diffuse ray)
+    lit.operation = "MAXIMUM"
+    tree.links.new(path.outputs["Is Shadow Ray"], lit.inputs[0])
+    tree.links.new(path.outputs["Is Diffuse Ray"], lit.inputs[1])
+    bounced = tree.nodes.new("ShaderNodeMath")  # diffuse depth > 0
+    bounced.operation = "GREATER_THAN"
+    tree.links.new(path.outputs["Diffuse Depth"], bounced.inputs[0])
+    bounced.inputs[1].default_value = 0.5
+    lighting = tree.nodes.new("ShaderNodeMath")
+    lighting.operation = "MAXIMUM"
+    tree.links.new(lit.outputs[0], lighting.inputs[0])
+    tree.links.new(bounced.outputs[0], lighting.inputs[1])
+    factor = tree.nodes.new("ShaderNodeMapRange")  # 0 → pulled strength, 1 → full strength
+    factor.clamp = True
+    tree.links.new(lighting.outputs[0], factor.inputs["Value"])
+    factor.inputs["To Min"].default_value = strength * 2.0 ** -ev
+    factor.inputs["To Max"].default_value = strength
+    tree.links.new(factor.outputs["Result"], background.inputs["Strength"])
+
+
 def setup_world(manifest: dict) -> dict:
     progress("lighting")
     lighting = manifest["lighting"]
@@ -350,6 +379,10 @@ def setup_world(manifest: dict) -> dict:
         tree.links.new(sky.outputs[0], background.inputs["Color"])
         background.inputs["Strength"].default_value = lighting["sky"]["strength"]
         info["sunElevationDeg"] = round(math.degrees(sky.sun_elevation), 2)
+        pull = lighting.get("windowPull", 0)
+        if pull > 0:
+            add_window_pull(tree, background, lighting["sky"]["strength"], pull)
+            info["windowPullEV"] = pull
     if lighting["sun"]["strength"] > 0 and sun_dir.z > -0.05:
         lamp = bpy.data.lights.new("atelier_sun", type="SUN")
         lamp.energy = lighting["sun"]["strength"]
@@ -560,6 +593,50 @@ def image_stats(path: str) -> dict:
         bpy.data.images.remove(image)
 
 
+def zone_stats(job_dir: str, ids: dict) -> dict | None:
+    """Clipping split into the exterior seen through windows and the room itself.
+
+    Uses the object-ID pass of passes.exr: a pixel belongs to the window zone when
+    its first hit is a window opening (glass, frame). Returns None without that pass.
+    """
+    exr_path = os.path.join(job_dir, "passes.exr")
+    if not os.path.isfile(exr_path):
+        return None
+    try:
+        import numpy as np
+        import OpenImageIO as oiio
+
+        def read(path):
+            handle = oiio.ImageInput.open(path)
+            if handle is None:
+                raise RuntimeError(oiio.geterror())
+            try:
+                return list(handle.spec().channelnames), np.asarray(handle.read_image(format="float"))
+            finally:
+                handle.close()
+
+        names, exr = read(exr_path)
+        channel = next((i for i, n in enumerate(names) if n.endswith("IndexOB.X")), None)
+        if channel is None:
+            return None
+        index = np.rint(exr[:, :, channel]).astype(int)
+        _, png = read(os.path.join(job_dir, "beauty.png"))
+        luminance = png[:, :, 0] * 0.2126 + png[:, :, 1] * 0.7152 + png[:, :, 2] * 0.0722
+        windows = [int(k) for k, v in ids["objects"].items() if v["type"] == "opening" and v["kind"] == "window"]
+        mask = np.isin(index, windows)
+        clipped = luminance > 0.995
+        room = ~mask
+        return {
+            "windowRatio": round(float(mask.mean()), 4),
+            "clippedWindow": round(float(clipped[mask].mean()), 4) if mask.any() else 0.0,
+            "clippedInterior": round(float(clipped[room].mean()), 4) if room.any() else 0.0,
+            "meanInterior": round(float(luminance[room].mean()), 4) if room.any() else 0.0,
+            "meanWindow": round(float(luminance[mask].mean()), 4) if mask.any() else None,
+        }
+    except Exception as exc:  # diagnostic only
+        return {"error": str(exc)}
+
+
 def render(job_dir: str, manifest: dict) -> dict:
     scene = bpy.context.scene
     passes = set(manifest["render"]["passes"]) - {"beauty"}
@@ -612,6 +689,9 @@ def main() -> None:
             json.dump(ids, handle, ensure_ascii=False, indent=1)
         timings = render(job_dir, manifest)
         stats = image_stats(os.path.join(job_dir, "beauty.png"))
+        zones = zone_stats(job_dir, ids)
+        if zones:
+            stats["zones"] = zones
         result = {
             "status": "succeeded",
             "blender": bpy.app.version_string,

@@ -22,11 +22,11 @@ export type PackageOptions={preset:CyclesPreset;quality:CyclesQuality;width:numb
 export const QUALITY_SAMPLES:Record<CyclesQuality,number>={draft:64,standard:256,high:1024};
 export const presetLabels:Record<CyclesPreset,string>={afternoon:'Tarde cálida',day:'Día luminoso',night:'Noche con lámparas',studio:'Estudio HDRI'};
 
-type SunPreset={elevation:number;azimuthOffset:number;strength:number;temperature:number;sky:number;angle:number};
+type SunPreset={elevation:number;azimuthOffset:number;strength:number;temperature:number;sky:number;angle:number;windowPull:number};
 const SUN:Record<'afternoon'|'day',SunPreset>={
   // Low, warm sun raking through the main window: long soft shadows.
-  afternoon:{elevation:18,azimuthOffset:35,strength:4.5,temperature:4700,sky:.6,angle:2},
-  day:{elevation:48,azimuthOffset:20,strength:4,temperature:5600,sky:.5,angle:1.2},
+  afternoon:{elevation:18,azimuthOffset:35,strength:4.5,temperature:4700,sky:.6,angle:2,windowPull:1.5},
+  day:{elevation:48,azimuthOffset:20,strength:4,temperature:5600,sky:.5,angle:1.2,windowPull:1.5},
 };
 
 const round=(n:number,digits=4)=>Number(n.toFixed(digits));
@@ -81,7 +81,8 @@ export function buildLighting(project:Project,camera:PackageCamera,preset:Cycles
     return {preset,exposure,sun:{direction,strength:0,angle:1.5,temperature:4000},sky:{strength:.02},hdri:null,ceiling:'auto',roomLights:true,interior:lamps};
   }
   const sun=SUN[preset];
-  return {preset,exposure,sun:{direction:sunDirection(project,target,sun),strength:sun.strength,angle:sun.angle,temperature:sun.temperature},sky:{strength:sun.sky},hdri:null,ceiling:'auto',roomLights:false,interior:[]};
+  // windowPull (EV): the engine darkens only the sky seen through the glazing, not the light it casts.
+  return {preset,exposure,windowPull:sun.windowPull,sun:{direction:sunDirection(project,target,sun),strength:sun.strength,angle:sun.angle,temperature:sun.temperature},sky:{strength:sun.sky},hdri:null,ceiling:'auto',roomLights:false,interior:[]};
 }
 
 export function buildManifest(project:Project,camera:PackageCamera,options:PackageOptions,geometry:{sha256:string;bytes:number},contentHash:string,createdAt=new Date().toISOString()){

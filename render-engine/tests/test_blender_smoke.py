@@ -34,6 +34,11 @@ class BlenderSmokeTest(unittest.TestCase):
             self.assertEqual(result["materials"]["glass"], 1)
             self.assertGreater(result["image"]["meanLuminance"], 0.05, "render is black")
             self.assertLess(result["image"]["clippedRatio"], 0.5, "render is blown out")
+            # Afternoon preset applies the default window pull and reports clipping by zone.
+            self.assertEqual(result["world"]["windowPullEV"], 1.5)
+            zones = result["image"]["zones"]
+            self.assertEqual(set(zones), {"windowRatio", "clippedWindow", "clippedInterior", "meanInterior", "meanWindow"})
+            self.assertLessEqual(zones["clippedInterior"], 0.05)
             with open(os.path.join(job_dir, "beauty.png"), "rb") as handle:
                 self.assertTrue(handle.read(8).startswith(b"\x89PNG"))
             with open(os.path.join(job_dir, "passes.exr"), "rb") as handle:

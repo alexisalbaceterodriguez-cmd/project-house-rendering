@@ -478,6 +478,7 @@
   "lighting": {
     "preset": "afternoon",
     "exposure": 0,
+    "windowPull": 1.5,
     "sun": {
       "direction": [
         0.5455,
