@@ -266,4 +266,29 @@ describe('tabletop objects', () => {
     expect(tabletopSpot('table-lamp',lamp)).toBeUndefined();
     expect(tabletopSpot('chair',night)).toBeUndefined();
   });
+  it('are spread along the support beside the objects already on it', () => {
+    const desk={id:'d',kind:'desk',x:2,y:1,w:1.2,d:.6,h:.75,rotation:0};
+    const size={w:.3,d:.3};
+    const first=tabletopSpot('table-lamp',desk,[desk],size)!;
+    expect(first).toEqual({x:2,y:1,rotation:0});
+    const a={...lamp,id:'a',...first};
+    const second=tabletopSpot('vase',desk,[desk,a],size)!;
+    expect(second.x).toBeCloseTo(2.45);expect(second.y).toBeCloseTo(1);
+    const b={...lamp,id:'b',...second};
+    expect(tabletopSpot('books',desk,[desk,a,b],size)!.x).toBeCloseTo(1.55);
+    // A smaller object fits at the nearer spot, clear of the centre lamp.
+    expect(tabletopSpot('books',desk,[desk,a],{w:.1,d:.1})!.x).toBeCloseTo(2+.55*.55);
+    // With the centre lamp selected instead of the desk, the new object still goes on the desk.
+    expect(tabletopSpot('vase',a,[desk,a],size)).toEqual(second);
+    expect(tabletopSpot('vase',{...a,x:9},[desk,{...a,x:9}],size)).toBeUndefined();
+    // Objects elsewhere do not count; a turned support spreads along its own width.
+    expect(tabletopSpot('vase',desk,[desk,{...a,x:5}],size)).toEqual(first);
+    const turnedDesk={...desk,rotation:90};
+    const c={...lamp,id:'c',x:2,y:1};
+    const spot=tabletopSpot('vase',turnedDesk,[turnedDesk,c],size)!;
+    expect(spot.x).toBeCloseTo(2);expect(spot.y).toBeCloseTo(1.45);expect(spot.rotation).toBe(90);
+    // A crowded support still returns the farthest spot instead of failing.
+    const crowd=[0,.2475,-.2475,.45,-.45].map((u,i)=>({...lamp,id:`k${i}`,x:2+u,y:1}));
+    expect(tabletopSpot('vase',desk,[desk,...crowd],size)).toBeDefined();
+  });
 });

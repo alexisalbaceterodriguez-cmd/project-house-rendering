@@ -164,9 +164,9 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
   const visible=catalog.filter(o=>(filter==='Todos'||o.category===filter)&&[o.name,o.category,findProductSource(o.kind)?.reference].some(value=>value?.toLowerCase().includes(search.toLowerCase())));
   const add=(entry:typeof catalog[number])=>{
     const id=makeId();
-    // Tabletop objects (table lamp) land on the selected piece of furniture, turned like it.
+    // Tabletop objects land on the selected piece of furniture, turned like it, beside any already there.
     const selected=selection?.type==='furniture'?project.furniture.find(f=>f.id===selection.id):undefined;
-    const spot=tabletopSpot(entry.kind,selected);
+    const spot=tabletopSpot(entry.kind,selected,project.furniture,entry);
     change(p=>p.furniture.push({id,kind:entry.kind,name:entry.name,x:spot?.x??clamp(2+(p.furniture.length%5)*.22,.5,p.width-.5),y:spot?.y??clamp(2.7,.5,p.depth-.5),w:entry.w,d:entry.d,h:entry.h,rotation:spot?.rotation??0,color:entry.color,productId:findProductSource(entry.kind)?.id}));
     setSelection({type:'furniture',id}); setTool('select');setMode('split');
   };

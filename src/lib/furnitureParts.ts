@@ -1186,17 +1186,40 @@ export function placedElevation(item:Placed,furniture:readonly Placed[],wallHeig
   return TABLETOP_KINDS.has(item.kind)?supportTop(item,furniture,wallHeight):furnitureElevation(item,wallHeight);
 }
 
+/** The support whose top `item` stands on (see `supportTop`), or undefined on the floor. */
+export function supportUnder<T extends Placed>(item:Placed,furniture:readonly T[]):T|undefined{
+  let best:T|undefined,top=0;
+  for(const f of furniture){const t=supportTop(item,[f],0);if(t>top){top=t;best=f;}}
+  return best;
+}
+
 /** Whether furniture of `kind` can carry a tabletop object (see `supportTop`). */
 export const canSupport=(kind:string)=>!NO_SUPPORT.has(kind)&&!TABLETOP_KINDS.has(kind);
 
 /**
- * Plan spot for a tabletop object added while `selected` is selected: the centre of the selected
- * support, turned like it. Undefined when the new kind is not a tabletop kind or the selection
- * cannot carry one, so the caller falls back to its usual placement.
+ * Plan spot for a tabletop object of footprint `size` added while `selected` is selected, turned
+ * like the support. Tries the support's centre, then points along its width towards each end, and
+ * takes the first one clear of the tabletop objects already standing on it (footprints as circles);
+ * when none is clear, the one farthest from them. A selected tabletop object counts as its
+ * support. Undefined when the new kind is not a tabletop
+ * kind or the selection cannot carry one, so the caller falls back to its usual placement.
  */
-export function tabletopSpot(kind:string,selected:Placed|undefined):{x:number;y:number;rotation:number}|undefined{
+export function tabletopSpot(kind:string,selected:Placed|undefined,furniture:readonly Placed[]=[],size:{w:number;d:number}={w:0,d:0}):{x:number;y:number;rotation:number}|undefined{
+  // A selected tabletop object stands for the support under it, so several can be added in a row.
+  if(selected&&TABLETOP_KINDS.has(selected.kind))selected=supportUnder(selected,furniture);
   if(!TABLETOP_KINDS.has(kind)||!selected||!canSupport(selected.kind))return undefined;
-  return {x:selected.x,y:selected.y,rotation:selected.rotation};
+  const r=selected.rotation*Math.PI/180,radius=(f:{w:number;d:number})=>Math.max(f.w,f.d)/2;
+  const toWorld=(u:number)=>({x:selected.x+u*Math.cos(r),y:selected.y+u*Math.sin(r)});
+  const on=furniture.filter(f=>TABLETOP_KINDS.has(f.kind)&&f.id!==selected.id&&supportTop(f,[selected],0)>0);
+  const reach=Math.max(0,selected.w/2-size.w/2);
+  let best={...toWorld(0),gap:-Infinity};
+  for(const u of [0,reach*.55,-reach*.55,reach,-reach]){
+    const p=toWorld(u);
+    const gap=Math.min(Infinity,...on.map(f=>Math.hypot(f.x-p.x,f.y-p.y)-radius(f)-radius(size)));
+    if(gap>=0)return {...p,rotation:selected.rotation};
+    if(gap>best.gap)best={...p,gap};
+  }
+  return {x:best.x,y:best.y,rotation:selected.rotation};
 }
 
 /** Tabletop vase inside `w × d × h`: a turned ceramic body holding three dried stems up to `h`. */
