@@ -53,6 +53,8 @@ export const demoProject: Project = {
     furniture('kitchen-1','kitchen','Cocina lineal',1.43,5.62,2.7,.65,.9,180,'#ece7dd'),
     furniture('fridge-1','fridge','Frigorífico',3.38,5.61,.65,.65,1.9,180,'#eeeae4'),
     furniture('bed-main','bed','Cama doble',8.7,1.42,1.6,2,.55,0,'#e0d5c4'),
+    furniture('night-main-l','nightstand','Mesilla izquierda',7.65,.62,.4,.36,.5,0,'#d3bb98'),
+    furniture('night-main-r','nightstand','Mesilla derecha',9.7,.62,.4,.36,.5,0,'#d3bb98'),
     furniture('ward-main','wardrobe','Armario principal',7.38,2.6,1,.6,2.15,180,'#e5e0d6'),
     furniture('bed-2','single-bed','Cama individual',5.14,1.36,.9,1.9,.55,0,'#e3d8cb'),
     furniture('desk-2','desk','Escritorio',6.15,.45,1,.5,.75,0,'#c8a781'),
@@ -63,6 +65,7 @@ export const demoProject: Project = {
     furniture('sink-2','sink','Lavabo 2',8.705,5.03,.6,.5,.84,270,'#ecece8'),
     furniture('toilet-2','toilet','Inodoro 2',8.755,5.56,.4,.6,.65,270,'#f7f6f3'),
     furniture('shower-2','shower','Ducha 2',9.51,5.46,.8,.9,2,180,'#f0eeeb'),
+    furniture('shelf-1','bookshelf','Estantería',.27,2.9,.8,.32,1.9,270,'#e6e0d5'),
     furniture('plant-1','plant','Ficus',3.6,.45,.5,.5,1.2,0,'#5f8261'),
   ],
 };

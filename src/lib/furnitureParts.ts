@@ -124,6 +124,89 @@ export function tableParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /**
+ * Desk inside `w × d × h` (seat on the +z side): wood-grain top, a side panel on the left, a
+ * drawer pedestal on the right (three drawers when tall enough, else two, with horizontal bar
+ * handles) and a modesty panel at the back between them, under the top.
+ */
+export function deskParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.03,under=h-top,panel=.022,door=.018,back=-d/2+.02,face=d/2-.02;
+  const pw=clamp(w*.36,.3,.42),px=w/2-pw/2,body=face-door-.002-back;
+  const parts:FurniturePart[]=[
+    part('Tablero',[w,top,d],0,under,0,{color:'item',surface:'woodgrain',bevel:.006}),
+    part('Costado',[panel,under,face-back],-w/2+panel/2,0,(face+back)/2,{color:'item',bevel:.004}),
+    part('Cajonera',[pw,under,body],px,0,back+body/2,{color:'item',bevel:.004}),
+  ];
+  const modesty=w-panel-pw;
+  if(modesty>.05)parts.push(part('Faldón trasero',[modesty,Math.min(.35,under*.45),.018],(-w/2+panel+w/2-pw)/2,under-Math.min(.35,under*.45),back+.03,{color:'item',bevel:.003}));
+  const y0=.04,span=under-.03-y0,count=span>.45?3:2,drawer=(span-(count-1)*HINGE_GAP)/count;
+  for(let i=0;i<count;i++){
+    const bottom=y0+i*(drawer+HINGE_GAP);
+    parts.push(part(`Cajón ${i+1}`,[pw-2*HINGE_GAP,drawer,door],px,bottom,face-door/2,{color:'item',surface:'woodgrain',bevel:.003}));
+    parts.push(...barHandle(`Tirador ${i+1}`,px,bottom+drawer-.045,Math.min(.16,pw*.5),face,d/2-.002,true));
+  }
+  return parts;
+}
+
+/**
+ * Bedside table inside `w × d × h`: four short wooden feet, a carcass with one or two drawers
+ * (two when the front is taller than 30 cm) carrying horizontal bar handles, and a wood-grain
+ * top that defines the full footprint and height.
+ */
+export function nightstandParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.025,leg=.035,feet=clamp(h*.2,.06,.14),under=h-top,door=.018,back=-d/2+.01,face=d/2-.02;
+  const bw=w-.02,body=face-door-.002-back,zc=back+body/2;
+  const parts:FurniturePart[]=[
+    part('Tablero',[w,top,d],0,under,0,{color:'item',surface:'woodgrain',bevel:.005}),
+    part('Cuerpo',[bw,under-feet,body],0,feet,zc,{color:'item',bevel:.004}),
+  ];
+  const lx=bw/2-.02-leg/2,lz=body/2-.02-leg/2;
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(part(`Pata ${x} ${z}`,[leg,feet,leg],x*lx,0,zc+z*lz,{color:'wood',bevel:.004}));
+  const span=under-feet-2*HINGE_GAP,count=span>.3?2:1,drawer=(span-(count-1)*HINGE_GAP)/count;
+  for(let i=0;i<count;i++){
+    const bottom=feet+HINGE_GAP+i*(drawer+HINGE_GAP);
+    parts.push(part(`Cajón ${i+1}`,[bw-2*HINGE_GAP,drawer,door],0,bottom,face-door/2,{color:'item',surface:'woodgrain',bevel:.003}));
+    parts.push(...barHandle(`Tirador ${i+1}`,0,bottom+drawer/2,Math.min(.12,bw*.4),face,d/2-.002,true));
+  }
+  return parts;
+}
+
+const BOOK_COLORS=['#7d8a7a','#b9a07a','#5e6b78','#c9bfae','#8c5e4a','#d7cfbf','#46504a'];
+
+/**
+ * Open bookshelf inside `w × d × h`: full-height side panels, a recessed plinth, top, bottom
+ * and evenly spaced shelves about every 36 cm, a thin back panel and rows of books on
+ * alternate shelves (deterministic sizes and colours, always clear of the shelf above).
+ */
+export function bookshelfParts(w:number,d:number,h:number):FurniturePart[]{
+  const panel=.022,plinth=.07,back=.008,inner=w-2*panel,sd=d-.01-back,sz=-d/2+back+sd/2;
+  const parts:FurniturePart[]=[
+    part('Costado izquierdo',[panel,h,d],-w/2+panel/2,0,0,{color:'item',bevel:.003}),
+    part('Costado derecho',[panel,h,d],w/2-panel/2,0,0,{color:'item',bevel:.003}),
+    part('Zócalo',[inner,plinth,.018],0,0,d/2-.04,{color:'item',bevel:.002}),
+    part('Trasera',[inner,h-plinth-panel,back],0,plinth,-d/2+back/2,{color:'item',bevel:0}),
+    part('Base',[inner,panel,sd],0,plinth,sz,{color:'item',bevel:.002}),
+    part('Techo',[inner,panel,sd],0,h-panel,sz,{color:'item',bevel:.002}),
+  ];
+  const free=Math.max(0,h-plinth-2*panel),bays=clamp(Math.round(free/.36),1,8);
+  const gap=(free-(bays-1)*panel)/bays;
+  for(let i=1;i<bays;i++)parts.push(part(`Balda ${i}`,[inner,panel,sd],0,plinth+panel+i*gap+(i-1)*panel,sz,{color:'item',bevel:.002}));
+  let seed=0;
+  for(let bay=0;bay<bays;bay+=2){
+    const floor=plinth+panel+bay*(gap+panel),room=gap-.03;
+    if(room<.12)continue;
+    const end=-inner/2+inner*.62;
+    let x=-inner/2+.02;
+    while(x<end){
+      const k=seed++,thick=.025+(k*7%5)*.006,tall=Math.min(room,.17+(k*5%4)*.03),deep=Math.min(sd-.02,.15+(k*3%3)*.02);
+      if(x+thick>inner/2-.02)break;
+      parts.push(part(`Libro ${bay+1}.${k}`,[thick,tall,deep],x+thick/2,floor,sz+sd/2-.015-deep/2,{color:BOOK_COLORS[k%BOOK_COLORS.length],bevel:.002}));
+      x+=thick;
+    }
+  }
+  return parts;
+}
+
+/**
  * Kitchen island inside `w × d × h`: worktop over the whole footprint, a carcass that leaves a
  * knee space for stools on the +z side, door fronts on the -z (kitchen) side and a recessed plinth.
  */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, bedParts, chairParts, cushionCount, fridgeParts, fronts, islandParts, kitchenParts, lampParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -50,6 +50,9 @@ describe('bedParts', () => {
 const builders={
   wardrobe:[wardrobeParts,[[1.5,.62,2.25],[.6,.6,2],[3,.65,2.4]]],
   table:[tableParts,[[1.5,.85,.75],[.9,.5,.4],[1.2,.6,.76]]],
+  desk:[deskParts,[[1,.5,.75],[1.4,.7,.76],[.9,.5,.74],[1.6,.8,.6]]],
+  nightstand:[nightstandParts,[[.45,.38,.52],[.6,.45,.6],[.35,.3,.4]]],
+  bookshelf:[bookshelfParts,[[.8,.32,1.9],[1.2,.4,2.2],[.6,.25,.9],[.4,.3,.35]]],
   island:[islandParts,[[1.5,.8,.9],[2.4,1,.9]]],
   chair:[chairParts,[[.52,.55,.85],[.45,.5,.8]]],
   kitchen:[kitchenParts,[[2.6,.65,.9],[1.2,.6,.9]]],

@@ -5,7 +5,7 @@
     "app": "atelier-60",
     "version": "1"
   },
-  "createdAt": "2026-11-20T19:52:48.335Z",
+  "createdAt": "2026-11-20T20:12:26.860Z",
   "units": "m",
   "upAxis": "Y",
   "handedness": "right",
@@ -13,15 +13,15 @@
   "project": {
     "id": "atelier-60-demo",
     "name": "Mi piso nórdico",
-    "contentHash": "3397940ecebc7df35f9721bfa65cc361497b8739f63be5db31db99b218040ad8",
+    "contentHash": "c7fa691099c18256ef27883612df3adaf42d6c17f0a512f7e64428564fa1b535",
     "wallHeight": 2.55,
     "width": 10,
     "depth": 6
   },
   "geometry": {
     "file": "scene.glb",
-    "sha256": "86ae9a74cd035c34fc83476ee69993e5640a0d469040c5f8dfcbe81fb9f61dc6",
-    "bytes": 5647756
+    "sha256": "3ef1fffe7dc1375117c0b36bb4ae50c7e49604d7d47c628ee3bad6f91db7fdbf",
+    "bytes": 7050916
   },
   "rooms": [
     {
@@ -410,6 +410,18 @@
       "name": "Cama doble"
     },
     {
+      "id": "night-main-l",
+      "type": "furniture",
+      "kind": "nightstand",
+      "name": "Mesilla izquierda"
+    },
+    {
+      "id": "night-main-r",
+      "type": "furniture",
+      "kind": "nightstand",
+      "name": "Mesilla derecha"
+    },
+    {
       "id": "ward-main",
       "type": "furniture",
       "kind": "wardrobe",
@@ -468,6 +480,12 @@
       "type": "furniture",
       "kind": "shower",
       "name": "Ducha 2"
+    },
+    {
+      "id": "shelf-1",
+      "type": "furniture",
+      "kind": "bookshelf",
+      "name": "Estantería"
     },
     {
       "id": "plant-1",

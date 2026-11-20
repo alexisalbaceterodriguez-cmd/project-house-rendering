@@ -16,7 +16,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, fridgeParts, islandParts, kitchenParts, lampParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -249,7 +249,10 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
   switch(item.kind){
     case 'bed':case 'single-bed':return <Parts parts={bedParts(w,d)} item={item} wood={wood}/>;
     case 'sofa':return <Parts parts={sofaParts(w,d)} item={item} wood={wood}/>;
-    case 'table':case 'desk':return <Parts parts={tableParts(w,d,h)} item={item} wood={wood}/>;
+    case 'table':return <Parts parts={tableParts(w,d,h)} item={item} wood={wood}/>;
+    case 'desk':return <Parts parts={deskParts(w,d,h)} item={item} wood={wood}/>;
+    case 'nightstand':return <Parts parts={nightstandParts(w,d,h)} item={item} wood={wood}/>;
+    case 'bookshelf':return <Parts parts={bookshelfParts(w,d,h)} item={item} wood={wood}/>;
     case 'island':return <Parts parts={islandParts(w,d,h)} item={item} wood={wood}/>;
     case 'chair':return <Parts parts={chairParts(w,d,h)} item={item} wood={wood}/>;
     case 'wardrobe':return <Parts parts={wardrobeParts(w,d,h)} item={item} wood={wood}/>;

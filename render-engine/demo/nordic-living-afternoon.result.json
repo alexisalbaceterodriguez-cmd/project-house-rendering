@@ -20,16 +20,16 @@
   "glass": 9,
   "doors": 7,
   "shades": 0,
-  "translucent": 3
+  "translucent": 2
  },
- "objects": 54,
+ "objects": 56,
  "outputs": [
   "beauty.png"
  ],
- "renderSeconds": 13.74,
- "totalSeconds": 15.24,
+ "renderSeconds": 13.68,
+ "totalSeconds": 15.53,
  "image": {
-  "meanLuminance": 0.5548,
+  "meanLuminance": 0.5407,
   "clippedRatio": 0.0,
   "blackRatio": 0.0
  }

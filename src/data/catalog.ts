@@ -9,6 +9,8 @@ export const catalog: CatalogItem[] = [
   {kind:'single-bed', name:'Cama individual',w:.9,d:1.9,h:.55,color:'#e2d7ca',icon:'▣',category:'Dormitorio'},
   {kind:'wardrobe', name:'Armario',w:1.5,d:.62,h:2.25,color:'#e4dfd4',icon:'▥',category:'Dormitorio'},
   {kind:'desk', name:'Escritorio',w:1.2,d:.6,h:.76,color:'#c5a27b',icon:'▤',category:'Dormitorio'},
+  {kind:'nightstand', name:'Mesilla de noche',w:.45,d:.38,h:.52,color:'#d6bf9e',icon:'▭',category:'Dormitorio'},
+  {kind:'bookshelf', name:'Estantería',w:.8,d:.32,h:1.9,color:'#e3ddd2',icon:'☰',category:'Salón'},
   {kind:'kitchen', name:'Módulo de cocina',w:2.6,d:.65,h:.9,color:'#ede9e1',icon:'▤',category:'Cocina'},
   {kind:'island', name:'Isla de cocina',w:1.5,d:.8,h:.9,color:'#e8e4dc',icon:'▦',category:'Cocina'},
   {kind:'sink', name:'Mueble lavabo',w:.8,d:.5,h:.85,color:'#ede9e1',icon:'◍',category:'Baño'},

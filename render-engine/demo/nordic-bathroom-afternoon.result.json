@@ -22,12 +22,12 @@
   "shades": 0,
   "translucent": 2
  },
- "objects": 52,
+ "objects": 55,
  "outputs": [
   "beauty.png"
  ],
- "renderSeconds": 20.86,
- "totalSeconds": 22.33,
+ "renderSeconds": 21.26,
+ "totalSeconds": 22.99,
  "image": {
   "meanLuminance": 0.6366,
   "clippedRatio": 0.0,
