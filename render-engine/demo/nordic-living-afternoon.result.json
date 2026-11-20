@@ -25,11 +25,11 @@
   "beauty.png",
   "passes.exr"
  ],
- "renderSeconds": 9.75,
- "totalSeconds": 10.6,
+ "renderSeconds": 9.74,
+ "totalSeconds": 10.64,
  "image": {
-  "meanLuminance": 0.5726,
-  "clippedRatio": 0.1128,
+  "meanLuminance": 0.5447,
+  "clippedRatio": 0.1129,
   "blackRatio": 0.0
  }
 }

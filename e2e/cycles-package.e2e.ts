@@ -50,6 +50,14 @@ test('exporta el paquete de render Cycles con geometría GLB, IDs estables y avi
   for(const item of furniture)expect(json).toContain(`"atelierId":"${item.id}"`);
   expect(json).toContain('"atelierType":"wall"');
   expect(json).not.toContain('renderExclude');
+  // R4: floor, textile and grain patterns travel as metre-scaled image maps (not WebGL-only shaders).
+  const gltf=JSON.parse(json);
+  const floor=gltf.materials.find((m:{name?:string})=>m.name==='atelier:floor-oak');
+  expect(floor?.pbrMetallicRoughness.baseColorTexture.extensions.KHR_texture_transform.scale[0]).toBeCloseTo(1/1.52,3);
+  expect(floor?.normalTexture).toBeDefined();
+  expect(floor?.pbrMetallicRoughness.metallicRoughnessTexture).toBeDefined();
+  expect(gltf.materials.some((m:{name?:string;normalTexture?:unknown})=>m.name==='atelier:textile'&&m.normalTexture)).toBe(true);
+  expect(gltf.images.length).toBeGreaterThanOrEqual(6);
   // WebGL reference at the same aspect ratio as the requested render.
   const preview=files['preview.png'];
   expect(preview.readUInt32BE(16)/preview.readUInt32BE(20)).toBeCloseTo(960/540,2);

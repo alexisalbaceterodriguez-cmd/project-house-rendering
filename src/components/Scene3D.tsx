@@ -14,11 +14,14 @@ import PbrSurface, { usePbrMaps } from './PbrSurface';
 import { registerCapture, registerSceneSource } from '../lib/sceneCapture';
 import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '../lib/studioRender';
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
+import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 const SurfaceContext=createContext<string|undefined>(undefined);
+function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
 
 // `role` names the material (atelier:<role>) so the Cycles engine can recognise
 // window glass or door leaves after the scene is exported to glTF.
-function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string;role?:string}) {
+// `surface` adds metre-scaled image maps (textile weave, wood grain) that also travel in the render GLB.
+function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
   const geometry=useMemo(()=>{
@@ -31,7 +34,7 @@ function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,ro
   },[...size]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh castShadow={material!=='glass'} receiveShadow position={position}>
-    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} transparent={opacity<1} opacity={opacity}/>}
+    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} transparent={opacity<1} opacity={opacity}/>}
   </mesh>;
 }
 function FloorSurface({room}:{room:Project['rooms'][number]}){
@@ -54,7 +57,8 @@ function FloorSurface({room}:{room:Project['rooms'][number]}){
   },[room]);
   return <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[0,.021,0]} userData={{atelierId:room.id,atelierType:'room',atelierKind:room.kind}}>
     <shapeGeometry args={[shape]}/>
-    <Suspense fallback={<meshStandardMaterial color={finish.color}/>}><PbrSurface id={room.materialId} color={finish.color}/></Suspense>
+    {room.materialId?<Suspense fallback={<meshStandardMaterial color={finish.color}/>}><PbrSurface id={room.materialId} color={finish.color}/></Suspense>
+      :<meshStandardMaterial name={`atelier:floor-${room.floor}`} color="#ffffff" roughness={1} metalness={0} {...textureProps(`floor:${floors[room.floor]?room.floor:'oak'}`)}/>}
   </mesh>;
 }
 function WallModel({wall,project,cutaway,selected}:{wall:Wall;project:Project;cutaway:boolean;selected:boolean}){
@@ -193,10 +197,10 @@ function ModuleModel({item}:{item:Furniture}){
 }
 function Bed({item}:{item:Furniture}){
   return <><Box position={[0,.20,0]} size={[item.w,.35,item.d]} color="#c0a489"/>
-    <Box position={[0,.44,0]} size={[item.w*.94,.16,item.d*.94]} color={item.color}/>
-    <Box position={[0,.55,-item.d*.36]} size={[item.w*.8,.13,item.d*.21]} color="#f8f5f0"/>
+    <Box position={[0,.44,0]} size={[item.w*.94,.16,item.d*.94]} color={item.color} surface="textile"/>
+    <Box position={[0,.55,-item.d*.36]} size={[item.w*.8,.13,item.d*.21]} color="#f8f5f0" surface="textile"/>
     <Box position={[0,.65,-item.d*.52]} size={[item.w,.95,.095]} color="#bc9c80"/>
-    <Box position={[0,.54,item.d*.17]} size={[item.w*.84,.08,item.d*.40]} color="#c7b4a0"/>
+    <Box position={[0,.54,item.d*.17]} size={[item.w*.84,.08,item.d*.40]} color="#c7b4a0" surface="textile"/>
   </>;
 }
 function WovenRug({item}:{item:Furniture}){
@@ -210,21 +214,26 @@ function WovenRug({item}:{item:Furniture}){
       const i=(y*size+x)*4;
       pixels.set([shade,shade,shade,255],i);
     }
-    const texture=new THREE.DataTexture(pixels,size,size);
-    texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
-    texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;
-    texture.magFilter=THREE.LinearFilter;texture.anisotropy=4;texture.needsUpdate=true;
-    return texture;
+    // A normal map (core glTF) instead of a bump map so the weave relief reaches Cycles.
+    const height=new Float32Array(size*size);for(let i=0;i<height.length;i++)height[i]=pixels[i*4]/255;
+    const make=(data:Uint8Array,srgb:boolean)=>{
+      const texture=new THREE.DataTexture(data,size,size);
+      texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.colorSpace=srgb?THREE.SRGBColorSpace:THREE.NoColorSpace;
+      texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;
+      texture.magFilter=THREE.LinearFilter;texture.anisotropy=4;texture.needsUpdate=true;
+      return texture;
+    };
+    return {map:make(pixels,true),normal:make(heightToNormal(height,size,1.6),false)};
   },[]);
-  useEffect(()=>()=>weave.dispose(),[weave]);
-  weave.repeat.set(item.w/.22,item.d/.22);
+  useEffect(()=>()=>{weave.map.dispose();weave.normal.dispose();},[weave]);
+  for(const texture of [weave.map,weave.normal])texture.repeat.set(item.w/.22,item.d/.22);
   const border=Math.min(.035,item.w*.05,item.d*.05);
   const top=.028;
   return <group>
     <Box position={[0,top/2,0]} size={[item.w,top,item.d]} color={item.color}/>
     <mesh receiveShadow position={[0,top+.0005,0]} rotation={[-Math.PI/2,0,0]}>
       <planeGeometry args={[item.w-border*2,item.d-border*2]}/>
-      <meshStandardMaterial color={item.color} map={weave} bumpMap={weave} bumpScale={.001} roughness={.97}/>
+      <meshStandardMaterial name="atelier:rug-weave" color={item.color} map={weave.map} normalMap={weave.normal} roughness={.97}/>
     </mesh>
   </group>;
 }
@@ -235,13 +244,13 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
   switch(item.kind){
     case 'bed':case 'single-bed':return <Bed item={item}/>;
     case 'sofa':return <>
-      <Box position={[0,.27,0]} size={[w,.48,d]} color={item.color}/>
-      <Box position={[0,.60,-d*.37]} size={[w,.58,.19]} color={item.color}/>
-      {[-1,1].map(v=><Box key={v} position={[v*(w/2-.14),.48,0]} size={[.24,.45,d]} color="#c4b7a9"/>)}
-      <Box position={[0,.55,.13]} size={[w*.69,.10,d*.53]} color="#e4ddd3"/>
+      <Box position={[0,.27,0]} size={[w,.48,d]} color={item.color} surface="textile"/>
+      <Box position={[0,.60,-d*.37]} size={[w,.58,.19]} color={item.color} surface="textile"/>
+      {[-1,1].map(v=><Box key={v} position={[v*(w/2-.14),.48,0]} size={[.24,.45,d]} color="#c4b7a9" surface="textile"/>)}
+      <Box position={[0,.55,.13]} size={[w*.69,.10,d*.53]} color="#e4ddd3" surface="textile"/>
     </>;
     case 'table':case 'desk':case 'island':return <>
-      <Box position={[0,h-.055,0]} size={[w,.11,d]} color={item.color}/>
+      <Box position={[0,h-.055,0]} size={[w,.11,d]} color={item.color} surface="woodgrain"/>
       {[-1,1].flatMap(x=>[-1,1].map(z=><Box key={`${x}-${z}`} position={[x*(w/2-.13),h/2-.03,z*(d/2-.12)]} size={[.075,h-.1,.075]} color={wood}/>))}
       {item.kind==='island'&&<Box position={[0,h*.48,0]} size={[w*.9,h*.72,d*.75]} color="#e5e0d8"/>}
     </>;

@@ -67,7 +67,8 @@ El importador glTF de Blender asigna color base, metalicidad, rugosidad, normal,
 
 - Vidrio de ventanas: Principled con transmisión 1, IOR 1,5 y rugosidad 0 (el material WebGL es una aproximación translúcida).
 - Pantallas de lámpara: emisión cálida solo con el preset Noche.
-- Diferencias conocidas: los patrones sintéticos del visor (tramas de alfombra, vetas) solo llegan si están horneados como textura; los sombreadores personalizados de WebGL no se trasladan.
+- Patrones del visor horneados (`src/lib/surfaceTextures.ts`): suelos sin material de biblioteca, tejidos de sofá y cama, vetas de encimeras y trama de alfombra viajan en el GLB como color sRGB (JPEG) + normal + rugosidad, con escala real en metros por `KHR_texture_transform`; el importador los conecta mediante nodos Mapping. Son texturas sintéticas deterministas, no escaneadas.
+- Diferencias conocidas: los sombreadores personalizados de WebGL que no se hornean no se trasladan.
 
 ## Presets
 
@@ -88,8 +89,8 @@ Calidades: `draft` 64, `standard` 256, `high` 1024 muestras con denoiser OpenIma
 
 | Preset | Imagen | Render | Total | Luminancia media | Recortado |
 |---|---|---|---|---|---|
-| Tarde | `nordic-living-afternoon-cycles.jpg` vs `-webgl.jpg` | 9,75 s | 10,6 s | 0,573 | 11,3 % (ventana) |
-| Noche | `nordic-living-night-cycles.jpg` | 11,67 s | 12,52 s | 0,544 | 0 % |
+| Tarde | `nordic-living-afternoon-cycles.jpg` vs `-webgl.jpg` | 9,74 s | 10,64 s | 0,545 | 11,3 % (ventana) |
+| Noche | `nordic-living-night-cycles.jpg` | 11,22 s | 12,09 s | 0,511 | 0 % |
 
 1280 × 720, 256 muestras, OptiX en RTX 5070 Laptop, Blender 4.5.16 LTS. La mesa de centro, la lámpara y el giro del sofá de la demo se añadieron en tiempo de ejecución; no forman parte del proyecto por defecto.
 
@@ -102,6 +103,6 @@ Calidades: `draft` 64, `standard` 256, `high` 1024 muestras con denoiser OpenIma
 
 ## Límites actuales
 
-- Mobiliario con la geometría simplificada del editor; texturas de suelo y textiles aún poco diferenciadas en Cycles.
+- Mobiliario con la geometría simplificada del editor; texturas de suelo y textiles sintéticas (la trama textil apenas se distingue a distancia de salón).
 - La ventana de la tarde se recorta (sin exposición automática por zonas).
 - Sin IA (R8/R9) ni animación (R10). Sin autenticación: uso local de un solo usuario.
