@@ -1,5 +1,6 @@
 import type { Point, Project } from '../types';
 import { roomVertices } from './topology';
+import { furnitureElevation, pendantShadeHeight } from './furnitureParts';
 
 /**
  * Render package (`atelier-render-package` v1): the contract between the editor and
@@ -94,7 +95,8 @@ export function windowlessRooms(project:Project){
 
 export function buildLighting(project:Project,camera:PackageCamera,preset:CyclesPreset,exposure=0){
   const target={x:camera.target[0],y:camera.target[2]};
-  const lamps=project.furniture.filter(f=>f.kind==='lamp').map(f=>({id:f.id,position:vec([f.x,Math.max(.3,f.h-.15),f.y]),power:60,temperature:2700,radius:.06}));
+  // Floor lamps light from under the shade's top; pendants from inside their bell (furnitureElevation).
+  const lamps=project.furniture.filter(f=>f.kind==='lamp'||f.kind==='pendant').map(f=>({id:f.id,position:vec([f.x,f.kind==='pendant'?furnitureElevation(f,project.wallHeight)+pendantShadeHeight(f.w,f.h)*.35:Math.max(.3,f.h-.15),f.y]),power:60,temperature:2700,radius:.06}));
   if(preset==='studio')return {preset,exposure,sun:{direction:[.3,.8,.5] as Vec3,strength:0,angle:1.5,temperature:5600},sky:{strength:1},hdri:'studio',ceiling:'off',roomLights:false,litRooms:[] as {id:string;power:number}[],interior:[]};
   if(preset==='night'){
     const direction=sunDirection(project,target,{...SUN.day,elevation:10});

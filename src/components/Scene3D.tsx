@@ -1,5 +1,6 @@
 import { createContext, Suspense, useContext, useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, SoftShadows, useGLTF, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -16,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -25,13 +26,13 @@ function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metaln
 // window glass or door leaves after the scene is exported to glTF.
 // `surface` adds metre-scaled image maps (textile weave, wood grain) that also travel in the render GLB.
 // `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); `crown` domes a cushion face. The GLB carries the same mesh.
-function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile}) {
+function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
   const geometry=useMemo(()=>lathe?latheGeometry(lathe,size):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,lathe]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <mesh castShadow={material!=='glass'} receiveShadow position={position}>
-    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity}/>}
+    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity}/>}
   </mesh>;
 }
 function FloorSurface({room}:{room:Project['rooms'][number]}){
@@ -224,6 +225,20 @@ function WovenRug({item}:{item:Furniture}){
     </mesh>
   </group>;
 }
+// The viewer's environment map is not the room, so a mirror reflects the scene through a planar
+// Reflector laid 0.5 mm over its glass. It is excluded from the render GLB, where Cycles traces
+// the metal glass (material `mirror`) itself.
+function Mirror({item,wood}:{item:Furniture;wood:string}){
+  const parts=useMemo(()=>mirrorParts(item.w,item.d,item.h),[item.w,item.d,item.h]);
+  const glass=parts.find(p=>p.name==='Luna')!;
+  const reflector=useMemo(()=>{
+    const [gw,gh]=glass.size,scale=640/Math.max(gw,gh);
+    const r=new Reflector(new THREE.PlaneGeometry(gw,gh),{textureWidth:Math.round(gw*scale),textureHeight:Math.round(gh*scale),color:0x8a8d8c});
+    r.userData.renderExclude=true;return r;
+  },[glass.size[0],glass.size[1]]);
+  useEffect(()=>()=>{reflector.geometry.dispose();reflector.dispose();},[reflector]);
+  return <><Parts parts={parts} item={item} wood={wood}/><primitive object={reflector} position={[glass.position[0],glass.position[1],glass.position[2]+glass.size[2]/2+.0005]}/></>;
+}
 // Turned pot plus seeded foliage (src/lib/plantGeometry.ts): the same item id always grows the same plant.
 function Plant({item,wood}:{item:Furniture;wood:string}){
   const {w,d,h}=item;
@@ -248,6 +263,12 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'nightstand':return <Parts parts={nightstandParts(w,d,h)} item={item} wood={wood}/>;
     case 'armchair':return <Parts parts={armchairParts(w,d,h)} item={item} wood={wood}/>;
     case 'sideboard':return <Parts parts={sideboardParts(w,d,h)} item={item} wood={wood}/>;
+    case 'coffee-table':return <Parts parts={coffeeTableParts(w,d,h)} item={item} wood={wood}/>;
+    case 'tv-unit':return <Parts parts={tvUnitParts(w,d,h)} item={item} wood={wood}/>;
+    case 'tv':return <Parts parts={tvParts(w,d,h)} item={item} wood={wood}/>;
+    case 'mirror':return <Mirror item={item} wood={wood}/>;
+    case 'artwork':return <Parts parts={artworkParts(w,d,h)} item={item} wood={wood}/>;
+    case 'pendant':return <><Parts parts={pendantParts(w,d,h)} item={item} wood={wood}/><pointLight position={[0,pendantShadeHeight(w,h)*.35,0]} intensity={.13} color="#fff2d3" distance={2.4}/></>;
     case 'bookshelf':return <Parts parts={bookshelfParts(w,d,h)} item={item} wood={wood}/>;
     case 'island':return <Parts parts={islandParts(w,d,h)} item={item} wood={wood}/>;
     case 'chair':return <Parts parts={chairParts(w,d,h)} item={item} wood={wood}/>;
@@ -265,15 +286,15 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
 }
 function ObjectModel({item,project,selected,onSelect}:{item:Furniture;project:Project;selected:boolean;onSelect:()=>void}){
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]} userData={{atelierId:item.id,atelierType:'furniture',atelierKind:item.kind}} onClick={e=>{e.stopPropagation();onSelect();}} onPointerOver={()=>{document.body.style.cursor='pointer';}} onPointerOut={()=>{document.body.style.cursor='';}}>
-    <SurfaceContext.Provider value={item.materialId}><FurnitureShape item={item} project={project} selected={selected}/></SurfaceContext.Provider>
+    <SurfaceContext.Provider value={item.materialId}><group position={[0,item.module?0:furnitureElevation(item,project.wallHeight),0]}><FurnitureShape item={item} project={project} selected={selected}/></group></SurfaceContext.Provider>
     {selected&&<mesh userData={{editorOverlay:true}} rotation={[-Math.PI/2,0,0]} position={[0,.03,0]}><ringGeometry args={[Math.max(item.w,item.d)*.66,Math.max(item.w,item.d)*.68,40]}/><meshBasicMaterial color="#2b9071" side={THREE.DoubleSide}/></mesh>}
   </group>;
 }
 // Approximate near-floor occlusion from the placed footprint. Unlike a projected
 // key-light shadow it stays under the furniture as the studio light rotates.
-function FloorContact({item}:{item:Furniture}){
+function FloorContact({item,wallHeight}:{item:Furniture;wallHeight:number}){
   const lift=Math.max(0,item.modelElevation??0);
-  if(item.kind==='rug'||(item.module&&moduleHangHeight(item.module.family)>0)||lift>=.45)return null;
+  if(item.kind==='rug'||furnitureElevation(item,wallHeight)>0||lift>=.45)return null;
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]}>
     <mesh raycast={()=>{}} userData={{renderExclude:true}} position={[item.modelOffsetX??0,.031,item.modelOffsetZ??0]} rotation={[-Math.PI/2,0,0]} scale={[item.w*1.45,item.d*1.45,1]}>
       <planeGeometry/>
@@ -424,7 +445,7 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       </>}
       {(subject?[subject]:project.furniture).map(item=><ObjectModel key={item.id} item={item} project={project} selected={selection?.type==='furniture'&&selection.id===item.id} onSelect={()=>setSelection({type:'furniture',id:item.id})}/>)}
       {subject?<group userData={{renderExclude:true}}><ContactShadows key={JSON.stringify([subject.id,subject.w,subject.d,subject.h,subject.x,subject.y,subject.rotation,ground])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={.35} blur={2.5} far={span*2}/></group>
-        :project.furniture.map(item=><FloorContact key={item.id} item={item}/>)}
+        :project.furniture.map(item=><FloorContact key={item.id} item={item} wallHeight={project.wallHeight}/>)}
 
     </Canvas>
     <div className="scene-navigation">{render.walk&&!subject?'WASD para caminar · Esc para liberar el cursor':'Arrastra para orbitar · Rueda para acercar · Mayús + clic para editar un material'}</div>

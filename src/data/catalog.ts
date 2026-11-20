@@ -5,6 +5,9 @@ export const catalog: CatalogItem[] = [
   {kind:'table', name:'Mesa de comedor',w:1.5,d:.85,h:.75,color:'#caa77d',icon:'▦',category:'Salón'},
   {kind:'armchair', name:'Butaca tapizada',w:.78,d:.82,h:.8,color:'#b9a58c',icon:'◫',category:'Salón'},
   {kind:'sideboard', name:'Aparador',w:1.6,d:.45,h:.75,color:'#c9a57c',icon:'▭',category:'Salón'},
+  {kind:'coffee-table', name:'Mesa de centro',w:1,d:.55,h:.4,color:'#c9a57c',icon:'▢',category:'Salón'},
+  {kind:'tv-unit', name:'Mueble de TV bajo',w:1.8,d:.4,h:.45,color:'#d8c7ae',icon:'▭',category:'Salón'},
+  {kind:'tv', name:'Televisor de pared 55"',w:1.23,d:.05,h:.71,color:'#1d1f20',icon:'▬',category:'Salón'},
   {kind:'chair', name:'Silla nórdica',w:.52,d:.55,h:.85,color:'#c4a47d',icon:'◈',category:'Salón'},
   {kind:'rug', name:'Alfombra',w:2.2,d:1.5,h:.025,color:'#ded6c7',icon:'▤',category:'Salón'},
   {kind:'bed', name:'Cama doble',w:1.6,d:2,h:.55,color:'#e2d7ca',icon:'▣',category:'Dormitorio'},
@@ -21,6 +24,9 @@ export const catalog: CatalogItem[] = [
   {kind:'fridge', name:'Frigorífico',w:.65,d:.65,h:1.9,color:'#ebebe8',icon:'▣',category:'Cocina'},
   {kind:'plant', name:'Planta interior',w:.55,d:.55,h:1.1,color:'#64886c',icon:'✿',category:'Decoración'},
   {kind:'lamp', name:'Lámpara de pie',w:.4,d:.4,h:1.65,color:'#ddd3bd',icon:'✧',category:'Decoración'},
+  {kind:'pendant', name:'Lámpara colgante',w:.42,d:.42,h:.8,color:'#ece4d4',icon:'◒',category:'Decoración'},
+  {kind:'mirror', name:'Espejo de pared',w:.6,d:.03,h:.9,color:'#a88d5a',icon:'▯',category:'Decoración'},
+  {kind:'artwork', name:'Lámina enmarcada',w:.7,d:.03,h:.9,color:'#8e9a86',icon:'▨',category:'Decoración'},
 ];
 export const floors: Record<FloorFinish, { label: string; color: string; detail: string }> = {
   oak:{label:'Roble claro',color:'#dec29c',detail:'#b99a6e'},

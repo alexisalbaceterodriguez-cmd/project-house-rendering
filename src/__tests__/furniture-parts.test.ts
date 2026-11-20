@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, armchairParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, armchairParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -63,6 +63,12 @@ const builders={
   toilet:[toiletParts,[[.4,.6,.65],[.43,.65,.65],[.36,.7,.8]]],
   shower:[showerParts,[[.9,.9,2],[.72,.74,2],[1.4,.8,2.1]]],
   lamp:[lampParts,[[.4,.4,1.65],[.5,.45,1.4]]],
+  'coffee-table':[coffeeTableParts,[[1,.55,.4],[.6,.6,.35],[1.4,.8,.45],[.8,.5,.22]]],
+  'tv-unit':[tvUnitParts,[[1.8,.4,.45],[1.2,.38,.4],[2.4,.45,.55]]],
+  tv:[tvParts,[[1.23,.05,.71],[.73,.06,.43],[1.66,.04,.95]]],
+  pendant:[pendantParts,[[.42,.42,.8],[.25,.25,.5],[.6,.6,1.2]]],
+  mirror:[mirrorParts,[[.6,.03,.9],[.5,.025,1.6],[1.2,.04,.8]]],
+  artwork:[artworkParts,[[.7,.03,.9],[.4,.025,.5],[1.4,.035,1]]],
 } as const;
 
 describe('parametric furniture', () => {
@@ -170,5 +176,17 @@ describe('bathroom, lamp and plant', () => {
     const a=plantGeometry(.5,.5,1.2,.45,seedFrom('plant-1')),b=plantGeometry(.5,.5,1.2,.45,seedFrom('plant-1')),c=plantGeometry(.5,.5,1.2,.45,seedFrom('plant-2'));
     expect(Array.from(a.leaves[0].attributes.position.array)).toEqual(Array.from(b.leaves[0].attributes.position.array));
     expect(Array.from(a.leaves[0].attributes.position.array)).not.toEqual(Array.from(c.leaves[0].attributes.position.array));
+  });
+});
+
+describe('hung furniture', () => {
+  it('pendants touch the ceiling, mirrors and prints centre at 1.5 m and TVs at 1.2 m', () => {
+    expect(furnitureElevation({kind:'pendant',h:.8},2.55)).toBeCloseTo(1.75);
+    expect(furnitureElevation({kind:'mirror',h:.9},2.55)).toBeCloseTo(1.05);
+    expect(furnitureElevation({kind:'mirror',h:1.6},2.55)).toBe(0);
+    expect(furnitureElevation({kind:'artwork',h:.5},2.55)).toBeCloseTo(1.25);
+    expect(furnitureElevation({kind:'tv',h:.71},2.55)).toBeCloseTo(.845);
+    expect(furnitureElevation({kind:'sofa',h:.85},2.55)).toBe(0);
+    expect(furnitureElevation({kind:'kitchen',h:.72,module:{family:'wall'}},2.55)).toBeCloseTo(1.45);
   });
 });

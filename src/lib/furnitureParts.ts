@@ -8,7 +8,7 @@ type Vec3=[number,number,number];
  * or as a solid of revolution filling `size` when it has a `lathe` profile, and the render GLB
  * carries the same meshes, so Cycles sees exactly this geometry.
  */
-export type FurniturePart={name:string;size:Vec3;position:Vec3;color:'item'|'wood'|string;surface?:'textile'|'woodgrain';material?:'metal'|'glass';role?:string;bevel:number;crown?:Crown;lathe?:Profile};
+export type FurniturePart={name:string;size:Vec3;position:Vec3;color:'item'|'wood'|string;surface?:'textile'|'woodgrain';material?:'metal'|'glass'|'mirror'|'gloss';role?:string;bevel:number;crown?:Crown;lathe?:Profile};
 
 /** Faces that would sit on the same plane are kept at least this far apart (no z-fighting in viewer or Cycles). */
 export const FACE_GAP=.01;
@@ -598,4 +598,125 @@ export function sideboardParts(w:number,d:number,h:number):FurniturePart[]{
     }
   });
   return parts;
+}
+
+/**
+ * Coffee table inside `w × d × h`: wood-grain top defining the footprint, four tapered legs and,
+ * when there is room under the top, a lower shelf that the legs pass through.
+ */
+export function coffeeTableParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.03,under=h-top,inset=Math.min(.06,w*.1,d*.1),lx=w/2-inset,lz=d/2-inset;
+  const parts:FurniturePart[]=[part('Tablero',[w,top,d],0,under,0,{color:'item',surface:'woodgrain',bevel:.006})];
+  for(const x of [-1,1])for(const z of [-1,1])parts.push(turned(`Pata ${x} ${z}`,TAPER,[.045,under,.045],x*lx,0,z*lz,{color:'wood'}));
+  if(under>.25)parts.push(part('Balda',[2*lx,.018,2*lz],0,Math.min(.12,under*.3),0,{color:'item',surface:'woodgrain',bevel:.004}));
+  return parts;
+}
+
+/**
+ * Low TV unit inside `w × d × h`: recessed dark plinth, wood-grain top over the full footprint,
+ * an open central niche (dark back, floor shelf) and two handle-less push-to-open drawers on
+ * each side, set 1.5 cm behind the top's front edge.
+ */
+export function tvUnitParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=.025,plinth=Math.min(.06,h*.15),y0=plinth,y1=h-top,span=y1-y0,back=-d/2,face=d/2-.015,door=.018;
+  const bw=w-.02,niche=clamp(w*.34,.36,.8),col=(bw-niche)/2,body=face-door-.002-back,gap=HINGE_GAP;
+  const parts:FurniturePart[]=[
+    part('Tablero',[w,top,d],0,y1,0,{color:'item',surface:'woodgrain',bevel:.005}),
+    part('Zócalo',[w-.12,plinth,d-.1],0,0,-.01,{color:'#34312d',bevel:.002}),
+    part('Base hueco',[niche,.02,face-.002-back],0,y0,(face-.002+back)/2,{color:'item',surface:'woodgrain',bevel:.002}),
+    part('Fondo hueco',[niche,span-.02,.012],0,y0+.02,back+.006,{color:'#2f2c29',bevel:0}),
+  ];
+  const drawer=(span-3*gap)/2;
+  for(const s of [-1,1]){
+    const x=s*(niche/2+col/2);
+    parts.push(part(`Cuerpo ${s<0?'izquierdo':'derecho'}`,[col,span,body],x,y0,back+body/2,{color:'item',bevel:.003}));
+    for(let i=0;i<2;i++)parts.push(part(`Cajón ${s<0?'izquierdo':'derecho'} ${i+1}`,[col-2*gap,drawer,door],x,y0+gap+i*(drawer+gap),face-door/2,{color:'item',surface:'woodgrain',bevel:.003}));
+  }
+  return parts;
+}
+
+/** Ceiling canopy: flat on top, rounded underneath. */
+const CANOPY:Profile=[[0,0],[.85,0],[1,.45],[1,1],[0,1]];
+/** Height of a pendant's bell shade (also where the night render puts its bulb). */
+export const pendantShadeHeight=(w:number,h:number)=>Math.min(.3,h*.45,w*.75);
+
+/**
+ * Pendant lamp inside `w × d × h`, hung so that its top touches the ceiling
+ * (furnitureElevation): a hollow bell shade (role `lampshade`) at the bottom, a bulb inside, a
+ * cord and a ceiling canopy at `h`.
+ */
+export function pendantParts(w:number,d:number,h:number):FurniturePart[]{
+  const s=pendantShadeHeight(w,h),canopy=.025;
+  return [
+    turned('Pantalla',[[1,0],[.94,.3],[.66,.7],[.24,1],[.2,1],[.62,.68],[.9,.3],[.96,0],[1,0]],[w,s,d],0,0,0,{color:'item',role:'lampshade'}),
+    turned('Bombilla',[[0,0],[.55,.08],[1,.4],[.85,.8],[.35,1],[0,1]],[.07,.09,.07],0,s*.35,0,{color:'#fbf6e9'}),
+    turned('Cable',ROD,[.006,h-s-canopy+.01,.006],0,s-.005,0,{color:'#2b2a28'}),
+    turned('Florón',CANOPY,[Math.min(.12,w),canopy,Math.min(.12,d)],0,h-canopy,0,{color:'item'}),
+  ];
+}
+
+/** Four frame bars around a `w × h` opening, `bar` wide and `depth` deep, back at -depth/2. */
+function frameBars(w:number,h:number,bar:number,depth:number,rest:Omit<FurniturePart,'name'|'size'|'position'>):FurniturePart[]{
+  return [
+    part('Marco inferior',[w,bar,depth],0,0,0,rest),part('Marco superior',[w,bar,depth],0,h-bar,0,rest),
+    part('Marco izquierdo',[bar,h-2*bar,depth],-(w-bar)/2,bar,0,rest),part('Marco derecho',[bar,h-2*bar,depth],(w-bar)/2,bar,0,rest),
+  ];
+}
+
+/**
+ * Wall mirror inside `w × d × h` (d is the depth off the wall): a metal frame of the item colour,
+ * a silvered glass (material `mirror`) set 8 mm into it and a backboard flush with the wall side.
+ */
+export function mirrorParts(w:number,d:number,h:number):FurniturePart[]{
+  const bar=clamp(Math.min(w,h)*.05,.02,.05),iw=w-2*bar,ih=h-2*bar;
+  return [
+    ...frameBars(w,h,bar,d,{color:'item',material:'metal',bevel:.003}),
+    part('Luna',[iw,ih,.005],0,bar,d/2-.008-.0025,{color:'#dfe4e3',material:'mirror',bevel:0}),
+    part('Trasera',[iw,ih,.006],0,bar,-d/2+.003,{color:'#6d675f',bevel:0}),
+  ];
+}
+
+/**
+ * Framed print inside `w × d × h`: a frame in the project's wood, a passe-partout and an abstract
+ * composition of three colour fields (the middle one takes the item colour). It is a parametric
+ * pattern, not a reproduction of any artwork.
+ */
+export function artworkParts(w:number,d:number,h:number):FurniturePart[]{
+  const bar=clamp(Math.min(w,h)*.04,.02,.04),iw=w-2*bar,ih=h-2*bar,mat=Math.min(iw,ih)*.12,pw=iw-2*mat,ph=ih-2*mat;
+  const pz=d/2-.012,field=.002,between=ph*.04,fh=(ph-2*between)/3;
+  const parts:FurniturePart[]=[
+    ...frameBars(w,h,bar,d,{color:'wood',surface:'woodgrain',bevel:.003}),
+    part('Paspartú',[iw,ih,.004],0,bar,pz-.002,{color:'#f3efe7',bevel:0}),
+    part('Trasera',[iw,ih,.006],0,bar,-d/2+.003,{color:'#8a8177',bevel:0}),
+  ];
+  ['#3f4a4f','item','#d9b48f'].forEach((color,i)=>parts.push(part(`Campo ${i+1}`,[pw,fh,field],0,bar+mat+i*(fh+between),pz+field/2,{color,bevel:0})));
+  return parts;
+}
+
+/**
+ * Wall-mounted flat TV inside `w × d × h`: a slim bezel, a glossy black screen (material `gloss`)
+ * and a thicker rear housing that stays inside the depth off the wall.
+ */
+export function tvParts(w:number,d:number,h:number):FurniturePart[]{
+  return [
+    part('Bisel',[w,h,.01],0,0,d/2-.002-.005,{color:'#1d1f20',bevel:.002}),
+    part('Pantalla',[w-.012,h-.012,.002],0,.006,d/2-.001,{color:'#07090a',material:'gloss',bevel:0}),
+    part('Carcasa',[w*.62,h*.6,d-.012],0,h*.15,-d/2+(d-.012)/2,{color:'#2a2c2d',bevel:.006}),
+  ];
+}
+
+/**
+ * Height of an item's underside above the floor. Wall modules hang (moduleHangHeight), pendants
+ * touch the ceiling, mirrors and prints centre at 1.5 m (or stand on the floor from 1.4 m tall)
+ * and TVs centre at 1.2 m; everything else stands on the floor. Derived only from kind, size and
+ * wall height, so the plan, the viewer and the render GLB agree without a stored offset.
+ */
+export function furnitureElevation(item:{kind:string;h:number;module?:{family:ModuleFamily}},wallHeight:number):number{
+  if(item.module)return moduleHangHeight(item.module.family);
+  switch(item.kind){
+    case 'pendant':return Math.max(0,wallHeight-item.h);
+    case 'mirror':case 'artwork':return item.h>=1.4?0:Math.max(0,1.5-item.h/2);
+    case 'tv':return Math.max(0,1.2-item.h/2);
+    default:return 0;
+  }
 }

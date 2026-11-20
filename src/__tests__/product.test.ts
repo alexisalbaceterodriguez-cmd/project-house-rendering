@@ -53,6 +53,13 @@ describe('Contrato de producto y compatibilidad',()=>{
     expect(furnitureCollisions(p).some(s=>s.includes('Mesa A')&&s.includes('Silla B'))).toBe(true);
     p.furniture[1].x=8;expect(furnitureCollisions(p).some(s=>s.includes('se solapa'))).toBe(false);
   });
+  it('los objetos colgados solo chocan entre sí y no cuentan como invasión de pared',()=>{
+    const p=migrateProject(demoProject),item=(id:string,kind:'table'|'pendant'|'mirror'|'artwork',x:number,y:number,w:number,d:number,h:number)=>({id,kind,name:id,x,y,w,d,h,rotation:0,color:'#ffffff'});
+    p.furniture=[item('Mesa','table',2,2,1.2,.8,.75),item('Colgante','pendant',2,2,.4,.4,.8),item('Espejo','mirror',8,.0,.6,.03,.9)];
+    expect(furnitureCollisions(p)).toEqual([]);
+    p.furniture.push(item('Lámina','artwork',2.1,2,.5,.03,.6));
+    expect(furnitureCollisions(p).some(s=>s.includes('Colgante')&&s.includes('Lámina'))).toBe(true);
+  });
   it('todos los recursos incorporados tienen identidad, origen y licencia explícitos',()=>{
     expect(new Set(modelCatalog.map(p=>p.id)).size).toBe(modelCatalog.length);
     expect(modelCatalog).toHaveLength(3);expect(materialCatalog).toHaveLength(4);

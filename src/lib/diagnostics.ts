@@ -1,6 +1,7 @@
 import type { Furniture, Point, Project, Room } from '../types';
 import { wallProjection } from './geometry';
 import { roomArea, roomVertices } from './topology';
+import { furnitureElevation } from './furnitureParts';
 function corners(f:Furniture):Point[]{const a=f.rotation*Math.PI/180,c=Math.cos(a),s=Math.sin(a);return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>({x:f.x+x*f.w/2*c-y*f.d/2*s,y:f.y+x*f.w/2*s+y*f.d/2*c}));}
 function overlaps(a:Point[],b:Point[]){for(const p of [a,b])for(let i=0;i<p.length;i++){const next=p[(i+1)%p.length],dx=next.x-p[i].x,dy=next.y-p[i].y;const project=(shape:Point[])=>shape.map(v=>v.x*-dy+v.y*dx);const x=project(a),y=project(b);if(Math.max(...x)<=Math.min(...y)+.001||Math.max(...y)<=Math.min(...x)+.001)return false;}return true;}
 export function findFreePlacement(project:Project,w:number,d:number):Point{
@@ -12,10 +13,13 @@ export function findFreePlacement(project:Project,w:number,d:number):Point{
   return candidates.find(p=>{const shape=[{x:p.x-w/2,y:p.y-d/2},{x:p.x+w/2,y:p.y-d/2},{x:p.x+w/2,y:p.y+d/2},{x:p.x-w/2,y:p.y+d/2}];return ![...occupied,...wallShapes].some(other=>overlaps(shape,other));})??{x:project.width/2,y:project.depth/2};
 }
 export function furnitureCollisions(project:Project):string[]{
-  const notices:string[]=[];const items=project.furniture.filter(f=>f.kind!=='rug'&&f.kind!=='lamp'&&!['wall'].includes(f.module?.family??''));
+  // Hung items (wall cabinets, hoods, pendants, mirrors, prints, TVs) only clash with each other and stay out of the wall check.
+  const notices:string[]=[];const items=project.furniture.filter(f=>f.kind!=='rug'&&f.kind!=='lamp');
+  const hung=items.map(f=>furnitureElevation(f,project.wallHeight)>0);
   for(let i=0;i<items.length;i++){
     const f=items[i],shape=corners(f);
-    for(let j=i+1;j<items.length;j++)if(overlaps(shape,corners(items[j])))notices.push(`«${f.name}» se solapa con «${items[j].name}».`);
+    for(let j=i+1;j<items.length;j++)if(hung[i]===hung[j]&&overlaps(shape,corners(items[j])))notices.push(`«${f.name}» se solapa con «${items[j].name}».`);
+    if(hung[i])continue;
     for(const wall of project.walls){
       const dx=wall.b.x-wall.a.x,dy=wall.b.y-wall.a.y,len=Math.hypot(dx,dy),nx=-dy/len*wall.thickness/2,ny=dx/len*wall.thickness/2;
       const polygon=[{x:wall.a.x+nx,y:wall.a.y+ny},{x:wall.b.x+nx,y:wall.b.y+ny},{x:wall.b.x-nx,y:wall.b.y-ny},{x:wall.a.x-nx,y:wall.a.y-ny}];
