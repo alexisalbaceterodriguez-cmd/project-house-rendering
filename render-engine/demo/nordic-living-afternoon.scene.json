@@ -5,7 +5,7 @@
     "app": "atelier-60",
     "version": "1"
   },
-  "createdAt": "2026-11-20T18:55:54.864Z",
+  "createdAt": "2026-11-20T19:37:34.984Z",
   "units": "m",
   "upAxis": "Y",
   "handedness": "right",
@@ -13,15 +13,15 @@
   "project": {
     "id": "atelier-60-demo",
     "name": "Mi piso nórdico",
-    "contentHash": "c6fb6e686a848476ac92f9342467973eae92c6ea1ea43ced31df6be1b8cd01dc",
+    "contentHash": "b2505eba4283100fc7de17f5cd4def7ee9f430432f2dfd6fb7061dc90fb994be",
     "wallHeight": 2.55,
     "width": 10,
     "depth": 6
   },
   "geometry": {
     "file": "scene.glb",
-    "sha256": "52e5e918af3284c0740e529cb5cdf22e6c3b3bac44ac1d769c816ccbd1b73d3e",
-    "bytes": 2862984
+    "sha256": "dd627d683425586ad878c1c12c6269fbf8ed781ec78d6a846fdb54e1931c3c66",
+    "bytes": 4869368
   },
   "rooms": [
     {
@@ -495,6 +495,20 @@
     "hdri": null,
     "ceiling": "auto",
     "roomLights": false,
+    "litRooms": [
+      {
+        "id": "hall",
+        "power": 24
+      },
+      {
+        "id": "bath2",
+        "power": 13
+      },
+      {
+        "id": "bath1",
+        "power": 13
+      }
+    ],
     "interior": []
   },
   "render": {

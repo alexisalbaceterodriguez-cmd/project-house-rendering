@@ -58,7 +58,7 @@ export const demoProject: Project = {
     furniture('sink-2','sink','Lavabo 2',8.705,5.03,.6,.5,.84,270,'#ecece8'),
     furniture('toilet-2','toilet','Inodoro 2',8.755,5.56,.4,.6,.65,270,'#f7f6f3'),
     furniture('shower-2','shower','Ducha 2',9.51,5.46,.8,.9,2,180,'#f0eeeb'),
-    furniture('plant-1','plant','Ficus',.6,.6,.5,.5,1.2,0,'#5f8261'),
+    furniture('plant-1','plant','Ficus',3.6,.45,.5,.5,1.2,0,'#5f8261'),
   ],
 };
 

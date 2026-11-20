@@ -185,8 +185,51 @@ def make_glowing_shade(material: bpy.types.Material, temperature: float) -> None
     set_input(node, ("Emission Strength",), 2.5)
 
 
+# Thin surfaces that pass light to their back face. A leaf transmits on top of
+# what it reflects (green leaves reflect and transmit roughly alike, both low),
+# so its transmission is added at 60 % of the base colour; a fabric shade trades
+# 40 % of its reflection for transmission, which keeps a white shade below 1.
+TRANSLUCENCY = {"leaf": ("add", 0.6), "lampshade": ("mix", 0.4)}
+
+
+def add_translucency(material: bpy.types.Material, mode: str, amount: float) -> bool:
+    """Combine the imported Principled surface with a Translucent BSDF of its
+    base colour (texture links included). Geometry and colour stay as exported."""
+    node = principled(material)
+    if node is None:
+        return False
+    tree = material.node_tree
+    output = next((n for n in tree.nodes if n.type == "OUTPUT_MATERIAL" and n.is_active_output), None)
+    if output is None or not output.inputs["Surface"].is_linked:
+        return False
+    surface = output.inputs["Surface"].links[0].from_socket
+    translucent = tree.nodes.new("ShaderNodeBsdfTranslucent")
+    base = node.inputs["Base Color"]
+    weight = amount if mode == "add" else 1.0
+    if base.is_linked:
+        scale = tree.nodes.new("ShaderNodeVectorMath")
+        scale.operation = "SCALE"
+        scale.inputs["Scale"].default_value = weight
+        tree.links.new(base.links[0].from_socket, scale.inputs[0])
+        tree.links.new(scale.outputs["Vector"], translucent.inputs["Color"])
+    else:
+        r, g, b, alpha = base.default_value
+        translucent.inputs["Color"].default_value = (r * weight, g * weight, b * weight, alpha)
+    if mode == "add":
+        combine = tree.nodes.new("ShaderNodeAddShader")
+        tree.links.new(surface, combine.inputs[0])
+        tree.links.new(translucent.outputs[0], combine.inputs[1])
+    else:
+        combine = tree.nodes.new("ShaderNodeMixShader")
+        combine.inputs[0].default_value = amount
+        tree.links.new(surface, combine.inputs[1])
+        tree.links.new(translucent.outputs[0], combine.inputs[2])
+    tree.links.new(combine.outputs[0], output.inputs["Surface"])
+    return True
+
+
 def prepare_materials(manifest: dict) -> dict:
-    stats = {"glass": 0, "doors": 0, "shades": 0}
+    stats = {"glass": 0, "doors": 0, "shades": 0, "translucent": 0}
     night = manifest["lighting"]["preset"] == "night"
     for material in bpy.data.materials:
         role = material_role(material)
@@ -203,6 +246,8 @@ def prepare_materials(manifest: dict) -> dict:
         elif role == "lampshade" and night:
             make_glowing_shade(material, 2700)
             stats["shades"] += 1
+        if role in TRANSLUCENCY and add_translucency(material, *TRANSLUCENCY[role]):
+            stats["translucent"] += 1
     return stats
 
 
