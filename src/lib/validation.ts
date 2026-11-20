@@ -53,6 +53,8 @@ export function isProject(a:unknown):a is Project{
     if(f.modelUpAxis!==undefined&&!['X','Y','Z'].includes(f.modelUpAxis as string))return false;
     if(f.modelElevation!==undefined&&!num(f.modelElevation,-3,6))return false;
     if(f.modelOffsetX!==undefined&&!num(f.modelOffsetX,-5,5))return false;
+    // A leaf wider than a later-narrowed table is left out when built, so only its range is checked.
+    if(f.leaf!==undefined&&!num(f.leaf,0,2))return false;
     if(f.modelOffsetZ!==undefined&&!num(f.modelOffsetZ,-5,5))return false;
     if(f.module!==undefined){const m=f.module;if(!object(m)||!['base','wall','column','sink','hob','oven','vanity','hood'].includes(m.family as string)||!color(m.front)||!material(m.worktop)||!['bar','none'].includes(m.handles as string))return false;}
   }

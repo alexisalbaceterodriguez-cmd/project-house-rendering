@@ -1,7 +1,7 @@
 import type { Project } from '../types';
 /** Use one architecture/camera/light rig while comparing only finishes. */
 export function applyAppearance(base:Project,variant:Project):Project{
-  const signature=(p:Project)=>JSON.stringify({width:p.width,depth:p.depth,height:p.wallHeight,walls:p.walls.map(({id,a,b,thickness})=>({id,a,b,thickness})),openings:p.openings,furniture:p.furniture.map(({id,kind,x,y,w,d,h,rotation,assetId,modelUpAxis,modelElevation,modelOffsetX,modelOffsetZ})=>({id,kind,x,y,w,d,h,rotation,assetId,modelUpAxis,modelElevation,modelOffsetX,modelOffsetZ}))});
+  const signature=(p:Project)=>JSON.stringify({width:p.width,depth:p.depth,height:p.wallHeight,walls:p.walls.map(({id,a,b,thickness})=>({id,a,b,thickness})),openings:p.openings,furniture:p.furniture.map(({id,kind,x,y,w,d,h,rotation,assetId,modelUpAxis,modelElevation,modelOffsetX,modelOffsetZ,leaf})=>({id,kind,x,y,w,d,h,rotation,assetId,modelUpAxis,modelElevation,modelOffsetX,modelOffsetZ,leaf}))});
   if(signature(base)!==signature(variant))throw new Error('Las propuestas tienen distinta geometría. Guarda dos versiones cambiando solo acabados para compararlas.');
   const result=structuredClone(base);result.palette=structuredClone(variant.palette);
   result.materials=structuredClone(variant.materials);

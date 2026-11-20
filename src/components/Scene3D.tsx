@@ -283,7 +283,7 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'console-table':return <Parts parts={consoleTableParts(w,d,h)} item={item} wood={wood}/>;
     case 'sheer-curtain':return <Parts parts={sheerCurtainParts(w,d,h)} item={item} wood={wood}/>;
     case 'curtain':return <Parts parts={curtainParts(w,d,h)} item={item} wood={wood}/>;
-    case 'extending-table':return <Parts parts={extendingTableParts(w,d,h)} item={item} wood={wood}/>;
+    case 'extending-table':return <Parts parts={extendingTableParts(w,d,h,item.leaf)} item={item} wood={wood}/>;
     case 'desk-hutch':return <Parts parts={deskHutchParts(w,d,h)} item={item} wood={wood}/>;
     case 'bunk-bed':return <Parts parts={bunkBedParts(w,d,h)} item={item} wood={wood}/>;
     case 'laundry-basket':return <Parts parts={laundryBasketParts(w,d,h)} item={item} wood={wood}/>;

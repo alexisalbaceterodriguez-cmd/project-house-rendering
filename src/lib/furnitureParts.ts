@@ -963,13 +963,18 @@ export function barStoolParts(w:number,d:number,h:number):FurniturePart[]{
 
 /**
  * Extending dining table inside `w × d × h`: a woodgrain top split into two halves at a 3 mm
- * centre seam (where the leaf goes), square legs, aprons and two metal slides under the seam.
+ * centre seam, square legs, aprons and two metal slides under the seam. With `leaf` (m, the
+ * item's `leaf` field) the halves part and a centre leaf of that width fills the gap; `w` is the
+ * extended overall width, so the plan footprint grows with the table.
  */
-export function extendingTableParts(w:number,d:number,h:number):FurniturePart[]{
-  const top=.03,leg=.06,inset=.03,rail=.08,under=h-top,seam=.003,half=(w-seam)/2;
+export const EXTENSION_LEAF=.5;
+export function extendingTableParts(w:number,d:number,h:number,leaf=0):FurniturePart[]{
+  const top=.03,leg=.06,inset=.03,rail=.08,under=h-top,seam=.003,open=leaf>.05&&leaf<=w-.4?leaf:0;
+  const half=(w-(open?open+2*seam:seam))/2;
   const lx=w/2-inset-leg/2,lz=d/2-inset-leg/2,inner=w-2*(inset+leg);
   const parts:FurniturePart[]=[];
-  for(const s of [-1,1])parts.push(part(`Tablero ${s}`,[half,top,d],s*(seam+half)/2,under,0,{color:'item',surface:'woodgrain',bevel:.006}));
+  for(const s of [-1,1])parts.push(part(`Tablero ${s}`,[half,top,d],s*(w-half)/2,under,0,{color:'item',surface:'woodgrain',bevel:.006}));
+  if(open)parts.push(part('Hoja central',[open,top,d],0,under,0,{color:'item',surface:'woodgrain',bevel:.006}));
   for(const x of [-1,1])for(const z of [-1,1])parts.push(part(`Pata ${x} ${z}`,[leg,under,leg],x*lx,0,z*lz,{color:'wood',bevel:.008}));
   for(const z of [-1,1])parts.push(part(`Faldón ${z}`,[inner,rail,.02],0,under-rail,z*(lz-.005),{color:'wood',bevel:.003}));
   for(const x of [-1,1])parts.push(part(`Faldón lateral ${x}`,[.02,rail,d-2*(inset+leg)],x*(lx-.005),under-rail,0,{color:'wood',bevel:.003}));
