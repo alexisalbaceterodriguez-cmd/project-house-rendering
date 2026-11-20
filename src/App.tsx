@@ -353,7 +353,12 @@ export default function App(){
     } catch {alert('El navegador no permite abrir el visor en pantalla completa.');}
   };
   const jsonInput=useRef<HTMLInputElement>(null);const glbInput=useRef<HTMLInputElement>(null);const canvasRef=useRef<HTMLCanvasElement|null>(null);
-  const alert=useCallback((msg:string)=>{setToast(msg);setTimeout(()=>setToast(''),4200);},[]);
+  const toastTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
+  const alert=useCallback((msg:string)=>{
+    clearTimeout(toastTimer.current);setToast(msg);
+    toastTimer.current=setTimeout(()=>setToast(''),4200);
+  },[]);
+  useEffect(()=>()=>clearTimeout(toastTimer.current),[]);
   useEffect(()=>{
     // Flush the last debounced edit before reload/navigation or backgrounding.
     const flush=()=>{if(savePending.current&&saveLocal(useEditor.getState().project))savePending.current=false;};

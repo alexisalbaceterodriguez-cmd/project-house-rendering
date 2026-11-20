@@ -31,7 +31,12 @@ test('referencia de madera, vidrio y tejido: HD repetible, A/B y cambio de calid
   project.render??={lighting:'studio',quality:'high',exposure:1,studio:{...defaultStudio,azimuth:-35,fill:1.4},camera:{position:[8.8,4.1,9.5],target:[4.3,.55,3.1]}};
   const importProject=async(value:Project)=>{
     await page.locator('input[accept*=".json"]').setInputFiles({name:'referencia.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(value))});
-    await expect(page.getByText('Proyecto cargado correctamente.',{exact:true})).toBeVisible();
+    // A/B can reuse the same project id and name. Wait for the actual finish
+    // of this import to reach autosave, including on software WebGL runners.
+    await expect.poll(()=>page.evaluate(()=>{
+      const saved=JSON.parse(localStorage.getItem('atelier-60-project-v1')??'{}') as Partial<Project>;
+      return [saved.id,saved.materials?.[0]?.color];
+    }),{timeout:30_000}).toEqual([value.id,value.materials?.[0]?.color]);
   };
   await importProject(project);await page.getByRole('button',{name:'Vista 3D',exact:true}).click();
   const panel=async()=>{await page.getByRole('button',{name:'Estudio · modelos, acabados y versiones',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Imagen y cámara',exact:true}).click();};
