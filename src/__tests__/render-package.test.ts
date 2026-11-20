@@ -81,6 +81,18 @@ describe('render package', () => {
     expect(light.position[1]).toBeLessThan(.5+.48);
   });
 
+  it('lights a candle tray at night from its tallest flame, warmer and weaker than a lamp', () => {
+    const p=structuredClone(demoProject);
+    p.furniture.push({id:'cv',kind:'candles',name:'Portavelas',x:p.furniture.find(f=>f.id==='night-main-l')!.x,y:.62,w:.24,d:.16,h:.22,rotation:0,color:'#b08d57'});
+    const night=buildManifest(p,camera,{preset:'night',quality:'draft',width:960,height:540},geometry,'hash');
+    const light=night.lighting.interior.find(l=>l.id==='cv')!;
+    expect(light.position[1]).toBeCloseTo(.5+.22-.026*.6);
+    expect(light.temperature).toBeLessThan(2700);
+    expect(light.power).toBeLessThan(10);
+    const day=buildManifest(p,camera,{preset:'afternoon',quality:'draft',width:960,height:540},geometry,'hash');
+    expect(day.lighting.interior).toEqual([]);
+  });
+
   it('switches presets without touching the geometry', () => {
     const night=buildManifest(demoProject,camera,{preset:'night',quality:'draft',width:960,height:540},geometry,'hash');
     expect(night.lighting).toMatchObject({sun:{strength:0},roomLights:true});

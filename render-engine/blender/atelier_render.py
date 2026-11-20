@@ -185,6 +185,18 @@ def make_glowing_shade(material: bpy.types.Material, temperature: float) -> None
     set_input(node, ("Emission Strength",), 2.5)
 
 
+def make_flame(material: bpy.types.Material) -> None:
+    """A candle flame glows at about 1900 K in every preset; its light at
+    night comes from the point source in lighting.interior, not from this mesh."""
+    node = principled(material)
+    if node is None:
+        return
+    warm = kelvin_to_rgb(1900)
+    set_input(node, ("Base Color",), (*warm, 1.0))
+    set_input(node, ("Emission Color", "Emission"), (*warm, 1.0))
+    set_input(node, ("Emission Strength",), 12.0)
+
+
 # Thin surfaces that pass light to their back face. A leaf transmits on top of
 # what it reflects (green leaves reflect and transmit roughly alike, both low),
 # so its transmission is added at 60 % of the base colour; a fabric shade trades
@@ -261,7 +273,7 @@ def make_sheer(material: bpy.types.Material) -> bool:
 
 
 def prepare_materials(manifest: dict) -> dict:
-    stats = {"glass": 0, "doors": 0, "shades": 0, "translucent": 0, "sheer": 0}
+    stats = {"glass": 0, "doors": 0, "shades": 0, "translucent": 0, "sheer": 0, "flames": 0}
     night = manifest["lighting"]["preset"] == "night"
     for material in bpy.data.materials:
         role = material_role(material)
@@ -277,11 +289,18 @@ def prepare_materials(manifest: dict) -> dict:
             stats["doors"] += 1
         elif role == "sheer":
             stats["sheer"] += make_sheer(material)
+        elif role == "flame":
+            make_flame(material)
+            stats["flames"] += 1
         elif role == "lampshade" and night:
             make_glowing_shade(material, 2700)
             stats["shades"] += 1
         if role in TRANSLUCENCY and add_translucency(material, *TRANSLUCENCY[role]):
             stats["translucent"] += 1
+    # The candle's point light sits inside its flame: flames must not block it.
+    for obj in bpy.data.objects:
+        if obj.type == "MESH" and any(slot.material and material_role(slot.material) == "flame" for slot in obj.material_slots):
+            obj.visible_shadow = False
     return stats
 
 

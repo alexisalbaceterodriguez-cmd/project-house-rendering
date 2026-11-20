@@ -101,6 +101,7 @@ def room_glb() -> bytes:
         {"name": "w", "box": (0, h / 2, 1.5, t, h, 3), "color": wall, "material": "wall", "extras": tag("wall-w", "wall")},
         {"name": "e", "box": (4, h / 2, 1.5, t, h, 3), "color": wall, "material": "wall", "extras": tag("wall-e", "wall")},
         {"name": "sofa", "box": (2, 0.4, 2.4, 2.0, 0.8, 0.8), "color": (0.62, 0.55, 0.46), "extras": tag("sofa-1", "furniture", "sofa")},
+        {"name": "flame", "box": (2.0, 0.8, 2.0, 0.012, 0.026, 0.012), "color": (1.0, 0.81, 0.48), "material": "atelier:flame", "extras": tag("candles-1", "furniture", "candles")},
         {"name": "voile", "box": (1.2, 1.3, 0.12, 0.6, 2.3, 0.02), "color": (0.95, 0.94, 0.9), "alpha": 0.55, "material": "atelier:sheer", "extras": tag("curtain-1", "furniture", "sheer-curtain")},
         {"name": "leaves", "box": (3.6, 0.8, 2.6, 0.3, 0.3, 0.3), "color": (0.2, 0.4, 0.15), "material": "atelier:leaf", "extras": tag("plant-1", "furniture", "plant")},
     ])

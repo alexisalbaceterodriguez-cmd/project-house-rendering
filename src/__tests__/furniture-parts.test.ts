@@ -241,6 +241,19 @@ describe('hung furniture', () => {
   });
 });
 
+describe('candle flames', () => {
+  it('lights every candle with a flame and the tallest flame reaches the top', () => {
+    const parts=candleParts(.24,.16,.22),flames=parts.filter(p=>p.role==='flame');
+    expect(flames).toHaveLength(3);
+    expect(Math.max(...flames.map(p=>p.position[1]+p.size[1]/2))).toBeCloseTo(.22);
+    for(const flame of flames){
+      const wick=parts.find(p=>p.name===flame.name.replace('Llama','Mecha'))!;
+      expect(flame.position[1]).toBeGreaterThan(wick.position[1]);
+      expect(flame.position[1]-flame.size[1]/2).toBeLessThan(wick.position[1]+wick.size[1]/2);
+    }
+  });
+});
+
 describe('tabletop objects', () => {
   const lamp={id:'l',kind:'table-lamp',x:1,y:1,w:.3,d:.3,h:.48,rotation:0};
   const night={id:'n',kind:'nightstand',x:1.1,y:1,w:.45,d:.38,h:.52,rotation:0};

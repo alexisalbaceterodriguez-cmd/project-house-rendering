@@ -34,6 +34,7 @@ class BlenderSmokeTest(unittest.TestCase):
             self.assertEqual(result["materials"]["glass"], 1)
             self.assertEqual(result["materials"]["translucent"], 1, "leaf material should pass light through")
             self.assertEqual(result["materials"]["sheer"], 1, "voile curtain should let light through")
+            self.assertEqual(result["materials"]["flames"], 1, "candle flame should glow")
             self.assertGreater(result["image"]["meanLuminance"], 0.05, "render is black")
             self.assertLess(result["image"]["clippedRatio"], 0.5, "render is blown out")
             # Afternoon preset applies the default window pull and reports clipping by zone.

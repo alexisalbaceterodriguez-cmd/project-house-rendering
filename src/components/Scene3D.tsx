@@ -17,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, fruitBowlParts, candleParts, photoFrameParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, fruitBowlParts, candleParts, candleFlameY, photoFrameParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -26,11 +26,13 @@ function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metaln
 // window glass or door leaves after the scene is exported to glTF.
 // `surface` adds metre-scaled image maps (textile weave, wood grain) that also travel in the render GLB.
 // `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); `crown` domes a cushion face. The GLB carries the same mesh.
+const FLAME_GLOW='#ffb04a';
 function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe,axis}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z'}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
   const geometry=useMemo(()=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,lathe,axis]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
+  if(role==='flame')return <mesh position={position}><primitive object={geometry} attach="geometry"/><meshStandardMaterial name="atelier:flame" color={color} emissive={FLAME_GLOW} emissiveIntensity={1.6} roughness={1}/></mesh>;
   return <mesh castShadow={material!=='glass'&&role!=='sheer'} receiveShadow position={position}>
     <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity} depthWrite={opacity>=1}/>}
   </mesh>;
@@ -256,7 +258,7 @@ function Plant({item,wood}:{item:Furniture;wood:string}){
 function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;selected:boolean}){
   if(item.module)return <ModuleModel item={item} wood={project.palette.wood}/>;
   const {w,d,h}=item;
-  const wood=project.palette.wood;
+  const wood=project.palette.wood,night=project.render?.lighting==='night';
   switch(item.kind){
     case 'bed':case 'single-bed':case 'storage-bed':return <Parts parts={bedParts(w,d,item.kind==='storage-bed')} item={item} wood={wood}/>;
     case 'sofa':return <Parts parts={sofaParts(w,d)} item={item} wood={wood}/>;
@@ -275,7 +277,7 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'fruit-bowl':return <Parts parts={fruitBowlParts(w,d,h)} item={item} wood={wood}/>;
     case 'photo-frame':return <Parts parts={photoFrameParts(w,d,h)} item={item} wood={wood}/>;
     case 'table-plant':return <Plant item={item} wood={wood}/>;
-    case 'candles':return <Parts parts={candleParts(w,d,h)} item={item} wood={wood}/>;
+    case 'candles':return <><Parts parts={candleParts(w,d,h)} item={item} wood={wood}/>{night&&<pointLight position={[-w*.2,candleFlameY(h),-d*.12]} intensity={.04} color="#ffb46b" distance={1.2}/>}</>;
     case 'books':return <Parts parts={bookStackParts(w,d,h)} item={item} wood={wood}/>;
     case 'pouf':return <Parts parts={poufParts(w,d,h)} item={item} wood={wood}/>;
     case 'console-table':return <Parts parts={consoleTableParts(w,d,h)} item={item} wood={wood}/>;
