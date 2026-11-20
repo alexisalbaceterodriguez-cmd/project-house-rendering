@@ -17,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
@@ -31,8 +31,8 @@ function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,ro
   const high=useEditor(state=>state.project.render?.quality==='high');
   const geometry=useMemo(()=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,lathe,axis]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
-  return <mesh castShadow={material!=='glass'} receiveShadow position={position}>
-    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity}/>}
+  return <mesh castShadow={material!=='glass'&&role!=='sheer'} receiveShadow position={position}>
+    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity} depthWrite={opacity>=1}/>}
   </mesh>;
 }
 function FloorSurface({room}:{room:Project['rooms'][number]}){
@@ -188,8 +188,10 @@ function ModuleModel({item,wood}:{item:Furniture;wood:string}){
   return <group position={[0,moduleHangHeight(m.family),0]}><Parts parts={parts} item={{...item,color:m.front}} wood={wood} worktop={m.worktop}/></group>;
 }
 // Parametric furniture is built from parts (src/lib/furnitureParts.ts), all inside the plan footprint.
+// Share of light a voile stops; exported as glTF alpha, which Cycles reads back (make_sheer).
+const SHEER_OPACITY=.55;
 function Parts({parts,item,wood,worktop}:{parts:FurniturePart[];item:Furniture;wood:string;worktop?:string}){
-  return <>{parts.map(p=><Box key={p.name} finishId={p.role==='worktop'?worktop:undefined} position={p.position} size={p.size} color={p.color==='item'?item.color:p.color==='wood'?wood:p.color} surface={p.surface} material={p.material} role={p.role} bevel={p.bevel} crown={p.crown} lathe={p.lathe} axis={p.axis}/>)}</>;
+  return <>{parts.map(p=><Box key={p.name} finishId={p.role==='worktop'?worktop:undefined} position={p.position} size={p.size} color={p.color==='item'?item.color:p.color==='wood'?wood:p.color} surface={p.surface} material={p.material} role={p.role} opacity={p.role==='sheer'?SHEER_OPACITY:undefined} bevel={p.bevel} crown={p.crown} lathe={p.lathe} axis={p.axis}/>)}</>;
 }
 function WovenRug({item}:{item:Furniture}){
   const weave=useMemo(()=>{
@@ -272,6 +274,7 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'books':return <Parts parts={bookStackParts(w,d,h)} item={item} wood={wood}/>;
     case 'pouf':return <Parts parts={poufParts(w,d,h)} item={item} wood={wood}/>;
     case 'console-table':return <Parts parts={consoleTableParts(w,d,h)} item={item} wood={wood}/>;
+    case 'sheer-curtain':return <Parts parts={sheerCurtainParts(w,d,h)} item={item} wood={wood}/>;
     case 'curtain':return <Parts parts={curtainParts(w,d,h)} item={item} wood={wood}/>;
     case 'extending-table':return <Parts parts={extendingTableParts(w,d,h)} item={item} wood={wood}/>;
     case 'desk-hutch':return <Parts parts={deskHutchParts(w,d,h)} item={item} wood={wood}/>;

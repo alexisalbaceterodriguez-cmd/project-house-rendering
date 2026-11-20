@@ -47,6 +47,7 @@ export const catalog: CatalogItem[] = [
   {kind:'pendant', name:'Lámpara colgante',w:.42,d:.42,h:.8,color:'#ece4d4',icon:'◒',category:'Decoración'},
   {kind:'console-table', name:'Consola de recibidor',w:1,d:.35,h:.8,color:'#b98d62',icon:'▭',category:'Decoración'},
   {kind:'curtain', name:'Cortinas',w:1.8,d:.15,h:2.5,color:'#e8e1d4',icon:'┇',category:'Decoración'},
+  {kind:'sheer-curtain', name:'Visillo translúcido',w:1.8,d:.15,h:2.5,color:'#f4f1ea',icon:'┆',category:'Decoración'},
   {kind:'coat-rack', name:'Perchero de pie',w:.45,d:.45,h:1.75,color:'#c9a57c',icon:'⊥',category:'Decoración'},
   {kind:'shoe-cabinet', name:'Zapatero de entrada',w:.8,d:.24,h:1,color:'#e4dfd4',icon:'▤',category:'Decoración'},
   {kind:'wall-shelf', name:'Estante flotante',w:.8,d:.22,h:.32,color:'#c9a57c',icon:'▔',category:'Decoración'},

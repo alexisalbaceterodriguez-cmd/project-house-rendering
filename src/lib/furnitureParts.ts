@@ -1132,17 +1132,20 @@ export function consoleTableParts(w:number,d:number,h:number):FurniturePart[]{
  * Pair of curtain panels inside `w × d × h` (wall on −z): a metal rod on two brackets across `w`
  * and, gathered at each side, a textile panel made of overlapping vertical folds down to the floor.
  */
-export function curtainParts(w:number,d:number,h:number):FurniturePart[]{
+export function curtainParts(w:number,d:number,h:number,sheer=false):FurniturePart[]{
   const rod=.025,rz=-d/2+Math.min(.07,d*.55),panel=Math.min(w*.3,.9),fw=.075;
   const parts:FurniturePart[]=[part('Barra',[w,rod,rod],0,h-rod,rz,{color:METAL,material:'metal',bevel:.008})];
   for(const s of [-1,1])parts.push(part(`Soporte ${s}`,[.02,.02,rz-rod/2-(-d/2)],s*(w/2-.12),h-rod*.8,(rz-rod/2-d/2)/2,{color:METAL,material:'metal',bevel:.003}));
   const n=Math.max(3,Math.round(panel/(fw*.8))),pitch=(panel-fw)/(n-1),depth=Math.min(.06,d/2-rz),len=h-rod-.02;
   for(const s of [-1,1])for(let i=0;i<n;i++){
     const x=s*(w/2-fw/2-i*pitch),z=rz+(i%2?depth*.18:-depth*.18);
-    parts.push(turned(`Pliegue ${s} ${i+1}`,ROD,[fw,len,Math.min(depth,2*(d/2-Math.abs(z)))],x,0,z,{color:'item',surface:'textile'}));
+    parts.push(turned(`Pliegue ${s} ${i+1}`,ROD,[fw,len,Math.min(depth,2*(d/2-Math.abs(z)))],x,0,z,sheer?{color:'item',role:'sheer'}:{color:'item',surface:'textile'}));
   }
   return parts;
 }
+
+/** Voile curtains: the same folds as `curtainParts` in a see-through `sheer` fabric (Scene3D, Cycles). */
+export const sheerCurtainParts=(w:number,d:number,h:number)=>curtainParts(w,d,h,true);
 
 /** Height of a table lamp's shade (the night light sits inside it, see renderPackage.ts). */
 export const tableLampShadeHeight=(h:number)=>Math.min(.24,h*.42);
@@ -1160,7 +1163,7 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
 export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books']);
 // Wall-only or soft items that never carry a tabletop object.
-const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack']);
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack']);
 
 type Placed={id:string;kind:string;x:number;y:number;w:number;d:number;h:number;rotation:number;module?:{family:ModuleFamily}};
 

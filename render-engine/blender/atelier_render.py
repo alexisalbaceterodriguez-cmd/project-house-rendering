@@ -228,8 +228,40 @@ def add_translucency(material: bpy.types.Material, mode: str, amount: float) -> 
     return True
 
 
+# Share of light a voile lets straight through when its material carries no
+# glTF alpha (the viewer exports the weave's coverage as opacity).
+SHEER_OPENNESS = 0.45
+
+
+def make_sheer(material: bpy.types.Material) -> bool:
+    """Voile curtain: the exported opacity is the share of light the weave
+    stops, split evenly between reflection (the imported surface) and diffuse
+    transmission (Translucent BSDF); the rest passes straight through
+    (Transparent BSDF), so sunlight and the view outside show through it."""
+    node = principled(material)
+    if node is None:
+        return False
+    alpha = node.inputs.get("Alpha")
+    cover = alpha.default_value if alpha is not None and not alpha.is_linked else 1.0
+    if cover >= 0.999:
+        cover = 1.0 - SHEER_OPENNESS
+    set_input(node, ("Alpha",), 1.0)
+    if not add_translucency(material, "mix", 0.5):
+        return False
+    tree = material.node_tree
+    output = next(n for n in tree.nodes if n.type == "OUTPUT_MATERIAL" and n.is_active_output)
+    fabric = output.inputs["Surface"].links[0].from_socket
+    transparent = tree.nodes.new("ShaderNodeBsdfTransparent")
+    mix = tree.nodes.new("ShaderNodeMixShader")
+    mix.inputs[0].default_value = cover
+    tree.links.new(transparent.outputs[0], mix.inputs[1])
+    tree.links.new(fabric, mix.inputs[2])
+    tree.links.new(mix.outputs[0], output.inputs["Surface"])
+    return True
+
+
 def prepare_materials(manifest: dict) -> dict:
-    stats = {"glass": 0, "doors": 0, "shades": 0, "translucent": 0}
+    stats = {"glass": 0, "doors": 0, "shades": 0, "translucent": 0, "sheer": 0}
     night = manifest["lighting"]["preset"] == "night"
     for material in bpy.data.materials:
         role = material_role(material)
@@ -243,6 +275,8 @@ def prepare_materials(manifest: dict) -> dict:
             if hasattr(material, "surface_render_method"):
                 material.surface_render_method = "DITHERED"
             stats["doors"] += 1
+        elif role == "sheer":
+            stats["sheer"] += make_sheer(material)
         elif role == "lampshade" and night:
             make_glowing_shade(material, 2700)
             stats["shades"] += 1

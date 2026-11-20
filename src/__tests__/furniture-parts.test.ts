@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, tableLampParts, vaseParts, bookStackParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, tableLampParts, vaseParts, bookStackParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -76,6 +76,7 @@ const builders={
   'vase':[vaseParts,[[.16,.16,.55],[.12,.12,.25],[.2,.2,.8]]],
   'books':[bookStackParts,[[.26,.2,.12],[.22,.16,.06],[.32,.24,.2]]],
   'table-lamp':[tableLampParts,[[.3,.3,.48],[.25,.25,.4],[.4,.4,.6]]],
+  'sheer-curtain':[sheerCurtainParts,[[1.8,.15,2.5],[1.2,.12,2.2],[3,.2,2.7]]],
   'corner-sofa':[cornerSofaParts,[[2.6,1.6,.85],[2.2,1.5,.8],[3.2,1.8,.9]]],
   pouf:[poufParts,[[.5,.5,.42],[.4,.4,.38],[.6,.45,.45]]],
   'console-table':[consoleTableParts,[[1,.35,.8],[.8,.3,.75],[1.4,.4,.85]]],
