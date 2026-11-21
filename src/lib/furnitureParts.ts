@@ -1181,9 +1181,9 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
-export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack']);
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer']);
 // Wall-only or soft items that never carry a tabletop object.
-const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat']);
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket']);
 /** Flat floor coverings: lie on the floor finish, never collide with furniture and cast no contact shadow. */
 export const FLOOR_COVER_KINDS:ReadonlySet<string>=new Set(['rug','doormat','bath-mat']);
 
@@ -1653,4 +1653,85 @@ export function bathMatParts(w:number,d:number,h:number):FurniturePart[]{
 export function towelStackParts(w:number,d:number,h:number):FurniturePart[]{
   const t=h/3,colors=['item','#ece7dd','item'],shift=[.006,-.008,.004];
   return colors.map((color,i)=>part(`Toalla ${i+1}`,[w-(i%2)*.012,t,d-.012],shift[i],i*t,shift[2-i],{color,surface:'textile',bevel:t*.45,crown:{axis:'y',amount:t*.18,both:true}}));
+}
+
+/** Hanging cone of a desk lamp head, open at the bottom (lathe shell). */
+const LAMP_HEAD:Profile=[[1,0],[.42,.85],[.3,1],[.25,1],[.36,.85],[.94,0],[1,0]];
+/**
+ * Desk lamp (flexo) inside `w × d × h`: a weighted round base at −x, an upright post, an arm
+ * reaching towards +x at height `h` and a metal cone head hanging from its end, open downwards.
+ */
+export function deskLampParts(w:number,d:number,h:number):FurniturePart[]{
+  const B=Math.min(d,.16),base=.022,rod=.014,head=Math.min(.12,d*.8,w*.4),hh=Math.min(.1,h*.25),bx=-w/2+B/2,hx=w/2-head/2;
+  const dark={color:'#2b2a28',material:'metal'} as const;
+  return [
+    turned('Base',DISC,[B,base,B],bx,0,0,{color:'item',material:'metal'}),
+    turned('Columna',ROD,[rod,h-base-rod,rod],bx,base,0,dark),
+    turned('Articulación',BALL,[.022,.022,.022],bx,h-.022,0,dark),
+    part('Brazo',[hx-bx,rod,rod],(bx+hx)/2,h-rod,0,{...dark,bevel:.005}),
+    turned('Pantalla',LAMP_HEAD,[head,hh,head],hx,h-hh,0,{color:'item',material:'metal'}),
+    turned('Bombilla',BALL,[head*.35,head*.3,head*.35],hx,h-hh+.01,0,{color:'#fff4dc'}),
+  ];
+}
+
+/**
+ * Open laptop inside `w × d × h`: an aluminium base with a dark keyboard inset and trackpad, and the
+ * lid standing upright along the back edge (−z) with its glossy screen facing +z.
+ */
+export function laptopParts(w:number,d:number,h:number):FurniturePart[]{
+  const t=Math.min(.016,h*.1),lid=.006,alu={color:'item',material:'metal'} as const;
+  return [
+    part('Base',[w,t,d-lid],0,0,lid/2,{...alu,bevel:Math.min(.004,t*.4)}),
+    part('Teclado',[w*.86,.0015,(d-lid)*.42],0,t,-d/2+lid+(d-lid)*.27,{color:'#26282b',bevel:0}),
+    part('Panel táctil',[w*.34,.001,(d-lid)*.28],0,t,d/2-(d-lid)*.2,{color:'#c4c6c9',material:'metal',bevel:0}),
+    part('Tapa',[w,h-t,lid],0,t*.6,-d/2+lid/2,{...alu,bevel:.003}),
+    part('Pantalla',[w*.92,(h-t)*.86,.0015],0,t*.6+(h-t)*.07,-d/2+lid+.00075,{color:'#101214',material:'gloss',bevel:0}),
+  ];
+}
+
+/** Tapered open wastebasket with a thin floor (lathe profile, wider at the rim). */
+const BIN:Profile=[[0,0],[.82,0],[1,1],[.95,1],[.78,.035],[0,.035]];
+/** Woven wastebasket inside `w × d × h`, slightly flared, with a crumpled paper ball inside. */
+export function wastebasketParts(w:number,d:number,h:number):FurniturePart[]{
+  const D=Math.min(w,d),ball=Math.min(.07,D*.3);
+  return [
+    turned('Papelera',BIN,[D,h,D],0,0,0,{color:'item',surface:'textile'}),
+    turned('Bola de papel',BALL,[ball,ball*.85,ball],D*.08,h*.035,-D*.05,{color:'#f2f0ea'}),
+  ];
+}
+
+/**
+ * Desk organiser inside `w × d × h`: a low wooden tray holding a pen cup (−x) with three pencils
+ * that reach `h`, and two stacked note pads (+x).
+ */
+export function deskOrganizerParts(w:number,d:number,h:number):FurniturePart[]{
+  const tray=Math.min(.02,h*.2),cup=Math.min(d*.8,w*.35,.075),cupH=Math.min(h*.62,.1),cx=-w/2+cup/2+.01;
+  const parts:FurniturePart[]=[
+    part('Bandeja',[w,tray*.35,d],0,0,0,{color:'wood',surface:'woodgrain',bevel:.002}),
+    ...[-1,1].map(s=>part(`Borde ${s<0?'trasero':'delantero'}`,[w,tray,.008],0,0,s*(d/2-.004),{color:'wood',surface:'woodgrain',bevel:.002})),
+    turned('Lapicero',CROCK,[cup,cupH,cup],cx,tray*.35,0,{color:'item',material:'gloss'}),
+  ];
+  for(const [i,color,dx,dz,top] of [[1,'#d9a441',-.012,-.008,h],[2,'#3f5f7a',.01,.004,h-.012],[3,'#2b2723',-.002,.012,h-.024]] as const)
+    if(top-tray>.02)parts.push(turned(`Lápiz ${i}`,ROD,[.008,top-tray*.35-cupH*.07,.008],cx+dx*cup/.075,tray*.35+cupH*.07,dz*cup/.075,{color}));
+  const pad=Math.min(w-cup-.03,d-.02,.08);
+  parts.push(part('Bloc 1',[pad,.012,pad],w/2-pad/2-.012,tray*.35,0,{color:'#f4f1e8',bevel:.002}));
+  parts.push(part('Bloc 2',[pad*.85,.01,pad*.85],w/2-pad/2-.014,tray*.35+.012,.003,{color:'#e8c95a',bevel:.002}));
+  return parts;
+}
+
+/** Tall woven basket with straight walls (lathe profile). */
+const BLANKET_BASKET:Profile=[[0,0],[.95,0],[1,.05],[1,1],[.95,1],[.95,.04],[0,.04]];
+/**
+ * Blanket basket inside `w × d × h`: a woven round basket of diameter `min(w, d)` with two side
+ * handles and two rolled blankets (sage and oat) standing in it; the taller roll reaches `h`.
+ */
+export function blanketBasketParts(w:number,d:number,h:number):FurniturePart[]{
+  const D=Math.min(w,d),basket=Math.min(h*.78,h-.06),roll=Math.min(.15,D*.38),floor=basket*.04;
+  const parts:FurniturePart[]=[
+    turned('Cesto',BLANKET_BASKET,[D,basket,D],0,0,0,{color:'item',surface:'textile'}),
+    ...[-1,1].map(s=>part(`Asa ${s<0?'izquierda':'derecha'}`,[.02,.03,.1],s*(D/2+.006),basket-.06,0,{color:'#6b4a33',bevel:.008})),
+  ];
+  for(const [i,color,x,z,top] of [[1,'#8c9b8a',-D*.17,-D*.06,h],[2,'#cdbb9f',D*.17,D*.08,h-.05]] as const)
+    parts.push(turned(`Manta enrollada ${i}`,ROD,[roll,top-floor,roll],x,floor,z,{color,surface:'textile'}));
+  return parts;
 }
