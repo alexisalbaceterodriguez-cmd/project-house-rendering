@@ -7,9 +7,10 @@ type Vec3=[number,number,number];
  * footprint centre on the floor, front +z). `item` = the furniture's own colour, `wood` = the
  * project's wood palette, otherwise a hex colour. The viewer draws each part as a bevelled box,
  * or as a solid of revolution filling `size` when it has a `lathe` profile, and the render GLB
- * carries the same meshes, so Cycles sees exactly this geometry.
+ * carries the same meshes, so Cycles sees exactly this geometry. `rotation` (radians, Euler XYZ as
+ * in three.js) turns the solid about its own centre: leaning frames, ladder rails, an arched stem.
  */
-export type FurniturePart={name:string;size:Vec3;position:Vec3;color:'item'|'wood'|string;surface?:'textile'|'woodgrain';material?:'metal'|'glass'|'mirror'|'gloss';role?:string;bevel:number;crown?:Crown;lathe?:Profile;axis?:'z'};
+export type FurniturePart={name:string;size:Vec3;position:Vec3;color:'item'|'wood'|string;surface?:'textile'|'woodgrain';material?:'metal'|'glass'|'mirror'|'gloss';role?:string;bevel:number;crown?:Crown;lathe?:Profile;axis?:'z';rotation?:Vec3};
 
 /** Faces that would sit on the same plane are kept at least this far apart (no z-fighting in viewer or Cycles). */
 export const FACE_GAP=.01;
@@ -411,8 +412,22 @@ export function plantPotParts(w:number,d:number,h:number):FurniturePart[]{
 /** Axis-aligned extent of a part list: [min, max] per axis. */
 export function partsBounds(parts:FurniturePart[]):[Vec3,Vec3]{
   const min:Vec3=[Infinity,Infinity,Infinity],max:Vec3=[-Infinity,-Infinity,-Infinity];
-  for(const p of parts)for(let a=0;a<3;a++){min[a]=Math.min(min[a],p.position[a]-p.size[a]/2);max[a]=Math.max(max[a],p.position[a]+p.size[a]/2);}
+  for(const p of parts){
+    // A turned part spans the box of its turned size: corners of that box, rotated, bound it.
+    const corners:Vec3[]=[];
+    for(const sx of [-1,1])for(const sy of [-1,1])for(const sz of [-1,1])corners.push(rotateEuler([sx*p.size[0]/2,sy*p.size[1]/2,sz*p.size[2]/2],p.rotation));
+    for(const c of corners)for(let a=0;a<3;a++){min[a]=Math.min(min[a],p.position[a]+c[a]);max[a]=Math.max(max[a],p.position[a]+c[a]);}
+  }
   return [min,max];
+}
+/** `v` turned by Euler angles in three.js XYZ order (the matrix Rx·Ry·Rz). */
+export function rotateEuler(v:Vec3,rotation?:Vec3):Vec3{
+  if(!rotation)return v;
+  const [ax,ay,az]=rotation;let [x,y,z]=v;
+  [x,y]=[x*Math.cos(az)-y*Math.sin(az),x*Math.sin(az)+y*Math.cos(az)];
+  [x,z]=[x*Math.cos(ay)+z*Math.sin(ay),-x*Math.sin(ay)+z*Math.cos(ay)];
+  [y,z]=[y*Math.cos(ax)-z*Math.sin(ax),y*Math.sin(ax)+z*Math.cos(ax)];
+  return [x,y,z];
 }
 
 export type ModuleFamily='base'|'wall'|'column'|'sink'|'hob'|'oven'|'vanity'|'hood';

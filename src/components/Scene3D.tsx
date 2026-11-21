@@ -1,7 +1,7 @@
-import { createContext, memo, Suspense, useContext, useEffect, useMemo, useState, type MutableRefObject } from 'react';
+import { createContext, memo, Suspense, useContext, useEffect, useMemo, useState, type MutableRefObject, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
-import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, SoftShadows, useGLTF, useProgress } from '@react-three/drei';
+import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, SoftShadows, useEnvironment, useGLTF, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -31,8 +31,13 @@ function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metaln
 // `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); `crown` domes a cushion face. The GLB carries the same mesh.
 const FLAME_GLOW='#ffb04a';
 type Look={color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>};
-type Shape={size:readonly [number,number,number];bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z'};
-const shapeGeometry=({size,bevel=0,crown,lathe,axis}:Shape)=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown);
+type Shape={size:readonly [number,number,number];bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z';rotation?:readonly [number,number,number]};
+/** The part's solid centred on the origin, turned about its own centre when it has a rotation. */
+const shapeGeometry=({size,bevel=0,crown,lathe,axis,rotation}:Shape)=>{
+  const geometry=lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown);
+  if(rotation)geometry.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...rotation)));
+  return geometry;
+};
 /** One mesh with the material a part look describes; `thickness` is the glass slab depth. */
 function LookMesh({geometry,position,thickness,look:{color,material='matte',opacity=1,finishId,role,surface}}:{geometry:THREE.BufferGeometry;position?:[number,number,number];thickness:number;look:Look}){
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
@@ -51,8 +56,8 @@ const sameProps=(a:object,b:object)=>{
   }
   return true;
 };
-const Box=memo(function Box({position=[0,0,0],size,bevel,crown,lathe,axis,...look}:{position?:[number,number,number]}&Shape&Look){
-  const geometry=useMemo(()=>shapeGeometry({size,bevel,crown,lathe,axis}),[...size,bevel,crown?.axis,crown?.amount,crown?.both,lathe&&JSON.stringify(lathe),axis]);
+const Box=memo(function Box({position=[0,0,0],size,bevel,crown,lathe,axis,rotation,...look}:{position?:[number,number,number]}&Shape&Look){
+  const geometry=useMemo(()=>shapeGeometry({size,bevel,crown,lathe,axis,rotation}),[...size,bevel,crown?.axis,crown?.amount,crown?.both,lathe&&JSON.stringify(lathe),axis,rotation?.join()]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   return <LookMesh geometry={geometry} position={position} thickness={Math.min(...size)} look={look}/>;
 },sameProps);
@@ -68,9 +73,9 @@ const PartGroup=memo(function PartGroup({parts,look}:{parts:readonly FurniturePa
     const merged=mergeGeometries(pieces,false);for(const g of pieces)g.dispose();
     merged?.computeBoundingBox();merged?.computeBoundingSphere();
     return merged??undefined;
-  },[JSON.stringify(parts.map(p=>[p.position,p.size,p.bevel,p.crown,p.lathe,p.axis]))]);
+  },[JSON.stringify(parts.map(p=>[p.position,p.size,p.bevel,p.crown,p.lathe,p.axis,p.rotation]))]);
   useEffect(()=>()=>geometry?.dispose(),[geometry]);
-  if(!geometry)return <>{parts.map(p=><Box key={p.name} position={p.position} size={p.size} bevel={p.bevel} crown={p.crown} lathe={p.lathe} axis={p.axis} {...look}/>)}</>;
+  if(!geometry)return <>{parts.map(p=><Box key={p.name} position={p.position} size={p.size} bevel={p.bevel} crown={p.crown} lathe={p.lathe} axis={p.axis} rotation={p.rotation} {...look}/>)}</>;
   return <LookMesh geometry={geometry} thickness={Math.min(...parts.flatMap(p=>p.size))} look={look}/>;
 },sameProps);
 function FloorSurface({room}:{room:Project['rooms'][number]}){
@@ -203,20 +208,27 @@ function ImportedModel({url,item,selected}:{url:string;item:Furniture;selected:b
     <primitive object={clone} position={[-center.x, -center.y+size.y/2, -center.z]} onClick={pickSurface}/>
   </group></group>;
 }
+/** Models still fetching or parsing; captures wait for this to empty (loader progress has gaps between fetch and parse). */
+const loadingModels=new Set<object>();
+function trackModelLoad(){const token={};loadingModels.add(token);return()=>{loadingModels.delete(token);};}
+function ModelLoading({item}:{item:Furniture}){
+  useEffect(()=>trackModelLoad(),[]);
+  return <Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#ddd5c5"/>;
+}
 function ModelShape({item,selected}:{item:Furniture;selected:boolean}){
   const [url,setUrl]=useState<string|null>(item.modelData??null);
   useEffect(()=>{
     if(item.modelData){setUrl(item.modelData);return;}
     if(!item.assetId){setUrl(null);return;}
     setUrl(null);
-    let active=true;let objectURL:string|undefined;
+    let active=true;let objectURL:string|undefined;const done=trackModelLoad();
     getModelAsset(item.assetId).then(blob=>{
       if(blob&&active){objectURL=URL.createObjectURL(blob);setUrl(objectURL);}
-    }).catch(()=>{if(active)setUrl(null);});
-    return ()=>{active=false;if(objectURL)URL.revokeObjectURL(objectURL);};
+    }).catch(()=>{if(active)setUrl(null);}).finally(done);
+    return ()=>{active=false;done();if(objectURL)URL.revokeObjectURL(objectURL);};
   },[item.assetId,item.modelData]);
   const fallback=<group><Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#d2b7a4"/><Html center position={[0,item.h+.15,0]}><span className="model-unavailable">{item.name}: modelo no disponible</span></Html></group>;
-  return url?<ErrorBoundary key={url} fallback={fallback}><Suspense fallback={<Box position={[0,item.h/2,0]} size={[item.w,item.h,item.d]} color="#ddd5c5"/>}><ImportedModel url={url} item={item} selected={selected}/></Suspense></ErrorBoundary>:fallback;
+  return url?<ErrorBoundary key={url} fallback={fallback}><Suspense fallback={<ModelLoading item={item}/>}><ImportedModel url={url} item={item} selected={selected}/></Suspense></ErrorBoundary>:fallback;
 }
 function ModuleModel({item,wood}:{item:Furniture;wood:string}){
   const m=item.module!;
@@ -466,12 +478,12 @@ function CaptureRig({exposure,high}:{exposure:number;high:boolean}){
       const references=(project.materials??[]).flatMap(material=>Object.values(material.maps??{}));
       // Model loads can start after the DOM reports idle. Let pending React/loader work
       // settle for two frames, reading live progress rather than a render's stale value.
-      const deadline=performance.now()+10_000;let settled=0;
+      const deadline=performance.now()+30_000;let settled=0;
       while(settled<2){
         await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
         if(useEditor.getState().project!==project)throw new Error('El proyecto cambió mientras se preparaba la imagen. Vuelve a exportar.');
         if(performance.now()>deadline)throw new Error('Espera a que terminen de cargar los modelos y texturas antes de exportar.');
-        settled=useProgress.getState().active||textureMapsPending(references)?0:settled+1;
+        settled=useProgress.getState().active||loadingModels.size||textureMapsPending(references)?0:settled+1;
       }
       const size=gl.getSize(new THREE.Vector2()),ratio=gl.getPixelRatio();
       const perspective=camera as THREE.PerspectiveCamera,aspect=perspective.aspect;
@@ -510,7 +522,7 @@ function StudioLights({project,subject,high}:{project:Project;subject?:Furniture
     <directionalLight target={target} position={key} intensity={settings.key} color={color} castShadow shadow-mapSize={[high?2048:1024,high?2048:1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} shadow-camera-far={span*6} shadow-normalBias={.008} shadow-bias={-.00005}/>
     <directionalLight target={target} position={[center[0]-span,center[1]+span*.5,center[2]+span*.7]} intensity={settings.fill} color="#e0ebff"/>
     <directionalLight target={target} position={[center[0]+span*.7,center[1]+span,center[2]-span]} intensity={settings.rim} color="#fff2e0"/>
-    <ErrorBoundary fallback={null}><Suspense fallback={null}><Environment files={`${import.meta.env.BASE_URL}environment/studio.hdr`} environmentIntensity={.45}/></Suspense></ErrorBoundary>
+    <ErrorBoundary fallback={null}><Suspense fallback={null}><Environment files={ENVIRONMENT_FILE} environmentIntensity={.45}/></Suspense></ErrorBoundary>
   </>;
 }
 function WalkRig({project}:{project:Project}){
@@ -537,6 +549,14 @@ function WalkRig({project}:{project:Project}){
     });if(!blocked)camera.position.copy(next);
   });return <PointerLockControls makeDefault selector=".scene-wrap canvas"/>;
 }
+const ENVIRONMENT_FILE=`${import.meta.env.BASE_URL}environment/studio.hdr`;
+function EnvironmentReady({children}:{children:ReactNode}){useEnvironment({files:ENVIRONMENT_FILE});return <>{children}</>;}
+/**
+ * Mount the scene once the image-based light is decoded: the environment map changes every
+ * material's shader, so drawing first would compile all of them twice. If the HDR cannot be
+ * read the scene is drawn without it.
+ */
+function AfterEnvironment({children}:{children:ReactNode}){return <ErrorBoundary fallback={children}><Suspense fallback={null}><EnvironmentReady>{children}</EnvironmentReady></Suspense></ErrorBoundary>;}
 export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefObject<HTMLCanvasElement|null>;topView?:boolean}){
   useTextureLibraryRevision();
   // liveCamera is read on purpose: its first sync (after CameraRig places the camera) re-renders the
@@ -557,13 +577,14 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       <ambientLight intensity={render.lighting==='night'?.08:.35}/>
       <hemisphereLight intensity={render.lighting==='night'?.12:.4} groundColor="#ccc8bd" color="#e7f1ff"/>
       {/* Image-based light: metals need something to reflect, or they render almost black. */}
-      <ErrorBoundary fallback={null}><Suspense fallback={null}><Environment files={`${import.meta.env.BASE_URL}environment/studio.hdr`} environmentIntensity={render.lighting==='night'?.08:.28}/></Suspense></ErrorBoundary>
+      <ErrorBoundary fallback={null}><Suspense fallback={null}><Environment files={ENVIRONMENT_FILE} environmentIntensity={render.lighting==='night'?.08:.28}/></Suspense></ErrorBoundary>
       <directionalLight castShadow position={[-5,13,7]} intensity={render.lighting==='night'?.2:2.3} color={render.lighting==='night'?'#a8bfff':'#fff5e8'} shadow-mapSize-width={high?2048:1024} shadow-mapSize-height={high?2048:1024} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} shadow-bias={-.0001}/>
       {render.lighting==='night'&&<pointLight position={[project.width/2,2.3,project.depth/2]} intensity={35} color="#ffd6a3" decay={2}/>}
       </>}
-      <CaptureRig exposure={render.exposure} high={high}/><InteractionQuality high={high}/>
+      <InteractionQuality high={high}/>
       <CameraRig project={project} top={!cameraLocked&&topView}/>
       {render.walk&&!subject?<WalkRig project={project}/>:<OrbitControls makeDefault target={project.render?.camera?.target??[project.width/2,.05,project.depth/2]} enableRotate={!cameraLocked} enableZoom={!cameraLocked} enablePan={!cameraLocked} enableDamping dampingFactor={.08} minDistance={.4} maxDistance={500} maxPolarAngle={Math.PI*.495}/>}
+      <AfterEnvironment>
       <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[center[0],subject?ground:-.1,center[2]]} userData={{atelierId:'ground',atelierType:'ground'}}><planeGeometry args={subject?[span*8+50,span*8+50]:[project.width+50,project.depth+50]}/><meshStandardMaterial color={studio?(render.studio??defaultStudio).background:'#ebeae5'} roughness={studio?.85:1}/></mesh>
       {!subject&&<>
       {project.rooms.map(room=><FloorSurface key={room.id} room={room}/>)}
@@ -574,6 +595,9 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       {subject?<group userData={{renderExclude:true}}><ContactShadows key={JSON.stringify([subject.id,subject.w,subject.d,subject.h,subject.x,subject.y,subject.rotation,ground])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={.35} blur={2.5} far={span*2}/></group>
         :project.furniture.filter(item=>!FLOOR_COVER_KINDS.has(item.kind)&&placedElevation(item,project.furniture,project.wallHeight)<=0&&Math.max(0,item.modelElevation??0)<.45).map(item=><FloorContact key={item.id} item={item}/>)}
 
+      {/* Registered with the scene content, so exports and captures wait until it is mounted. */}
+      <CaptureRig exposure={render.exposure} high={high}/>
+      </AfterEnvironment>
     </Canvas>
     <div className="scene-navigation">{render.walk&&!subject?'WASD para caminar · Esc para liberar el cursor':'Arrastra para orbitar · Rueda para acercar · Mayús + clic para editar un material'}</div>
   </div>;

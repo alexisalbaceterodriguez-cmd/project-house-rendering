@@ -223,34 +223,73 @@ function texture(pixels: Uint8Array, size: number, tile: number, colorSpace: THR
   return t;
 }
 
-function loadImage(url: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
+/**
+ * Load a scan already flipped for WebGL. `createImageBitmap` decodes the 2K JPEG off the main thread;
+ * an <img> would be decoded during the texture upload and stall the first frames.
+ */
+async function loadImage(url: string): Promise<{ image: ImageBitmap | HTMLImageElement; flipY: boolean }> {
+  if (typeof createImageBitmap === 'function') {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`No se pudo cargar ${url}`);
+    const image = await createImageBitmap(await response.blob(), { imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+    return { image, flipY: false };
+  }
+  return new Promise((resolve, reject) => {
     const image = new Image();
     image.decoding = 'async';
-    image.onload = () => resolve(image);
+    image.onload = () => resolve({ image, flipY: true });
     image.onerror = () => reject(new Error(`No se pudo cargar ${url}`));
     image.src = url;
   });
 }
-/** Swap the procedural fallback for the scanned images; on failure the fallback simply stays. */
+/**
+ * Flat 4 × 4 stand-in shown for the second it takes the scans to load: the finish swatch (floors) or
+ * a light neutral (greyscale multipliers), a flat normal and the average roughness. Generating the
+ * procedural maps up front cost several hundred milliseconds of main thread on every page load.
+ */
+function placeholderPixels(kind: SurfaceKind): SurfacePixels {
+  const size = 4, color = new Uint8Array(size * size * 4), normal = new Uint8Array(size * size * 4), orm = new Uint8Array(size * size * 4);
+  const c = kind === 'textile' || kind === 'woodgrain' ? [238, 236, 232] : rgb((floors[kind.slice('floor:'.length) as FloorFinish] ?? floors.oak).color);
+  for (let i = 0; i < size * size; i++) { color.set([c[0], c[1], c[2], 255], i * 4); normal.set([128, 128, 255, 255], i * 4); orm.set([255, 170, 0, 255], i * 4); }
+  return { size, tile: 1, color, orm, normal };
+}
+/** Replace the stand-in with the procedural maps (only when the scans cannot be loaded). */
+function useProcedural(kind: SurfaceKind, maps: SurfaceMaps, targets: THREE.Texture[]) {
+  const p = surfacePixels(kind);
+  [p.color, p.normal, p.orm].forEach((pixels, i) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = p.size;
+    canvas.getContext('2d')?.putImageData(new ImageData(Uint8ClampedArray.from(pixels), p.size, p.size), 0, 0);
+    const t = targets[i];
+    t.dispose();
+    t.source = new THREE.Source(canvas);
+    t.flipY = false;
+    t.repeat.set(1 / p.tile, 1 / p.tile);
+    t.needsUpdate = true;
+  });
+  maps.tile = p.tile;
+  listeners.forEach(listener => listener());
+}
+/** Swap the stand-in for the scanned images; on failure the procedural maps take their place. */
 function loadScan(kind: SurfaceKind, maps: SurfaceMaps) {
   if (typeof Image === 'undefined' || (maps.map as THREE.DataTexture).isDataTexture) return;
   const scan = SURFACE_SCANS[kind], base = `${import.meta.env.BASE_URL}materials/surfaces/`;
   const targets = [maps.map, maps.normalMap, maps.roughnessMap];
   const job: Promise<void> = Promise.all([scan.color, scan.normal, scan.orm].map(name => loadImage(`${base}${name}.jpg`)))
     .then(images => {
-      images.forEach((image, i) => {
+      images.forEach(({ image, flipY }, i) => {
         const t = targets[i];
-        // A new Source makes three allocate a texture of the new size instead of updating the old one.
+        // Release the stand-in's GPU storage (immutable, 4 × 4) so three allocates one of the new size.
+        t.dispose();
         t.source = new THREE.Source(image);
-        t.flipY = true;
+        t.flipY = flipY;
         t.repeat.set(1 / scan.tile, 1 / scan.tile);
         t.needsUpdate = true;
       });
       maps.tile = scan.tile; maps.scanned = true;
       listeners.forEach(listener => listener());
     })
-    .catch(() => undefined)
+    .catch(() => useProcedural(kind, maps, targets))
     .finally(() => { pending.delete(job); });
   pending.add(job);
 }
@@ -259,7 +298,8 @@ function loadScan(kind: SurfaceKind, maps: SurfaceMaps) {
 export function surfaceMaps(kind: SurfaceKind): SurfaceMaps {
   let maps = cache.get(kind);
   if (!maps) {
-    const p = surfacePixels(kind);
+    // Without a DOM (unit tests, scripts) the procedural maps are the final ones.
+    const p = typeof document === 'undefined' || typeof Image === 'undefined' ? surfacePixels(kind) : placeholderPixels(kind);
     const orm = texture(p.orm, p.size, p.tile, THREE.NoColorSpace);
     maps = { map: texture(p.color, p.size, p.tile, THREE.SRGBColorSpace), normalMap: texture(p.normal, p.size, p.tile, THREE.NoColorSpace), roughnessMap: orm, metalnessMap: orm, tile: p.tile, scanned: false };
     cache.set(kind, maps);

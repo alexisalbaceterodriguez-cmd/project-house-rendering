@@ -1,3 +1,4 @@
+import { surfaceTexturesReady } from './surfaceTextures';
 type Capture=(width:number,height:number)=>Promise<Blob>;
 const captures=new Map<HTMLCanvasElement,Capture>();
 let capturing=false;
@@ -21,7 +22,8 @@ export async function captureImage(width:number,height:number):Promise<Blob>{
   if(!Number.isInteger(width)||!Number.isInteger(height)||width<320||height<240||width>3840||height>3840||width*height>8_294_400)throw new Error('La captura admite hasta 3840 px y 8,3 millones de píxeles.');
   if(capturing)throw new Error('Ya hay una imagen en preparación. Espera a que termine.');
   capturing=true;
-  try{return await capture(width,height);}finally{capturing=false;}
+  // Scanned surface maps load after the scene mounts; capture with the final images, never the stand-ins.
+  try{await surfaceTexturesReady();return await capture(width,height);}finally{capturing=false;}
 }
 
 // Live three.js scene of the 3D viewer, used to export the render package (GLB).
