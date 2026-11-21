@@ -1198,7 +1198,7 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
 export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer','decor-tray','table-setting','wine-set','coffee-machine','dish-rack','herb-pots']);
 // Wall-only or soft items that never carry a tabletop object.
-const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase']);
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase','arc-lamp','leaning-art','blanket-ladder']);
 /** Flat floor coverings: lie on the floor finish, never collide with furniture and cast no contact shadow. */
 export const FLOOR_COVER_KINDS:ReadonlySet<string>=new Set(['rug','doormat','bath-mat']);
 
@@ -1952,6 +1952,94 @@ export function herbPotsParts(w:number,d:number,h:number):FurniturePart[]{
       const size=pot*.62*s,fh=Math.min(foliage*s,foliage);
       parts.push(turned(`Hojas ${i+1}.${k}`,BALL,[size,fh,size],x+dx*pot,top-fh-(k===1?0:foliage*(1-s)*.6),dz*pot,{color:greens[(i+k)%3]}));
     }
+  }
+  return parts;
+}
+
+/**
+ * Turn `parts` by `angle` about the x axis through (y, z) = `pivot`: every centre moves with the
+ * rotation and every part gets that rotation, so a group of parts tilts as one rigid piece.
+ */
+function tiltX(parts:FurniturePart[],angle:number,pivot:[number,number]):FurniturePart[]{
+  return parts.map(p=>{
+    const [x,y,z]=rotateEuler([p.position[0],p.position[1]-pivot[0],p.position[2]-pivot[1]],[angle,0,0]);
+    return {...p,position:[x,y+pivot[0],z+pivot[1]],rotation:[angle,0,0]};
+  });
+}
+
+/** Domed metal shade, open below (lathe profile: outer skin up to the crown, inner skin back down). */
+const DOME:Profile=[[1,0],[.97,.36],[.86,.66],[.62,.88],[.25,1],[0,1],[0,.96],[.24,.96],[.59,.85],[.82,.64],[.93,.35],[.96,0]];
+/** Height of the arc lamp's shade and the point under it where the bulb sits (item coordinates). */
+export function arcLampBulb(w:number,d:number,h:number):Vec3{
+  const shade=Math.min(.24,h*.13),dome=Math.min(.42,d,w*.32);
+  return [w/2-dome/2,arcLampEnd(h)-.03-shade*.6,0];
+}
+const arcLampEnd=(h:number)=>h*.8;
+/**
+ * Arc floor lamp inside `w × d × h` (it reaches along +x): a heavy marble base and a vertical
+ * steel stem at −x, a half-ellipse arc of short rotated rods whose crown reaches `h`, and a metal
+ * dome over a glowing diffuser (role `lampshade`) hanging at +x.
+ */
+export function arcLampParts(w:number,d:number,h:number):FurniturePart[]{
+  const base=Math.min(.34,d,w*.28),dome=Math.min(.42,d,w*.32),shade=Math.min(.24,h*.13),rod=.024;
+  const bx=-w/2+base/2,ex=w/2-dome/2,end=arcLampEnd(h),rise=h-end-rod/2,steel={color:'#b9b6ae',material:'metal'} as const;
+  const parts:FurniturePart[]=[
+    part('Base de mármol',[base,.05,base],bx,0,0,{color:'#e6e1d8',material:'gloss',bevel:.008}),
+    turned('Pie',ROD,[rod,end-.05,rod],bx,.05,0,steel),
+  ];
+  const n=24,cx=(bx+ex)/2,R=(ex-bx)/2;
+  const point=(t:number):[number,number]=>[cx-R*Math.cos(t),end+rise*Math.sin(t)];
+  for(let i=0;i<n;i++){
+    const [x0,y0]=point(Math.PI*i/n),[x1,y1]=point(Math.PI*(i+1)/n),dx=x1-x0,dy=y1-y0,length=Math.hypot(dx,dy)+rod*.6;
+    parts.push(turned(`Arco ${i+1}`,ROD,[rod,length,rod],(x0+x1)/2,(y0+y1)/2-length/2,0,{...steel,rotation:[0,0,Math.atan2(-dx,dy)]}));
+  }
+  parts.push(
+    turned('Casquillo',ROD,[.045,.06,.045],ex,end-.06,0,steel),
+    turned('Pantalla',DOME,[dome,shade,dome],ex,end-.03-shade,0,{color:'item',material:'metal'}),
+    turned('Difusor',DISC,[dome*.88,.006,dome*.88],ex,end-.03-shade+.012,0,{color:'#fff6e0',role:'lampshade'}),
+  );
+  return parts;
+}
+
+/**
+ * Two framed prints standing on the floor and leaning back against the wall (−z) inside
+ * `w × d × h`: a tall one at −x in a wood frame and a smaller one in front at +x in a black frame,
+ * each tilted about its back bottom edge. Parametric colour fields, not reproductions.
+ */
+export function leaningArtParts(w:number,d:number,h:number):FurniturePart[]{
+  const lean=-.09,depth=.028,bigW=Math.min(w*.62,h*.78),smallW=Math.min(w-bigW*.72,h*.55),smallH=h*.66;
+  // A frame of height H tilted by `lean` reaches back H·sin|lean| from its foot.
+  const tall=(h-depth*Math.abs(Math.sin(lean)))/Math.cos(lean);
+  const big=artworkParts(bigW,depth,tall).map(p=>({...p,name:`Grande · ${p.name}`}));
+  const small=artworkParts(smallW,depth,smallH).map(p=>({...p,name:`Pequeño · ${p.name}`,
+    color:p.color==='wood'?'#262729':p.color==='item'?'#c48a6a':p.color,surface:p.color==='wood'?undefined:p.surface}));
+  const back=-d/2+tall*Math.abs(Math.sin(lean))+.002,smallBack=Math.min(d/2-depth-.002,back+.07);
+  const place=(parts:FurniturePart[],x:number,zBack:number)=>tiltX(parts.map(p=>({...p,position:[p.position[0]+x,p.position[1],p.position[2]+zBack+depth/2] as Vec3})),lean,[0,zBack]);
+  return [...place(big,-w/2+bigW/2,back),...place(small,w/2-smallW/2,smallBack)];
+}
+
+/**
+ * Decorative blanket ladder leaning on the wall (−z) inside `w × d × h`: two flat wooden rails
+ * tilted back about their feet, five round rungs that follow the tilt and two blankets (item
+ * colour and oat) draped over rungs, hanging plumb on both sides of them.
+ */
+export function blanketLadderParts(w:number,d:number,h:number):FurniturePart[]{
+  const rail=.045,thick=.026,rung=.028,foot=d/2-thick/2-.004,lean=-Math.atan((d-thick-.012)/h);
+  const length=h/Math.cos(lean)-thick*Math.abs(Math.tan(lean));
+  // Tilted about the rails' back bottom edge; a point `t` up the centre line of the rails:
+  const pivot=foot-thick/2,along=(t:number):[number,number]=>[t*Math.cos(lean)-thick/2*Math.sin(lean),pivot+t*Math.sin(lean)+thick/2*Math.cos(lean)];
+  const parts:FurniturePart[]=tiltX([-1,1].map(s=>part(`Larguero ${s<0?'izquierdo':'derecho'}`,[rail,length,thick],s*(w/2-rail/2),0,foot,{color:'wood',surface:'woodgrain',bevel:.006})),lean,[0,pivot]);
+  const rungs=[.2,.42,.62,.81,.97].map(f=>along(length*f-.06));
+  rungs.forEach(([y,z],i)=>parts.push(turned(`Peldaño ${i+1}`,ROD,[rung,w-2*rail+.01,rung],0,y-(w-2*rail+.01)/2,z,{color:'wood',surface:'woodgrain',rotation:[0,0,Math.PI/2]})));
+  const cloth=.012,bw=w-2*rail-.04;
+  for(const [i,r,color] of [[1,2,'item'],[2,3,'#d8cbb4']] as const){
+    // Each drape stops short of the rung below, which stands further out from the wall.
+    const [y,z]=rungs[r],wrap=rung+2*cloth,gap=y-rungs[r-1][0],front=gap*.82,rear=gap*.6;
+    parts.push(
+      turned(`Manta ${i} · pliegue`,ROD,[wrap,bw,wrap],0,y-bw/2,z,{color,surface:'textile',rotation:[0,0,Math.PI/2]}),
+      part(`Manta ${i} · delante`,[bw,front,cloth],0,y-front,z+rung/2+cloth/2,{color,surface:'textile',bevel:.004}),
+      part(`Manta ${i} · detrás`,[bw,rear,cloth],0,y-rear,z-rung/2-cloth/2,{color,surface:'textile',bevel:.004}),
+    );
   }
   return parts;
 }
