@@ -170,34 +170,109 @@ export function surfacePixels(kind: SurfaceKind, seed = 17): SurfacePixels {
   return planks(base, detail, seed + finish.length);
 }
 
+/**
+ * Scanned CC0 maps (Poly Haven, see ASSET_LICENSES.md) derived offline by `scripts/derive_surface_maps.py`:
+ * floors tinted to their finish swatch, textile and woodgrain turned into light greyscale multipliers.
+ * `tile` is the real width the scan covers, in metres.
+ */
+export const SURFACE_SCANS: Record<SurfaceKind, { tile: number; color: string; normal: string; orm: string }> = {
+  'floor:oak': { tile: 1.7, color: 'floor-oak-color', normal: 'floor-oak-normal', orm: 'floor-oak-orm' },
+  'floor:ash': { tile: 1.7, color: 'floor-ash-color', normal: 'floor-wood-normal', orm: 'floor-wood-orm' },
+  'floor:walnut': { tile: 1.7, color: 'floor-walnut-color', normal: 'floor-wood-normal', orm: 'floor-wood-orm' },
+  'floor:stone': { tile: 2.2, color: 'floor-stone-color', normal: 'floor-stone-normal', orm: 'floor-stone-orm' },
+  'floor:terrazzo': { tile: 2, color: 'floor-terrazzo-color', normal: 'floor-terrazzo-normal', orm: 'floor-terrazzo-orm' },
+  'floor:concrete': { tile: 2, color: 'floor-concrete-color', normal: 'floor-concrete-normal', orm: 'floor-concrete-orm' },
+  textile: { tile: .271, color: 'textile-color', normal: 'textile-normal', orm: 'textile-orm' },
+  woodgrain: { tile: 1.83, color: 'woodgrain-color', normal: 'woodgrain-normal', orm: 'woodgrain-orm' },
+};
+
 export interface SurfaceMaps {
-  map: THREE.DataTexture;
-  normalMap: THREE.DataTexture;
+  map: THREE.Texture;
+  normalMap: THREE.Texture;
   /** Same texture as metalnessMap: glTF packs both in one image, so the exporter keeps it unchanged. */
-  roughnessMap: THREE.DataTexture;
-  metalnessMap: THREE.DataTexture;
+  roughnessMap: THREE.Texture;
+  metalnessMap: THREE.Texture;
   tile: number;
+  /** True once the scanned images replaced the procedural fallback. */
+  scanned: boolean;
 }
 const cache = new Map<SurfaceKind, SurfaceMaps>();
-function texture(pixels: Uint8Array, size: number, tile: number, colorSpace: THREE.ColorSpace, jpeg = false) {
-  const t = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
+const pending = new Set<Promise<void>>();
+const listeners = new Set<() => void>();
+
+function texture(pixels: Uint8Array, size: number, tile: number, colorSpace: THREE.ColorSpace) {
+  // In the browser the procedural fallback lives in a canvas so a scanned image can replace it later;
+  // without a DOM (unit tests) it stays a DataTexture.
+  const canvas = typeof document === 'undefined' ? null : document.createElement('canvas');
+  const context = canvas?.getContext('2d');
+  let t: THREE.Texture;
+  if (canvas && context) {
+    canvas.width = canvas.height = size;
+    context.putImageData(new ImageData(Uint8ClampedArray.from(pixels), size, size), 0, 0);
+    t = new THREE.CanvasTexture(canvas);
+    t.flipY = false; // same orientation as the DataTexture fallback
+  } else t = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(1 / tile, 1 / tile);
   t.colorSpace = colorSpace;
   t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
   t.anisotropy = 8;
-  if (jpeg) t.userData.mimeType = 'image/jpeg';
+  // Every map travels as JPEG in the render GLB (PNG normals at 2K would weigh several MB each).
+  t.userData.mimeType = 'image/jpeg';
   t.needsUpdate = true;
   return t;
 }
-/** Shared, cached textures (never disposed: a handful of small images reused by every mesh). */
+
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`No se pudo cargar ${url}`));
+    image.src = url;
+  });
+}
+/** Swap the procedural fallback for the scanned images; on failure the fallback simply stays. */
+function loadScan(kind: SurfaceKind, maps: SurfaceMaps) {
+  if (typeof Image === 'undefined' || (maps.map as THREE.DataTexture).isDataTexture) return;
+  const scan = SURFACE_SCANS[kind], base = `${import.meta.env.BASE_URL}materials/surfaces/`;
+  const targets = [maps.map, maps.normalMap, maps.roughnessMap];
+  const job: Promise<void> = Promise.all([scan.color, scan.normal, scan.orm].map(name => loadImage(`${base}${name}.jpg`)))
+    .then(images => {
+      images.forEach((image, i) => {
+        const t = targets[i];
+        // A new Source makes three allocate a texture of the new size instead of updating the old one.
+        t.source = new THREE.Source(image);
+        t.flipY = true;
+        t.repeat.set(1 / scan.tile, 1 / scan.tile);
+        t.needsUpdate = true;
+      });
+      maps.tile = scan.tile; maps.scanned = true;
+      listeners.forEach(listener => listener());
+    })
+    .catch(() => undefined)
+    .finally(() => { pending.delete(job); });
+  pending.add(job);
+}
+
+/** Shared, cached textures (never disposed: a handful of images reused by every mesh). */
 export function surfaceMaps(kind: SurfaceKind): SurfaceMaps {
   let maps = cache.get(kind);
   if (!maps) {
     const p = surfacePixels(kind);
     const orm = texture(p.orm, p.size, p.tile, THREE.NoColorSpace);
-    maps = { map: texture(p.color, p.size, p.tile, THREE.SRGBColorSpace, true), normalMap: texture(p.normal, p.size, p.tile, THREE.NoColorSpace), roughnessMap: orm, metalnessMap: orm, tile: p.tile };
+    maps = { map: texture(p.color, p.size, p.tile, THREE.SRGBColorSpace), normalMap: texture(p.normal, p.size, p.tile, THREE.NoColorSpace), roughnessMap: orm, metalnessMap: orm, tile: p.tile, scanned: false };
     cache.set(kind, maps);
+    loadScan(kind, maps);
   }
   return maps;
+}
+/** Resolves once every scanned map requested so far has loaded (or failed back to the procedural one). */
+export async function surfaceTexturesReady() {
+  while (pending.size) await Promise.all([...pending]);
+}
+/** Called whenever scanned maps replace a fallback, e.g. to redraw an on-demand canvas. */
+export function onSurfaceTexturesLoaded(listener: () => void) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
 }

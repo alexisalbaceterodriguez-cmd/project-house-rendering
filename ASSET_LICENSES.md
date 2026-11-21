@@ -22,6 +22,18 @@ Mapas originales JPEG de 1K (color, normal OpenGL y rugosidad), sin modificar, d
 - [White Plaster Rough 01](https://polyhaven.com/a/white_plaster_rough_01).
 - [Studio Small 09](https://polyhaven.com/a/studio_small_09), HDRI 1K, 1.615.248 bytes.
 
+### Superficies escaneadas (suelos, tapicería y vetas)
+
+`public/materials/surfaces/` contiene mapas **derivados** (no sin modificar) de texturas 2K de Poly Haven, [licencia CC0](https://polyhaven.com/license), generados con `scripts/derive_surface_maps.py`: los suelos se tiñen en luz lineal hasta la media del acabado del editor; tejido y veta pasan a multiplicadores en gris claro del color del mueble; los mapas con veta vertical se giran 90° (con su normal); rugosidad empaquetada en G de un ORM glTF. Color y normal a 2K (tejido a 1K), ORM a 1K, JPEG. Si no cargan, el visor conserva la textura procedural.
+
+- Roble: [Laminate Floor 02](https://polyhaven.com/a/laminate_floor_02), anchura real 1,7 m.
+- Fresno y nogal: [Wood Floor](https://polyhaven.com/a/wood_floor), 1,7 m (normal y rugosidad compartidas).
+- Piedra: [Grey Tiles](https://polyhaven.com/a/grey_tiles), 2,2 m.
+- Terrazo: [Terrazzo Tiles](https://polyhaven.com/a/terrazzo_tiles), 2 m.
+- Hormigón: [Smooth Concrete Floor](https://polyhaven.com/a/smooth_concrete_floor), 2 m.
+- Tapicería: [Rough Linen](https://polyhaven.com/a/rough_linen), 0,271 m.
+- Veta de muebles: [Oak Veneer 01](https://polyhaven.com/a/oak_veneer_01), 1,83 m.
+
 ## Presupuesto
 
-Modelos: 18,32 MB en disco; miniaturas: 1,17 MB; texturas: 6,78 MB; HDRI: 1,62 MB. Carga bajo demanda, compartida entre instancias. Cada GLB se guarda una vez en IndexedDB y se referencia por ID estable; el JSON portable deduplica recursos compartidos. Importaciones privadas: máximo 12 MB por modelo, JSON máximo 64 MB. Calidad rápida simplifica materiales físicos, reduce sombras y resolución; alta conserva los materiales del recurso. PNG de alta resolución se limita a 3840 px y 8 millones de píxeles.
+Modelos: 18,32 MB en disco; miniaturas: 1,17 MB; texturas: 6,78 MB; superficies escaneadas: 13,1 MB (se cargan solo las de los acabados usados); HDRI: 1,62 MB. Carga bajo demanda, compartida entre instancias. Cada GLB se guarda una vez en IndexedDB y se referencia por ID estable; el JSON portable deduplica recursos compartidos. Importaciones privadas: máximo 12 MB por modelo, JSON máximo 64 MB. Calidad rápida simplifica materiales físicos, reduce sombras y resolución; alta conserva los materiales del recurso. PNG de alta resolución se limita a 3840 px y 8 millones de píxeles.

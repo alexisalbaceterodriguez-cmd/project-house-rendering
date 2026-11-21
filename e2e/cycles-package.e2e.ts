@@ -53,7 +53,7 @@ test('exporta el paquete de render Cycles con geometría GLB, IDs estables y avi
   // R4: floor, textile and grain patterns travel as metre-scaled image maps (not WebGL-only shaders).
   const gltf=JSON.parse(json);
   const floor=gltf.materials.find((m:{name?:string})=>m.name==='atelier:floor-oak');
-  expect(floor?.pbrMetallicRoughness.baseColorTexture.extensions.KHR_texture_transform.scale[0]).toBeCloseTo(1/1.52,3);
+  expect(floor?.pbrMetallicRoughness.baseColorTexture.extensions.KHR_texture_transform.scale[0]).toBeCloseTo(1/1.7,3); // roble escaneado CC0: 1,7 m reales por imagen
   expect(floor?.normalTexture).toBeDefined();
   expect(floor?.pbrMetallicRoughness.metallicRoughnessTexture).toBeDefined();
   expect(gltf.materials.some((m:{name?:string;normalTexture?:unknown})=>m.name==='atelier:textile'&&m.normalTexture)).toBe(true);

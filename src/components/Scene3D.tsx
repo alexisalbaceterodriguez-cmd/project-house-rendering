@@ -15,11 +15,13 @@ import PbrSurface, { usePbrMaps } from './PbrSurface';
 import { registerCapture, registerSceneSource } from '../lib/sceneCapture';
 import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '../lib/studioRender';
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
-import { heightToNormal, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
+import { heightToNormal, onSurfaceTexturesLoaded, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
 import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, candleParts, candleFlames, photoFrameParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
+/** Redraw the on-demand canvas when scanned surface maps replace their procedural fallback. */
+function SurfaceRefresh(){const invalidate=useThree(state=>state.invalidate);useEffect(()=>onSurfaceTexturesLoaded(invalidate),[invalidate]);return null;}
 function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metalnessMap}=surfaceMaps(kind);return {map,normalMap,roughnessMap,metalnessMap};}
 
 // `role` names the material (atelier:<role>) so the Cycles engine can recognise
@@ -462,6 +464,7 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
   return <div className="scene-wrap" aria-busy={active||textureMapsPending((project.materials??[]).flatMap(material=>Object.values(material.maps??{})))}>
     <div className="scene-title"><span>{subject?'Estudio de producto':'Perspectiva 3D'}</span><strong>{subject?.name??project.name}</strong></div>
     <Canvas frameloop="demand" shadows dpr={high?[1,2]:[1,1.3]} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
+      <SurfaceRefresh/>
       <color attach="background" args={[studio?(render.studio??defaultStudio).background:'#f4f3ef']}/>
       {studio?<StudioLights project={project} subject={subject} high={high}/>:<>
       <ambientLight intensity={render.lighting==='night'?.08:.35}/>

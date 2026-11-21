@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { floors } from '../data/catalog';
-import { heightToNormal, surfaceMaps, surfacePixels, type SurfaceKind } from '../lib/surfaceTextures';
+import { heightToNormal, SURFACE_SCANS, surfaceMaps, surfacePixels, surfaceTexturesReady, type SurfaceKind } from '../lib/surfaceTextures';
 
 const channel = (data: Uint8Array, offset: number) => Array.from(data).filter((_, i) => i % 4 === offset);
 const mean = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length;
@@ -69,5 +69,24 @@ describe('Texturas de superficie horneadas para el GLB del render', () => {
     expect(maps.metalnessMap).toBe(maps.roughnessMap);
     expect(maps.map.repeat.x).toBeCloseTo(1 / maps.tile);
     expect(maps.map.wrapS).toBe(THREE.RepeatWrapping);
+  });
+
+  it('declara mapas escaneados CC0 para cada superficie, en JPEG y con su anchura real', async () => {
+    const { existsSync, statSync } = await import('node:fs');
+    for (const [kind, scan] of Object.entries(SURFACE_SCANS)) {
+      expect(scan.tile, kind).toBeGreaterThan(kind === 'textile' ? .1 : 1);
+      for (const name of [scan.color, scan.normal, scan.orm]) {
+        const file = `public/materials/surfaces/${name}.jpg`;
+        expect(existsSync(file), file).toBe(true);
+        expect(statSync(file).size, file).toBeLessThan(2.5e6);
+      }
+    }
+    // Normal and roughness are shared between wood finishes that only differ in tint.
+    expect(SURFACE_SCANS['floor:ash'].normal).toBe(SURFACE_SCANS['floor:walnut'].normal);
+    // Without a DOM the procedural fallback stays (and every map is marked for JPEG in the GLB).
+    const maps = surfaceMaps('textile');
+    expect(maps.scanned).toBe(false);
+    expect(maps.normalMap.userData.mimeType).toBe('image/jpeg');
+    await expect(surfaceTexturesReady()).resolves.toBeUndefined();
   });
 });

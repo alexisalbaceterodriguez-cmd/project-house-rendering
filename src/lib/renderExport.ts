@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { useEditor } from '../store';
 import { captureImage, getSceneSource } from './sceneCapture';
+import { surfaceTexturesReady } from './surfaceTextures';
 import { assemblePackage, type PackageCamera, type PackageOptions, type RenderPackage } from './renderPackage';
 
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
@@ -35,6 +36,8 @@ export async function exportSceneGLB():Promise<ArrayBuffer>{
   const hidden:THREE.Object3D[]=[];
   try{
     const source=await getSceneSource();
+    // Cycles must receive the scanned floor/fabric/wood maps, not the procedural placeholders.
+    await surfaceTexturesReady();
     source.invalidate();for(let i=0;i<3;i++)await frame();
     source.scene.traverse(object=>{if(object.visible&&!exportable(object)){object.visible=false;hidden.push(object);}});
     const { GLTFExporter }=await import('three/examples/jsm/exporters/GLTFExporter.js');
