@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, candleParts, candleFlames, photoFrameParts, supportTop, placedElevation, tabletopSpot, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, supportTop, placedElevation, tabletopSpot, restHeight, softRest, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -80,6 +80,9 @@ const builders={
   'fruit-bowl':[fruitBowlParts,[[.3,.3,.18],[.22,.22,.14],[.4,.4,.22]]],
   'table-clock':[tableClockParts,[[.18,.07,.2],[.14,.06,.16],[.24,.08,.24]]],
   'decor-bowl':[decorBowlParts,[[.26,.26,.1],[.18,.18,.07],[.36,.3,.14]]],
+  'throw-pillow':[throwPillowParts,[[.45,.16,.45],[.4,.14,.4],[.6,.18,.4]]],
+  'folded-blanket':[foldedBlanketParts,[[.5,.36,.09],[.4,.3,.05],[.9,.4,.12]]],
+  'bath-tray':[bathTrayParts,[[.72,.22,.09],[.65,.18,.07],[.85,.26,.11]]],
   'shelf-basket':[shelfBasketParts,[[.32,.24,.2],[.26,.2,.15],[.4,.3,.25]]],
   'photo-frame':[photoFrameParts,[[.18,.08,.23],[.13,.06,.18],[.25,.1,.3]]],
   candles:[candleParts,[[.24,.16,.22],[.16,.12,.2],[.32,.2,.3]]],
@@ -346,6 +349,63 @@ describe('tabletop objects', () => {
     // A crowded support still returns the farthest spot instead of failing.
     const crowd=[0,.2475,-.2475,.45,-.45].map((u,i)=>({...lamp,id:`k${i}`,x:2+u,y:1}));
     expect(tabletopSpot('vase',desk,[desk,...crowd],size)).toBeDefined();
+  });
+});
+
+describe('seats and beds as supports', () => {
+  const top=(parts:ReturnType<typeof sofaParts>,name:string)=>{const p=parts.find(q=>q.name===name)!;return p.position[1]+p.size[1]/2;};
+  const front=(parts:ReturnType<typeof sofaParts>,name:string)=>{const p=parts.find(q=>q.name===name)!;return p.position[2]+p.size[2]/2;};
+  it('carry objects on the seat, arm, back, mattress or duvet their parts actually have there', () => {
+    const sofa={kind:'sofa',w:2.2,d:.9,h:.85},sp=sofaParts(sofa.w,sofa.d);
+    expect(restHeight(sofa,0,.2)).toBeCloseTo(top(sp,'Cojín de asiento 1'));
+    expect(restHeight(sofa,1.05,0)).toBeCloseTo(top(sp,'Brazo 1'));
+    expect(restHeight(sofa,0,-.42)).toBe(.85);
+    const chair={kind:'armchair',w:.78,d:.82,h:.8},ap=armchairParts(chair.w,chair.d,chair.h);
+    expect(restHeight(chair,0,.2)).toBeCloseTo(top(ap,'Cojín de asiento'));
+    expect(restHeight(chair,.36,0)).toBeCloseTo(top(ap,'Brazo 1'));
+    const corner={kind:'corner-sofa',w:2.6,d:1.6,h:.85},cp=cornerSofaParts(corner.w,corner.d,corner.h);
+    expect(restHeight(corner,-.5,.7)).toBe(0);
+    expect(restHeight(corner,1,.7)).toBeCloseTo(top(cp,'Cojín chaise'));
+    expect(restHeight(corner,-1.25,-.3)).toBeCloseTo(top(cp,'Brazo'));
+    expect(restHeight({...corner,kind:'corner-sofa-left'},.5,.7)).toBe(0);
+    expect(restHeight({...corner,kind:'corner-sofa-left'},-1,.7)).toBeCloseTo(.46);
+    const bed={kind:'bed',w:1.6,d:2,h:.55},bp=bedParts(bed.w,bed.d);
+    expect(restHeight(bed,0,.6)).toBeCloseTo(top(bp,'Edredón'));
+    expect(restHeight(bed,0,-.35)).toBeCloseTo(top(bp,'Colchón'));
+    expect(restHeight({...bed,kind:'storage-bed'},0,.6)).toBeCloseTo(top(bedParts(bed.w,bed.d,true),'Edredón'));
+    expect(restHeight({kind:'desk',w:1.2,d:.6,h:.75},0,0)).toBe(.75);
+  });
+  it('place soft furnishings against the back cushions or pillows the parts build', () => {
+    expect(softRest({kind:'sofa',w:2.2,d:.9,h:.85})!.back).toBeCloseTo(front(sofaParts(2.2,.9),'Cojín de respaldo 1'));
+    expect(softRest({kind:'armchair',w:.78,d:.82,h:.8})!.back).toBeCloseTo(front(armchairParts(.78,.82,.8),'Cojín de respaldo'));
+    expect(softRest({kind:'corner-sofa',w:2.6,d:1.6,h:.85})!.back).toBeCloseTo(front(cornerSofaParts(2.6,1.6,.85),'Cojín de respaldo 1'));
+    expect(softRest({kind:'single-bed',w:.9,d:2,h:.55})!.back).toBeCloseTo(front(bedParts(.9,2),'Almohada 1'));
+    expect(softRest({kind:'desk',w:1.2,d:.6,h:.75})).toBeUndefined();
+  });
+  it('put a cushion on the seat in front of the back, a blanket at the foot of the bed and a tray across the tub', () => {
+    const sofa={id:'s',kind:'sofa',x:2,y:2,w:2.2,d:.9,h:.85,rotation:90},size={w:.45,d:.16};
+    const spot=tabletopSpot('throw-pillow',sofa,[sofa],size)!;
+    expect(spot.rotation).toBe(90);
+    const pillow={id:'p',kind:'throw-pillow',...size,h:.45,...spot};
+    expect(placedElevation(pillow,[sofa],2.55)).toBeCloseTo(.46);
+    // Rotated 90°, the sofa's back (−v) faces +x: the cushion's back face touches the back cushions.
+    expect(2-spot.x).toBeCloseTo(softRest(sofa)!.back+size.d/2+.005);
+    const second=tabletopSpot('throw-pillow',sofa,[sofa,pillow],size)!;
+    expect(Math.abs(second.y-spot.y)).toBeGreaterThan(.45);
+    expect(placedElevation({...pillow,id:'q',...second},[sofa],2.55)).toBeCloseTo(.46);
+    const bed={id:'b',kind:'bed',x:3,y:3,w:1.6,d:2,h:.55,rotation:0};
+    const blanket=tabletopSpot('folded-blanket',bed,[bed],{w:.5,d:.36})!;
+    expect(blanket.y).toBeCloseTo(3+1-.18-.08);
+    expect(placedElevation({id:'f',kind:'folded-blanket',w:.5,d:.36,h:.07,...blanket},[bed],2.55)).toBeCloseTo(.605);
+    const onSofa=tabletopSpot('folded-blanket',{...sofa,rotation:0},[],{w:.5,d:.36})!;
+    expect(onSofa.x).toBeGreaterThan(2.2);
+    expect(restHeight(sofa,onSofa.x-2,0)).toBeCloseTo(.46);
+    const tub={id:'t',kind:'bathtub',x:1,y:1,w:1.7,d:.75,h:.58,rotation:0};
+    const tray=tabletopSpot('bath-tray',tub,[tub],{w:.72,d:.22})!;
+    expect(tray).toEqual({x:1,y:1,rotation:90});
+    expect(placedElevation({id:'r',kind:'bath-tray',w:.72,d:.22,h:.09,...tray},[tub],2.55)).toBeCloseTo(.58);
+    // A vase in the notch of a corner sofa's L stands on the floor.
+    expect(supportTop({id:'v',kind:'vase',x:-.5,y:.7,w:.2,d:.2,h:.3,rotation:0},[{id:'c',kind:'corner-sofa',x:0,y:0,w:2.6,d:1.6,h:.85,rotation:0}],2.55)).toBe(0);
   });
 });
 

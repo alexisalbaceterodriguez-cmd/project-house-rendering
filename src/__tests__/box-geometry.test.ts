@@ -44,6 +44,23 @@ describe('cushion crown', () => {
     g.computeBoundingBox();expect(g.boundingBox!.min.y).toBeCloseTo(-.08,6);
   });
 
+  it('domes both faces of a scatter cushion towards its mid-plane, inside the box', () => {
+    const size=[.45,.45,.16] as const,g=physicalBox(size,.03,{axis:'z',amount:.05,both:true}),pos=g.attributes.position,n=g.attributes.normal;
+    const [x,y,z]=extent(g);
+    expect(x).toBeCloseTo(.45,6);expect(y).toBeCloseTo(.45,6);expect(z).toBeLessThanOrEqual(.16+1e-9);expect(z).toBeGreaterThan(.16-.006);
+    let front=0,back=0;
+    for(let i=0;i<pos.count;i++){
+      // Near the corners both faces have moved in by about the full amount; normals stay outward.
+      if(Math.abs(pos.getX(i))>.2&&Math.abs(pos.getY(i))>.2&&Math.abs(n.getZ(i))>.5){
+        expect(Math.abs(pos.getZ(i))).toBeLessThan(.08-.03);
+        expect(Math.sign(n.getZ(i))).toBe(Math.sign(pos.getZ(i)));
+        if(pos.getZ(i)>0)front++;else back++;
+      }
+      expect(Math.hypot(n.getX(i),n.getY(i),n.getZ(i))).toBeCloseTo(1,6);
+    }
+    expect(front).toBeGreaterThan(0);expect(back).toBeGreaterThan(0);
+  });
+
   it('tilts top normals outward towards the edges, matching the surface', () => {
     const g=physicalBox([.6,.16,.7],.05,{axis:'y',amount:.015}),pos=g.attributes.position,n=g.attributes.normal;
     let checked=0;

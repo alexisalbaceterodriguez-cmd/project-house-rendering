@@ -1181,16 +1181,78 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
-export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket']);
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray']);
 // Wall-only or soft items that never carry a tabletop object.
 const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack']);
 
 type Placed={id:string;kind:string;x:number;y:number;w:number;d:number;h:number;rotation:number;module?:{family:ModuleFamily}};
 
+/** Loose soft furnishings: tabletop kinds that lean on a seat back or lie on a bed (see `tabletopSpot`). */
+export const SOFT_KINDS:ReadonlySet<string>=new Set(['throw-pillow','folded-blanket']);
+const BEDS=new Set(['bed','single-bed','storage-bed']);
+const sofaRear=(d:number,back:number)=>-d/2+FACE_GAP*1.5+back;
+
 /**
- * Top height of the furniture under `item`'s centre (its elevation plus its overall height `h`),
- * or 0 when it stands on the floor. Uses each support's full bounding height, so a desk with a
- * hutch carries the lamp on its hutch top, not on the worktop.
+ * Height above its base at which `f` carries an object over its local point (u, v) (front +z,
+ * as its parts): seats give their arm top, their back top behind the seat or their seat top
+ * (the cushions' flat top, as built by `sofaParts`, `armchairParts` and `cornerSofaParts`),
+ * beds their headboard, duvet or mattress top (`bedParts`), and a corner sofa nothing in the
+ * notch of its L. Everything else carries on its overall height `h`.
+ */
+export function restHeight(f:{kind:string;w:number;d:number;h:number},u:number,v:number):number{
+  const {w,d,h}=f;
+  switch(f.kind){
+    case 'sofa':{
+      const arm=clamp(w*.09,.12,.2),rear=sofaRear(d,Math.min(.2,d*.22));
+      return Math.abs(u)>w/2-arm?.64:v<rear?h:.46;
+    }
+    case 'armchair':{
+      const arm=clamp(w*.12,.08,.14),armTop=Math.min(h-.12,.64),rear=sofaRear(d,Math.min(.16,d*.2));
+      return Math.abs(u)>w/2-arm?armTop:v<rear?h:Math.min(.44,armTop-.04);
+    }
+    case 'corner-sofa':case 'corner-sofa-left':{
+      const x=f.kind==='corner-sofa'?u:-u,arm=clamp(w*.07,.12,.2),{seatD,chaise}=cornerSofaLayout(w,d);
+      if(v>-d/2+seatD&&x<w/2-chaise)return 0;
+      return x<-w/2+arm?.64:v<sofaRear(d,Math.min(.2,d*.14))?h:.46;
+    }
+  }
+  if(BEDS.has(f.kind)){
+    const duvet=Math.min(d*.62,d-.09-FACE_GAP*.5-.055);
+    return v<-d/2+.09?1.1:v>d/2-.003-duvet?.605:.54;
+  }
+  return h;
+}
+
+/**
+ * Where loose soft furnishings go on a seat or bed `f`: the centre and half width of its seat
+ * run (or sleeping area) along u and the v of the back cushions' or pillows' front face they
+ * lean on. Undefined for anything else.
+ */
+export function softRest(f:{kind:string;w:number;d:number;h:number}):{center:number;half:number;back:number}|undefined{
+  const {w,d,h}=f;
+  switch(f.kind){
+    case 'sofa':{
+      const arm=clamp(w*.09,.12,.2),rear=sofaRear(d,Math.min(.2,d*.22));
+      return {center:0,half:w/2-arm,back:rear+Math.min(.17,(d/2-.015-rear)*.26)};
+    }
+    case 'armchair':{
+      const arm=clamp(w*.12,.08,.14),rear=sofaRear(d,Math.min(.16,d*.2));
+      return {center:0,half:w/2-arm,back:rear+Math.min(.15,(d/2-.015-rear)*.28)};
+    }
+    case 'corner-sofa':case 'corner-sofa-left':{
+      const arm=clamp(w*.07,.12,.2),{seatD,chaise}=cornerSofaLayout(w,d),rear=sofaRear(d,Math.min(.2,d*.14));
+      const left=-w/2+arm,split=w/2-chaise,side=f.kind==='corner-sofa'?1:-1;
+      return {center:side*(left+split)/2,half:(split-left)/2,back:rear+Math.min(.17,(-d/2+seatD-.015-rear)*.26)};
+    }
+  }
+  return BEDS.has(f.kind)?{center:0,half:w/2-.07,back:-d/2+.09+FACE_GAP*.5+.44}:undefined;
+}
+
+/**
+ * Top height of the furniture under `item`'s centre (its elevation plus `restHeight` there,
+ * usually its overall height `h`), or 0 when it stands on the floor. Uses each support's full
+ * bounding height, so a desk with a hutch carries the lamp on its hutch top, not on the worktop;
+ * seats and beds carry it on their seat, arm, mattress or duvet instead.
  */
 export function supportTop(item:Placed,furniture:readonly Placed[],wallHeight:number):number{
   let top=0;
@@ -1199,7 +1261,8 @@ export function supportTop(item:Placed,furniture:readonly Placed[],wallHeight:nu
     const a=-f.rotation*Math.PI/180,dx=item.x-f.x,dy=item.y-f.y;
     const u=dx*Math.cos(a)-dy*Math.sin(a),v=dx*Math.sin(a)+dy*Math.cos(a);
     if(Math.abs(u)>f.w/2+1e-9||Math.abs(v)>f.d/2+1e-9)continue;
-    top=Math.max(top,furnitureElevation(f,wallHeight)+f.h);
+    const rest=restHeight(f,u,v);
+    if(rest>0)top=Math.max(top,furnitureElevation(f,wallHeight)+rest);
   }
   return top;
 }
@@ -1232,17 +1295,24 @@ export function tabletopSpot(kind:string,selected:Placed|undefined,furniture:rea
   if(selected&&TABLETOP_KINDS.has(selected.kind))selected=supportUnder(selected,furniture);
   if(!TABLETOP_KINDS.has(kind)||!selected||!canSupport(selected.kind))return undefined;
   const r=selected.rotation*Math.PI/180,radius=(f:{w:number;d:number})=>Math.max(f.w,f.d)/2;
-  const toWorld=(u:number)=>({x:selected.x+u*Math.cos(r),y:selected.y+u*Math.sin(r)});
+  // Soft furnishings lean on a seat's back cushions or a bed's pillows (a blanket lies at the
+  // foot of a bed), along the seat run; a bath tray lies across the tub, from rim to rim.
+  const soft=SOFT_KINDS.has(kind)?softRest(selected):undefined;
+  const across=kind==='bath-tray'&&selected.kind==='bathtub';
+  const center=soft?.center??0,v=!soft?0:kind==='folded-blanket'&&BEDS.has(selected.kind)?selected.d/2-size.d/2-.08:soft.back+size.d/2+.005;
+  const toWorld=(u:number)=>({x:selected.x+u*Math.cos(r)-v*Math.sin(r),y:selected.y+u*Math.sin(r)+v*Math.cos(r)});
+  const rotation=across?(selected.rotation+90)%360:selected.rotation;
   const on=furniture.filter(f=>TABLETOP_KINDS.has(f.kind)&&f.id!==selected.id&&supportTop(f,[selected],0)>0);
-  const reach=Math.max(0,selected.w/2-size.w/2);
-  let best={...toWorld(0),gap:-Infinity};
-  for(const u of [0,reach*.55,-reach*.55,reach,-reach]){
-    const p=toWorld(u);
+  const reach=Math.max(0,(soft?soft.half:selected.w/2)-(across?size.d:size.w)/2);
+  const steps=kind==='folded-blanket'&&soft&&!BEDS.has(selected.kind)?[1,-1,.55,-.55,0]:[0,.55,-.55,1,-1];
+  let best={...toWorld(center),gap:-Infinity};
+  for(const k of steps){
+    const p=toWorld(center+k*reach);
     const gap=Math.min(Infinity,...on.map(f=>Math.hypot(f.x-p.x,f.y-p.y)-radius(f)-radius(size)));
-    if(gap>=0)return {...p,rotation:selected.rotation};
+    if(gap>=0)return {...p,rotation};
     if(gap>best.gap)best={...p,gap};
   }
-  return {x:best.x,y:best.y,rotation:selected.rotation};
+  return {x:best.x,y:best.y,rotation};
 }
 
 /** Tabletop vase inside `w × d × h`: a turned ceramic body holding three dried stems up to `h`. */
@@ -1385,5 +1455,47 @@ export function shelfBasketParts(w:number,d:number,h:number):FurniturePart[]{
     parts.push(part(`Montante delantero ${side}`,[t,hole,post],x,low,hw+post/2,weave));
     parts.push(part(`Asa ${side}`,[t,top,2*hw],x,low+hole,0,weave));
   }
+  return parts;
+}
+
+/**
+ * Loose scatter cushion standing upright inside `w × d × h` (`d` is its thickness, front +z): one
+ * textile cover with rounded edges whose front and back faces both dome towards the seam, so its
+ * corners are thinner than its middle. Rests against a seat back or bed pillows (see `tabletopSpot`).
+ */
+export function throwPillowParts(w:number,d:number,h:number):FurniturePart[]{
+  return [part('Cojín',[w,h,d],0,0,0,{color:'item',surface:'textile',bevel:Math.min(.035,d*.3,w*.15,h*.15),crown:{axis:'z',amount:d*.22,both:true}})];
+}
+
+/**
+ * Folded throw blanket inside `w × d × h`: two to four stacked folds about 3 cm thick with fully
+ * rounded, slightly puffed edges, alternately 2 cm narrower and shifted 1.2 cm front and back so
+ * each fold edge reads.
+ */
+export function foldedBlanketParts(w:number,d:number,h:number):FurniturePart[]{
+  const n=clamp(Math.round(h/.03),2,4),t=h/n,parts:FurniturePart[]=[];
+  for(let i=0;i<n;i++){
+    const odd=i%2===1;
+    parts.push(part(`Pliegue ${i+1}`,[odd?w-.02:w,t,d-.024],0,i*t,odd?-.012:.012,{color:'item',surface:'textile',bevel:t*.49,crown:{axis:'y',amount:t*.22,both:true}}));
+  }
+  return parts;
+}
+
+/**
+ * Slatted wooden bath tray inside `w × d × h` that spans a tub from rim to rim: front and back
+ * rails of the full width, slats between them on two cross cleats, a bar of soap and a pillar
+ * candle (unlit) whose top reaches `h`.
+ */
+export function bathTrayParts(w:number,d:number,h:number):FurniturePart[]{
+  const rail=Math.min(.035,h*.4),rt=.02,low=rail*.3,slat=.012,gap=.008,top=low+slat;
+  const wood={color:'item',surface:'woodgrain'} as const;
+  const inner=d-2*rt,n=Math.max(3,Math.round(inner/.03)),s=(inner-gap*(n+1))/n;
+  const parts:FurniturePart[]=[];
+  for(const z of [-1,1])parts.push(part(z<0?'Larguero trasero':'Larguero delantero',[w,rail,rt],0,0,z*(d/2-rt/2),{...wood,bevel:.004}));
+  for(const x of [-1,1])parts.push(part(`Travesaño ${x}`,[.02,low,inner],x*(w/2-.08),0,0,{...wood,bevel:.002}));
+  for(let i=0;i<n;i++)parts.push(part(`Lama ${i+1}`,[w-.05,slat,s],0,low,-inner/2+gap+s/2+i*(s+gap),{...wood,bevel:.003}));
+  const soap=Math.min(.03,h-top),candle=Math.min(.065,d*.4);
+  parts.push(part('Jabón',[.085,soap,Math.min(.055,d*.3)],w*.16,top,0,{color:'#ece3d2',bevel:Math.min(.008,soap*.4),crown:{axis:'y',amount:.004}}));
+  parts.push(turned('Vela',ROD,[candle,h-top,candle],-w*.2,top,0,{color:'#f1ebdf'}));
   return parts;
 }

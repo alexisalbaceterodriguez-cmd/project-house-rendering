@@ -14,8 +14,9 @@ export const bevelRadius=(size:readonly [number,number,number],radius:number)=>M
 /**
  * Pillow dome: the face on the positive side of `axis` keeps its centre and drops by
  * `amount` towards its edges (the opposite face stays flat), so the part never leaves its box.
+ * With `both` the opposite face domes the same way, like a loose scatter cushion.
  */
-export type Crown={axis:'y'|'z';amount:number};
+export type Crown={axis:'y'|'z';amount:number;both?:boolean};
 
 const ARC_SEGMENTS=3;
 const CROWN_STEP=.08;
@@ -63,16 +64,17 @@ export function physicalBox(size:readonly [number,number,number],radius=0,crown?
 
 /**
  * Maps the box through p_k' = p_k - L(p_i, p_j)·t with t = (p_k + h_k) / 2h_k and
- * L = amount·(1 - (1 - u²)(1 - v²)): flat back face, domed front face. Normals follow the
+ * L = amount·(1 - (1 - u²)(1 - v²)): flat back face, domed front face. With `both`, t = p_k / h_k
+ * instead, so both faces dome towards the mid-plane. Normals follow the
  * inverse transpose of that map's Jacobian, so shading matches the new surface exactly.
  */
 function applyCrown(p:number[],n:number[],half:number[],crown:Crown){
   const k=crown.axis==='y'?1:2,[i,j]=k===1?[0,2]:[0,1];
-  const amount=Math.min(crown.amount,half[k]*.8);
+  const amount=Math.min(crown.amount,half[k]*(crown.both?.45:.8));
   if(amount<=0)return;
-  const u=p[i]/half[i],v=p[j]/half[j],t=(p[k]+half[k])/(2*half[k]);
+  const u=p[i]/half[i],v=p[j]/half[j],t=crown.both?p[k]/half[k]:(p[k]+half[k])/(2*half[k]);
   const drop=amount*(1-(1-u*u)*(1-v*v));
-  const di=amount*2*u*(1-v*v)/half[i],dj=amount*2*v*(1-u*u)/half[j],b=1-drop/(2*half[k]);
+  const di=amount*2*u*(1-v*v)/half[i],dj=amount*2*v*(1-u*u)/half[j],b=1-drop/(crown.both?half[k]:2*half[k]);
   p[k]-=drop*t;
   const ni=n[i]+t*di/b*n[k],nj=n[j]+t*dj/b*n[k],nk=n[k]/b,length=Math.hypot(ni,nj,nk);
   n[i]=ni/length;n[j]=nj/length;n[k]=nk/length;

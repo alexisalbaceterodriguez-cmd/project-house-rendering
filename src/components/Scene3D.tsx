@@ -17,7 +17,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, onSurfaceTexturesLoaded, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, candleParts, candleFlames, photoFrameParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 /** Redraw the on-demand canvas when scanned surface maps replace their procedural fallback. */
@@ -32,7 +32,7 @@ const FLAME_GLOW='#ffb04a';
 function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe,axis}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z'}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
-  const geometry=useMemo(()=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,lathe,axis]);
+  const geometry=useMemo(()=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,crown?.both,lathe,axis]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   if(role==='flame')return <mesh position={position}><primitive object={geometry} attach="geometry"/><meshStandardMaterial name="atelier:flame" color={color} emissive={FLAME_GLOW} emissiveIntensity={1.6} roughness={1}/></mesh>;
   return <mesh castShadow={material!=='glass'&&role!=='sheer'} receiveShadow position={position}>
@@ -280,6 +280,9 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'photo-frame':return <Parts parts={photoFrameParts(w,d,h)} item={item} wood={wood}/>;
     case 'table-clock':return <Parts parts={tableClockParts(w,d,h)} item={item} wood={wood}/>;
     case 'decor-bowl':return <Parts parts={decorBowlParts(w,d,h)} item={item} wood={wood}/>;
+    case 'throw-pillow':return <Parts parts={throwPillowParts(w,d,h)} item={item} wood={wood}/>;
+    case 'folded-blanket':return <Parts parts={foldedBlanketParts(w,d,h)} item={item} wood={wood}/>;
+    case 'bath-tray':return <Parts parts={bathTrayParts(w,d,h)} item={item} wood={wood}/>;
     case 'shelf-basket':return <Parts parts={shelfBasketParts(w,d,h)} item={item} wood={wood}/>;
     case 'table-plant':return <Plant item={item} wood={wood}/>;
     case 'candles':return <><Parts parts={candleParts(w,d,h)} item={item} wood={wood}/>{night&&candleFlames(w,d,h).map((p,i)=><pointLight key={i} position={p} intensity={.015} color="#ffb46b" distance={1.2}/>)}</>;
