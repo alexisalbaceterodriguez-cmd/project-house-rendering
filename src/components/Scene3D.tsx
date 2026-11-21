@@ -8,7 +8,7 @@ import { floors } from '../data/catalog';
 import { clamp, wallLength, wallParts, wallProjection } from '../lib/geometry';
 import { roomLabelPoint,roomVertices } from '../lib/topology';
 import { getModelAsset } from '../lib/assets';
-import { useEditor } from '../store';
+import { useEditor, useEditorPick } from '../store';
 import type { Furniture, Opening, Project, Wall } from '../types';
 import ErrorBoundary from './ErrorBoundary';
 import PbrSurface, { usePbrMaps } from './PbrSurface';
@@ -100,7 +100,7 @@ function ImportedModel({url,item,selected}:{url:string;item:Furniture;selected:b
   const {scene}=useGLTF(url);
   const high=useEditor(state=>state.project.render?.quality==='high');
   const pbrMaps=usePbrMaps([item.modelFinish?.materialId,...(item.modelFinishes??[]).map(f=>f.materialId)]);
-  const {change,setSelection}=useEditor();
+  const {change,setSelection}=useEditorPick('change','setSelection');
   // Shift-click picks the actual GLB mesh/material slot, including unnamed or shared materials.
   const pickSurface=(event:import('@react-three/fiber').ThreeEvent<MouseEvent>)=>{
     if(!event.nativeEvent.shiftKey)return;
@@ -491,7 +491,9 @@ function WalkRig({project}:{project:Project}){
 }
 export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefObject<HTMLCanvasElement|null>;topView?:boolean}){
   useTextureLibraryRevision();
-  const {project,selection,setSelection,wallsVisible,cutaway,cameraLocked}=useEditor();
+  // liveCamera is read on purpose: its first sync (after CameraRig places the camera) re-renders the
+  // scene so OrbitControls re-applies its target; without it the first PNG export differs from later ones.
+  const {project,selection,setSelection,wallsVisible,cutaway,cameraLocked}=useEditorPick('project','selection','setSelection','wallsVisible','cutaway','cameraLocked','liveCamera');
   const {active}=useProgress();
   const render=project.render??{lighting:'day',exposure:1,quality:'draft'};const high=render.quality==='high';
   const studio=render.lighting==='studio',subject=studioSubject(project);

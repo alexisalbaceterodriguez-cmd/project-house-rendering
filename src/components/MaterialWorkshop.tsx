@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useEditor } from '../store';
+import { useEditor, useEditorPick } from '../store';
 import type { CustomMaterial } from '../types';
 import { assignMaterial, prepareMaterialMap, validCustomMaterials, type MaterialTarget } from '../lib/projectMaterials';
 import { createMaterialMaps, type TexturePattern } from '../lib/proceduralTextures';
@@ -9,7 +9,7 @@ import { MaterialPreview } from './MaterialStorage';
 
 const defaults={name:'Mi material',category:'Personalizado',color:'#c5ad8c',scale:1,roughness:.65,metalness:0,normalStrength:1,source:'Creado en Atelier 60',license:'Creación propia'};
 export default function MaterialWorkshop({target,onMessage}:{target:MaterialTarget;onMessage:(message:string)=>void}) {
-  const {project,change,selection}=useEditor();
+  const {project,change,selection}=useEditorPick('project','change','selection');
   const [draft,setDraft]=useState<Omit<CustomMaterial,'id'>>(defaults);
   const [pattern,setPattern]=useState<TexturePattern|'none'>('none'),[busy,setBusy]=useState(false);
   const [library,setLibrary]=useState<LibraryMaterial[]>([]),[libraryError,setLibraryError]=useState('');

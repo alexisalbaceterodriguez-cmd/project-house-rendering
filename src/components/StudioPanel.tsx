@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useEditor } from '../store';
+import { cachedFurnitureCollisions, cachedProjectWarnings } from '../lib/diagnosticsCache';
+import { useEditor, useEditorPick } from '../store';
 import { modelCatalog, modelUrl, type LibraryProduct } from '../data/modelCatalog';
 import { materialCatalog, materialUrl } from '../data/materialCatalog';
 import { getModelAsset,listModelAssets,putModelAsset,putModelMetadata } from '../lib/assets';
@@ -10,9 +11,9 @@ import { measureModelDimensions } from '../lib/modelThumbnail';
 import { deleteDesign, listDesigns, saveDesign, type SavedDesign } from '../lib/projectLibrary';
 import { applyAppearance } from '../lib/designVariants';
 import { captureImage } from '../lib/sceneCapture';
-import { approximateNetArea, findFreePlacement, furnitureCollisions } from '../lib/diagnostics';
+import { approximateNetArea, findFreePlacement } from '../lib/diagnostics';
 import { download, makeId } from '../lib/geometry';
-import { projectWarnings, resizeProject } from '../lib/topology';
+import { resizeProject } from '../lib/topology';
 import type { ModuleSettings, Project, RenderSettings } from '../types';
 import WallEditingTools from './WallEditingTools';
 import BudgetTools from './BudgetTools';
@@ -27,7 +28,7 @@ const tabs:[Tab,string][]=[['models','Modelos'],['materials','Acabados'],['modul
 const defaultRender:RenderSettings={lighting:'day',quality:'draft',exposure:1};
 export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>void}){
   const dialog=useRef<HTMLDialogElement>(null);
-  const {project,selection,change,setSelection,setMode,load,liveCamera,selectedFurniture,setFurnitureGroup,setCameraLocked}=useEditor();
+  const {project,selection,change,setSelection,setMode,load,liveCamera,selectedFurniture,setFurnitureGroup,setCameraLocked}=useEditorPick('project','selection','change','setSelection','setMode','load','liveCamera','selectedFurniture','setFurnitureGroup','setCameraLocked');
   const [tab,setTab]=useState<Tab>('models'),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
   const [search,setSearch]=useState(''),[family,setFamily]=useState('Todos');
   const [versions,setVersions]=useState<SavedDesign[]>([]),[versionName,setVersionName]=useState(''),[variantId,setVariantId]=useState('');
@@ -196,7 +197,7 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
       <h4>Plano de referencia</h4><label>Imagen PNG, JPEG o WebP<input aria-label="Imagen de plano de referencia" type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>{const file=e.target.files?.[0];if(!file)return;void run(async()=>{if(file.size>5*1024*1024)throw new Error('La imagen debe ocupar menos de 5 MB.');const data=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=reject;r.readAsDataURL(file);});const image=new Image();image.src=data;await image.decode();const scale=Math.min(1,1600/image.width,1600/image.height),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));const context=canvas.getContext('2d')!;context.fillStyle='#ffffff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);const safeData=canvas.toDataURL('image/jpeg',.8);change(p=>{p.referenceImage={data:safeData,width:p.width,height:p.width*image.height/image.width,opacity:.5};});setMessage('Referencia añadida. Indica el ancho real de la imagen para calibrar la escala.');});}}/></label>
       {project.referenceImage&&<><label>Ancho real de la imagen (m)<input aria-label="Ancho real de referencia" type="number" min=".1" max="100" step=".01" value={project.referenceImage.width} onChange={e=>{const w=Number(e.target.value);change(p=>{if(p.referenceImage){p.referenceImage.height*=w/p.referenceImage.width;p.referenceImage.width=w;}});}}/></label><label>Opacidad de referencia<input type="range" min="0" max="1" step=".05" value={project.referenceImage.opacity} onChange={e=>change(p=>{if(p.referenceImage)p.referenceImage.opacity=Number(e.target.value);})}/></label><button onClick={()=>change(p=>{delete p.referenceImage;})}>Quitar referencia</button></>}
       <h4>Superficies aproximadas</h4><ul>{project.rooms.map(r=><li key={r.id}>{r.name}: {approximateNetArea(r,project).toFixed(2)} m² descontando espesor, aproximadamente.</li>)}</ul><p className="small-help">Estimación por ejes y espesor. No sustituye medición técnica ni verificación de habitabilidad.</p>
-      <h4>Avisos para revisar</h4><ul>{[...projectWarnings(project),...furnitureCollisions(project)].slice(0,40).map((warning,i)=><li key={i}>{warning}</li>)}</ul>
+      <h4>Avisos para revisar</h4><ul>{[...cachedProjectWarnings(project),...cachedFurnitureCollisions(project)].slice(0,40).map((warning,i)=><li key={i}>{warning}</li>)}</ul>
       <h4>Recursos guardados</h4><p>Los modelos se comparten entre propuestas. Solo se puede retirar un recurso si ningún proyecto, respaldo local, versión, comparación o paso del historial lo utiliza.</p>
       {assets.map(asset=><article className="resource-row" key={asset.id}><span>{asset.metadata?.name??asset.id.slice(0,20)} · {(asset.size/1048576).toFixed(2)} MB</span><button disabled={busy} aria-label={`Eliminar recurso ${asset.metadata?.name??asset.id}`} onClick={()=>void run(async()=>{
         await deleteUnusedModelResource(asset.id,()=>{

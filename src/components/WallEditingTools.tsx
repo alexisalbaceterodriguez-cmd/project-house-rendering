@@ -1,9 +1,9 @@
 import { useEffect,useState } from 'react';
-import { useEditor } from '../store';
+import { useEditor, useEditorPick } from '../store';
 import { updateWallGeometry,reconcileRooms } from '../lib/topology';
 import { wallLength } from '../lib/geometry';
 export default function WallEditingTools(){
-  const {project,selection,change}=useEditor();const wall=selection?.type==='wall'?project.walls.find(w=>w.id===selection.id):undefined;
+  const {project,selection,change}=useEditorPick('project','selection','change');const wall=selection?.type==='wall'?project.walls.find(w=>w.id===selection.id):undefined;
   const [endpoint,setEndpoint]=useState<'a'|'b'>('b'),[linked,setLinked]=useState(true),[x,setX]=useState(0),[y,setY]=useState(0),[message,setMessage]=useState('');
   const [length,setLength]=useState(1),[angle,setAngle]=useState(0);
   useEffect(()=>{if(wall){setX(wall[endpoint].x);setY(wall[endpoint].y);setLength(wallLength(wall));setAngle(Math.atan2(wall.b.y-wall.a.y,wall.b.x-wall.a.x)*180/Math.PI);}},[wall?.id,wall?.a.x,wall?.a.y,wall?.b.x,wall?.b.y,endpoint]);

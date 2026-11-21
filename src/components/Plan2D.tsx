@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
+import { cachedFurnitureCollisions, cachedProjectWarnings } from '../lib/diagnosticsCache';
 import { floors } from '../data/catalog';
 import { clamp, distance, makeId, snap, wallProjection } from '../lib/geometry';
-import { roomLabelPoint, projectWarnings, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
-import { useEditor } from '../store';
-import { furnitureCollisions } from '../lib/diagnostics';
+import { roomLabelPoint, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
+import { useEditor, useEditorPick } from '../store';
 import { cornerSofaLayout } from '../lib/furnitureParts';
 import type { Furniture, Point, Wall } from '../types';
 
@@ -72,7 +72,7 @@ function snapToWallJoint(point: Point, walls: Wall[]): Point {
   return nearest ? { ...nearest } : point;
 }
 export default function Plan2D() {
-  const { project, tool, selection, setSelection, setTool, change, checkpoint,selectedFurniture,setFurnitureGroup } = useEditor();
+  const {project,tool,selection,setSelection,setTool,change,checkpoint,selectedFurniture,setFurnitureGroup}=useEditorPick('project','tool','selection','setSelection','setTool','change','checkpoint','selectedFurniture','setFurnitureGroup');
   const svg = useRef<SVGSVGElement>(null);
   type Drag = {type:'furniture';id:string;dx:number;dy:number;group?:{id:string;x:number;y:number}[];start:Point}|{type:'wall';id:string;start:Point;a:Point;b:Point;handle:'a'|'b'|'move';rooms:typeof project.rooms};
   const drag = useRef<Drag | null>(null);
@@ -468,9 +468,9 @@ export default function Plan2D() {
     setAlignment(null);
     setSpacing([]);
   };
-  const warnings=projectWarnings(project);
+  const warnings=cachedProjectWarnings(project);
   const movingName=drag.current?.type==='furniture'?project.furniture.find(f=>f.id===drag.current?.id)?.name:undefined;
-  const previewCollisions=movingName?furnitureCollisions(project).filter(warning=>warning.includes(`«${movingName}»`)).slice(0,2):[];
+  const previewCollisions=movingName?cachedFurnitureCollisions(project).filter(warning=>warning.includes(`«${movingName}»`)).slice(0,2):[];
   const roomPath=(room:typeof project.rooms[number])=>{
     const ring=(points:Point[])=>`M ${points.map(p=>`${p.x} ${p.y}`).join(' L ')} Z`;
     return [ring(roomVertices(room)),...(room.holes??[]).map(ring)].join(' ');

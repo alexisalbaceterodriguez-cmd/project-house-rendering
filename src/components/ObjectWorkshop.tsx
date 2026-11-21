@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useEditor } from '../store';
+import { useEditor, useEditorPick } from '../store';
 import { deleteModelResource, putModelAsset, putModelMetadata } from '../lib/assets';
 import { findFreePlacement } from '../lib/diagnostics';
 import type { ObjectRecipe } from '../lib/workshopObjects';
 
 const families=[['sofa','Sofá tapizado',2.3,.95,.82],['sideboard','Aparador acanalado',1.8,.45,.8],['bed','Cama tapizada',1.8,2.15,1.15],['table','Mesa de comedor',1.8,.9,.75],['lamp','Lámpara escultórica',.5,.5,1.5]] as const;
 export default function ObjectWorkshop({onMessage}:{onMessage:(message:string)=>void}) {
-  const {change,setSelection,setMode}=useEditor();
+  const {change,setSelection,setMode}=useEditorPick('change','setSelection','setMode');
   const [recipe,setRecipe]=useState<ObjectRecipe>({family:'sideboard',name:'Aparador acanalado',w:1.8,d:.45,h:.8,color:'#986a45',accent:'#b49a60'});
   const [busy,setBusy]=useState(false);
   const patch=(values:Partial<ObjectRecipe>)=>setRecipe(current=>({...current,...values}));

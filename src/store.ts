@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import type { Project, Selection, Tool, Mode } from './types';
 import { isProject } from './lib/validation';
 import { demoProject } from './data/defaultProject';
@@ -116,4 +117,12 @@ export function saveLocal(project: Project): boolean {
     }
     return true;
   } catch { return false; }
+}
+
+/**
+ * Subscribes to only the named store fields: the component re-renders when one of them changes
+ * (shallow comparison), not on every store update such as a camera sync or a drag checkpoint.
+ */
+export function useEditorPick<K extends keyof Store>(...keys:K[]):Pick<Store,K>{
+  return useEditor(useShallow((state:Store)=>{const picked={} as Pick<Store,K>;for(const key of keys)picked[key]=state[key];return picked;}));
 }

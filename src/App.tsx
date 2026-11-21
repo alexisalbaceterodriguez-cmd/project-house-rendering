@@ -1,4 +1,5 @@
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { cachedFurnitureCollisions, cachedProjectWarnings } from './lib/diagnosticsCache';
 import { Armchair, ArrowDownToLine, Box, Camera, Check, ChevronDown, CircleHelp, Copy, DoorOpen, Eye, EyeOff, FilePlus2, FolderOpen, Grid2X2, Hammer, House, Image, Layers, LayoutGrid, Maximize2, Minimize2, Move, Paintbrush, PanelRightClose, Plus, Redo2, RotateCcw, RotateCw, Ruler, Save, Settings2, SlidersHorizontal, SplitSquareVertical, Trash2, Undo2, Upload, WandSparkles } from 'lucide-react';
 import Plan2D from './components/Plan2D';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -13,9 +14,9 @@ import { findProductSource, PRODUCT_CATALOG_VERSION } from './data/productCatalo
 import { blankProject } from './data/defaultProject';
 import { clamp, download, fileSafe, makeId, wallLength, wallProjection } from './lib/geometry';
 import { EXTENSION_LEAF, HANDED_KINDS, handOf, tabletopSpot } from './lib/furnitureParts';
-import { projectWarnings, reconcileRooms, resizeProject, roomArea, splitInteriorWall, splitWallAtTJunctions, splitWallsAtCrossing, splitAllWallCrossings, normalizeInteriorIntersections, mergeInteriorWalls, updateWallGeometry } from './lib/topology';
+import { reconcileRooms, resizeProject, roomArea, splitInteriorWall, splitWallAtTJunctions, splitWallsAtCrossing, splitAllWallCrossings, normalizeInteriorIntersections, mergeInteriorWalls, updateWallGeometry } from './lib/topology';
 import { dataURLToBlob, getModelAsset, listModelAssets, putModelAsset, putModelMetadata } from './lib/assets';
-import { isProject, saveLocal, useEditor } from './store';
+import { isProject, saveLocal, useEditor, useEditorPick } from './store';
 import { measureModelDimensions, renderModelThumbnail } from './lib/modelThumbnail';
 import { validateGLB } from './lib/modelValidation';
 import { hydratePortableProject,portableProject } from './lib/portableProject';
@@ -158,7 +159,7 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
   };
   const refreshModels=async()=>{try{setLocalModels(await listModelAssets());setLibraryError('');}catch(error){setLibraryError(error instanceof Error?error.message:'No se ha podido abrir la biblioteca local.');}};
   useEffect(()=>{void refreshModels();},[]);
-  const { project,selection,change,setSelection,setTool,setMode }=useEditor();
+  const {project,selection,change,setSelection,setTool,setMode}=useEditorPick('project','selection','change','setSelection','setTool','setMode');
   const groups=['Todos',...new Set(catalog.map(item=>item.category))];
   const visibleLocalModels=localModels.filter(model=>{
     const query=librarySearch.trim().toLocaleLowerCase();
@@ -232,7 +233,7 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
   </aside>;
 }
 function DimensionForm(){
-  const {project,change}=useEditor();
+  const {project,change}=useEditorPick('project','change');
   const [width,setWidth]=useState(project.width.toFixed(2));
   const [depth,setDepth]=useState(project.depth.toFixed(2));
   const [resizeMode,setResizeMode]=useState<'scale'|'keep'>('scale');
@@ -247,12 +248,12 @@ function DimensionForm(){
     <p className="footnote">Al escalar, se mueven paredes y centros de muebles pero sus tamaños físicos se mantienen. Si mantienes posiciones, puede haber objetos fuera del nuevo límite.</p>
     <button className="primary-btn resize-submit" type="submit" disabled={!valid||(w===project.width&&d===project.depth)}>Actualizar la planta</button>
     {(()=>{const candidates=project.walls.filter(w=>!w.outer).flatMap(source=>[source.a,source.b].flatMap((endpoint,index)=>project.walls.filter(target=>target.id!==source.id).map(target=>{const projection=wallProjection(target,endpoint);const endA=Math.hypot(endpoint.x-target.a.x,endpoint.y-target.a.y);const endB=Math.hypot(endpoint.x-target.b.x,endpoint.y-target.b.y);const interior=projection.offset>.001&&projection.offset<.999;const choices=[...(interior?[{point:projection.point,gap:Math.hypot(endpoint.x-projection.point.x,endpoint.y-projection.point.y)}]:[]),{point:target.a,gap:endA},{point:target.b,gap:endB}];const closest=choices.sort((a,b)=>a.gap-b.gap)[0];return {source,index,target,point:closest.point,gap:closest.gap};}).filter(c=>c.gap>.002&&c.gap<=.12&&Math.hypot((index===0?source.b:source.a).x-c.point.x,(index===0?source.b:source.a).y-c.point.y)>=.2))).sort((a,b)=>a.gap-b.gap);const candidate=candidates.find(c=>`${c.source.id}:${c.index}:${c.target.id}`===selectedJoint)??candidates[0];if(!candidate)return null;return <div className="field"><label className="field"><span>Uniones abiertas ({candidates.length})</span><select aria-label="Seleccionar unión abierta" value={`${candidate.source.id}:${candidate.index}:${candidate.target.id}`} onChange={e=>setSelectedJoint(e.target.value)}>{candidates.map(c=><option key={`${c.source.id}:${c.index}:${c.target.id}`} value={`${c.source.id}:${c.index}:${c.target.id}`}>{c.source.id.slice(0,8)} ({c.index===0?'inicio':'final'}) → {c.target.id.slice(0,8)} · {(c.gap*100).toFixed(1)} cm</option>)}</select></label>{(()=>{const from=candidate.index===0?candidate.source.a:candidate.source.b;const to=candidate.point;const centerX=(from.x+to.x)/2,centerY=(from.y+to.y)/2;const radius=Math.max(.22,candidate.gap*3);const scale=180/(radius*2);const px=(x:number)=>90+(x-centerX)*scale;const py=(y:number)=>90+(y-centerY)*scale;return <div className="small-help" aria-label="Previsualización de conexión de paredes"><svg role="img" aria-label="Extremo actual en naranja y destino en verde, unidos por una línea discontinua" viewBox="0 0 180 180" style={{width:'100%',maxHeight:150,background:'#fff',border:'1px solid #ddd',borderRadius:8}}><line x1={px(candidate.source.a.x)} y1={py(candidate.source.a.y)} x2={px(candidate.source.b.x)} y2={py(candidate.source.b.y)} stroke="#d97706" strokeWidth="4" strokeLinecap="round"/><line x1={px(candidate.target.a.x)} y1={py(candidate.target.a.y)} x2={px(candidate.target.b.x)} y2={py(candidate.target.b.y)} stroke="#64748b" strokeWidth="4" strokeLinecap="round"/><line x1={px(from.x)} y1={py(from.y)} x2={px(to.x)} y2={py(to.y)} stroke="#16a34a" strokeWidth="2" strokeDasharray="4 3"/><circle cx={px(from.x)} cy={py(from.y)} r="5" fill="#d97706" stroke="white" strokeWidth="1.5"/><circle cx={px(to.x)} cy={py(to.y)} r="5" fill="#16a34a" stroke="white" strokeWidth="1.5"/></svg><span>Vista previa: el extremo naranja se moverá {(candidate.gap*100).toFixed(1)} cm hasta el punto verde. El resto del muro puede ajustarse para conservar sus conexiones.</span></div>;})()}<button type="button" className="btn" onClick={()=>{const preview=structuredClone(project);const source=preview.walls.find(w=>w.id===candidate.source.id);if(!source)return;updateWallGeometry(preview,source.id,candidate.index===0?candidate.point:source.a,candidate.index===1?candidate.point:source.b,true);const updated=preview.walls.find(w=>w.id===source.id);if(!updated||Math.hypot((candidate.index===0?updated.a:updated.b).x-candidate.point.x,(candidate.index===0?updated.a:updated.b).y-candidate.point.y)>.002){window.alert('No se puede cerrar esta unión sin alterar otras conexiones.');return;}change(p=>{updateWallGeometry(p,candidate.source.id,candidate.index===0?candidate.point:candidate.source.a,candidate.index===1?candidate.point:candidate.source.b,true);reconcileRooms(p);});}}>Conectar extremo de {candidate.source.id.slice(0,8)} con {candidate.target.id.slice(0,8)}</button><p className="small-help">Corrige solo esta unión; puedes deshacer el ajuste. Comprueba puertas y ventanas después.</p></div>;})()}
-    {projectWarnings(project).length>0&&<div className="geometry-warnings" role="status"><strong>Revisar geometría ({projectWarnings(project).length})</strong><ul>{projectWarnings(project).slice(0,8).map((m,i)=><li key={i}>{m}</li>)}</ul></div>}
+    {cachedProjectWarnings(project).length>0&&<div className="geometry-warnings" role="status"><strong>Revisar geometría ({cachedProjectWarnings(project).length})</strong><ul>{cachedProjectWarnings(project).slice(0,8).map((m,i)=><li key={i}>{m}</li>)}</ul></div>}
     <div className="section-label">ALTURA DE LOS MUROS</div><Field label="Altura" value={project.wallHeight} min={2} max={4} step={.01} onChange={n=>change(p=>{p.wallHeight=n;})}/>
   </form>;
 }
 function PropertyPanel(){
-  const {project,selection,change,setSelection}=useEditor();
+  const {project,selection,change,setSelection}=useEditorPick('project','selection','change','setSelection');
   const item=selection?.type==='furniture'?project.furniture.find(i=>i.id===selection.id):undefined;
   const room=selection?.type==='room'?project.rooms.find(i=>i.id===selection.id):undefined;
   const wall=selection?.type==='wall'?project.walls.find(i=>i.id===selection.id):undefined;
@@ -330,7 +331,7 @@ function PropertyPanel(){
 
 }
 function Header({onBlank,onReset,onImport,onExport,onScreenshot,onSvg,toast,saveStatus}:{onBlank:()=>void;onReset:()=>void;onImport:()=>void;onExport:()=>void;onScreenshot:()=>void;onSvg:()=>void;toast:string;saveStatus:'saving'|'saved'|'error'}){
-  const {project,change,undo,redo,history,redoStack,mode,setMode}=useEditor();
+  const {project,change,undo,redo,history,redoStack,mode,setMode}=useEditorPick('project','change','undo','redo','history','redoStack','mode','setMode');
   return <header className="topbar">
     <div className="brand"><div className="brand-logo"><House size={19}/></div><div className="brand-text"><strong>atelier<span>60</span></strong><small>STUDIO DE INTERIORES</small></div></div>
     <div className="header-separator"/><div className="project-title"><input aria-label="Nombre del proyecto" value={project.name} onChange={e=>change(p=>{p.name=e.target.value;})}/><span role="status"><Check size={12}/>{saveStatus==='saving'?'Guardando…':saveStatus==='saved'?'Guardado en este navegador':'No guardado: exporta una copia'}</span></div>
@@ -340,14 +341,14 @@ function Header({onBlank,onReset,onImport,onExport,onScreenshot,onSvg,toast,save
   </header>;
 }
 function EditorToolbar(){
-  const {tool,setTool,mode,setMode,wallsVisible,setWallsVisible,cutaway,setCutaway,setSelection}=useEditor();
+  const {tool,setTool,mode,setMode,wallsVisible,setWallsVisible,cutaway,setCutaway,setSelection}=useEditorPick('tool','setTool','mode','setMode','wallsVisible','setWallsVisible','cutaway','setCutaway','setSelection');
   return <div className="editor-toolbar"><span className="toolbar-label">HERRAMIENTAS</span><div className="tool-group">{toolbar.map(t=><button key={t.type} title={t.hint} className={tool===t.type?'active':''} onClick={()=>{setTool(t.type);if(mode==='3d')setMode('split');}}>{t.icon}<span>{t.label}</span></button>)}</div><div className="toolbar-spacer"/><div className="view-controls"><button onClick={()=>{setSelection(null);setTool('select');setMode('2d');}} title="Cambiar ancho y fondo del piso"><Ruler size={16}/><span>Dimensiones</span></button><button title={wallsVisible?'Ocultar muros':'Mostrar muros'} onClick={()=>setWallsVisible(!wallsVisible)}>{wallsVisible?<Eye size={16}/>:<EyeOff size={16}/>}<span>Muros</span></button><button className={cutaway?'active-soft':''} onClick={()=>setCutaway(!cutaway)} title="Alternar muros seccionados o completos"><Layers size={16}/><span>Sección</span></button></div></div>;
 }
 function Help({onClose}:{onClose:()=>void}){
   return <div className="modal-backdrop" onClick={onClose}><div className="help-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={onClose}>×</button><div className="eyebrow">GUÍA RÁPIDA</div><h2>Diseña tu casa paso a paso</h2><p>Atelier 60 permite modificar dimensiones y paredes a escala, con cálculo conceptual de recintos y una vista 3D sincronizada.</p><div className="help-steps"><div><Grid2X2/><strong>01 · Dibujar</strong><span>Elige tabique o estancia y marca dos puntos en el plano. Pulsa en un tabique para insertar puertas o ventanas.</span></div><div><Armchair/><strong>02 · Amueblar</strong><span>Añade muebles desde el catálogo y arrástralos en 2D. Selecciona una pared y mueve sus extremos o su posición.</span></div><div><WandSparkles/><strong>03 · Personalizar</strong><span>Aplica estilos y selecciona pavimentos. La vista 3D refleja las modificaciones.</span></div><div><ArrowDownToLine/><strong>04 · Exportar</strong><span>Guarda un JSON editable o captura un PNG de la vista 3D. También puedes exportar el plano en SVG.</span></div></div><p className="help-note">Atajos: Ctrl/⌘+Z para deshacer · Ctrl/⌘+Mayús+Z para rehacer · Supr para eliminar lo seleccionado.</p><button className="primary-btn" onClick={onClose}>Empezar a diseñar</button></div></div>;
 }
 export default function App(){
-  const {project,change,load,reset,selection,setSelection,undo,redo,mode}=useEditor();
+  const {project,change,load,reset,selection,setSelection,undo,redo,mode}=useEditorPick('project','change','load','reset','selection','setSelection','undo','redo','mode');
   const [modelUnits,setModelUnits]=useState<'m'|'cm'|'mm'>('m');
   const [studioOpen,setStudioOpen]=useState(false);
   const [saveStatus,setSaveStatus]=useState<'saving'|'saved'|'error'>('saving');
@@ -480,7 +481,7 @@ export default function App(){
           <button aria-pressed={topView} className={topView?'selected':''} onClick={()=>setTopView(true)}><Grid2X2 size={15}/> Cenital</button>
           <button className="present-button" onClick={()=>void togglePresentation()} title={presenting?'Salir de pantalla completa':'Presentar en pantalla completa'} aria-label={presenting?'Salir de pantalla completa':'Presentar en pantalla completa'}>{presenting?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
         </div></div>}</div>
-        <div className="workspace-bottom"><div><span className="dot-green"/> Edición en tiempo real <span className="bottom-dot">·</span> Paso de dibujo: {(project.editor?.grid??.1)*100} cm <span className="bottom-dot">·</span> {projectWarnings(project).length} avisos</div><button onClick={()=>setHelp(true)}><CircleHelp size={15}/> Guía de uso</button></div>
+        <div className="workspace-bottom"><div><span className="dot-green"/> Edición en tiempo real <span className="bottom-dot">·</span> Paso de dibujo: {(project.editor?.grid??.1)*100} cm <span className="bottom-dot">·</span> {cachedProjectWarnings(project).length} avisos</div><button onClick={()=>setHelp(true)}><CircleHelp size={15}/> Guía de uso</button></div>
       </main>
       <PropertyPanel/>
     </div>
