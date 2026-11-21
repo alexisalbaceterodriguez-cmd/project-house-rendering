@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { floors } from '../data/catalog';
 import { clamp, distance, makeId, snap, wallProjection } from '../lib/geometry';
 import { roomLabelPoint, projectWarnings, reconcileRooms, roomArea, roomVertices, updateWallGeometry } from '../lib/topology';
@@ -7,6 +7,14 @@ import { furnitureCollisions } from '../lib/diagnostics';
 import { cornerSofaLayout } from '../lib/furnitureParts';
 import type { Furniture, Point, Wall } from '../types';
 
+type ItemDown=(e:PointerEvent<SVGGElement>,item:Furniture)=>void;
+// Memoised per item: dragging one object re-renders only its own symbol.
+const PlanFurniture=memo(function PlanFurniture({item,selected,onDown}:{item:Furniture;selected:boolean;onDown:{current:ItemDown}}){
+  return <g transform={`translate(${item.x} ${item.y}) rotate(${item.rotation})`} onPointerDown={e=>onDown.current(e,item)} className="plan-furniture">
+    {iconFor(item)}
+    {selected&&<rect x={-item.w/2-.06} y={-item.d/2-.06} width={item.w+.12} height={item.d+.12} stroke="#34765b" strokeWidth=".045" fill="none" strokeDasharray=".09 .05" rx=".04"/>}
+  </g>;
+});
 function iconFor(item: Furniture) {
   if (item.kind === 'bed' || item.kind === 'single-bed' || item.kind === 'storage-bed' || item.kind === 'bunk-bed') return <><rect x={-item.w*.45} y={-item.d*.44} width={item.w*.9} height={item.d*.88} rx=".09" fill="#f3efe7" stroke="#beb6aa" strokeWidth=".024"/><rect x={-item.w*.38} y={-item.d*.39} width={item.w*.76} height={Math.min(.43,item.d*.25)} rx=".06" fill="#d1c2b2"/></>;
   if (item.kind === 'corner-sofa' || item.kind === 'corner-sofa-left') {
@@ -342,6 +350,7 @@ export default function Plan2D() {
     const point=pt(e);drag.current={type:'furniture',id:item.id,dx:point.x-item.x,dy:point.y-item.y,start:point,group:selectedFurniture.includes(item.id)&&selectedFurniture.length>1?project.furniture.filter(f=>selectedFurniture.includes(f.id)).map(({id,x,y})=>({id,x,y})):undefined};
     svg.current?.setPointerCapture(e.pointerId);
   };
+  const itemDownRef=useRef<ItemDown>(onItemDown);itemDownRef.current=onItemDown;
   const onMove=(e:PointerEvent<SVGSVGElement>)=>{
     if (pan.current) {
       if (e.pointerId !== pan.current.pointerId) return;
@@ -488,10 +497,7 @@ export default function Plan2D() {
           {selection?.type==='opening'&&selection.id===o.id&&<rect x={-o.width/2} y="-.12" width={o.width} height=".24" stroke="#3a866c" strokeWidth=".04" fill="none"/>}
         </g>;
       })}
-      {project.furniture.map(item=><g key={item.id} transform={`translate(${item.x} ${item.y}) rotate(${item.rotation})`} onPointerDown={e=>onItemDown(e,item)} className="plan-furniture">
-        {iconFor(item)}
-        {selectedFurniture.includes(item.id)&&<rect x={-item.w/2-.06} y={-item.d/2-.06} width={item.w+.12} height={item.d+.12} stroke="#34765b" strokeWidth=".045" fill="none" strokeDasharray=".09 .05" rx=".04"/>}
-      </g>)}
+      {project.furniture.map(item=><PlanFurniture key={item.id} item={item} selected={selectedFurniture.includes(item.id)} onDown={itemDownRef}/>)}
        {alignment?.x !== undefined && <line x1={alignment.x} y1="0" x2={alignment.x} y2={project.depth} stroke="#198c9b" strokeWidth=".025" strokeDasharray=".12 .09" pointerEvents="none"/>}
        {alignment?.y !== undefined && <line x1="0" y1={alignment.y} x2={project.width} y2={alignment.y} stroke="#198c9b" strokeWidth=".025" strokeDasharray=".12 .09" pointerEvents="none"/>}
       {spacing.map((gap,i)=><g key={i} pointerEvents="none" className="dimension">

@@ -4,6 +4,7 @@ import { isProject } from './lib/validation';
 import { demoProject } from './data/defaultProject';
 import { reconcileRooms } from './lib/topology';
 import { buildWallGraph, migrateProject } from './lib/projectSchema';
+import { shareUnchanged } from './lib/structuralShare';
 import type { CameraView } from './types';
 import { PROJECT_KEY as KEY, PROJECT_BACKUP_KEY as BACKUP_KEY } from './lib/localProjectStorage';
 export {isProject} from './lib/validation';
@@ -69,7 +70,8 @@ export const useEditor = create<Store>((set, get) => ({
     // commits; validate domain data first, then regenerate its references.
     if (!isProject({...next,graph:undefined})) return;
     next.schemaRevision=1;next.graph=buildWallGraph({...next,graph:previous.graph});
-    set(s => ({ project: next, history: record ? [...s.history.slice(-39), previous] : s.history, redoStack: record ? [] : s.redoStack }));
+    const shared=shareUnchanged(previous,next);
+    set(s => ({ project: shared, history: record ? [...s.history.slice(-39), previous] : s.history, redoStack: record ? [] : s.redoStack }));
   },
   undo: () => set(s => s.history.length ? ({ project: s.history[s.history.length - 1], history: s.history.slice(0, -1), redoStack: [s.project, ...s.redoStack].slice(0, 40), selection: null,selectedFurniture:[],dragCheckpoint:null }) : s),
   redo: () => set(s => s.redoStack.length ? ({ project: s.redoStack[0], history: [...s.history, s.project].slice(-40), redoStack: s.redoStack.slice(1), selection: null,selectedFurniture:[],dragCheckpoint:null }) : s),

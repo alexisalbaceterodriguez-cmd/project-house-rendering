@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Armchair, ArrowDownToLine, Box, Camera, Check, ChevronDown, CircleHelp, Copy, DoorOpen, Eye, EyeOff, FilePlus2, FolderOpen, Grid2X2, Hammer, House, Image, Layers, LayoutGrid, Maximize2, Minimize2, Move, Paintbrush, PanelRightClose, Plus, Redo2, RotateCcw, RotateCw, Ruler, Save, Settings2, SlidersHorizontal, SplitSquareVertical, Trash2, Undo2, Upload, WandSparkles } from 'lucide-react';
 import Plan2D from './components/Plan2D';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -98,6 +98,10 @@ function ModelMaterialPicker({item,onChange,onUseOriginal,onRestoreIndividual}:{
   </>;
 }
 
+// The catalog grid does not depend on the project: it re-renders only when the filter changes.
+const CatalogGrid=memo(function CatalogGrid({entries,onAdd}:{entries:typeof catalog;onAdd:{current:(entry:typeof catalog[number])=>void}}){
+  return <div className="catalog-grid">{entries.map(c=><button className="catalog-card" key={c.kind} onClick={()=>onAdd.current(c)} title={`Añadir ${c.name}`}><span className="catalog-icon">{c.icon}</span><span className="catalog-name">{c.name}</span><small>{c.w} × {c.d} m</small><small title="Geometría original, no producto comercial">{findProductSource(c.kind)?.reference} · Diseño propio</small><span className="add-overlay"><Plus size={15}/></span></button>)}</div>;
+});
 function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;modelUnits:'m'|'cm'|'mm';setModelUnits:(unit:'m'|'cm'|'mm')=>void}){
   const [tab,setTab]=useState<SideTab>('objects');
   const [filter,setFilter]=useState('Todos');
@@ -161,7 +165,7 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
     const matches=[model.metadata?.name,model.metadata?.source,model.metadata?.license,model.id].some(value=>value?.toLocaleLowerCase().includes(query));
     return matches&&(!onlyLicensed||Boolean(model.metadata?.license?.trim()));
   });
-  const visible=catalog.filter(o=>(filter==='Todos'||o.category===filter)&&[o.name,o.category,findProductSource(o.kind)?.reference].some(value=>value?.toLowerCase().includes(search.toLowerCase())));
+  const visible=useMemo(()=>catalog.filter(o=>(filter==='Todos'||o.category===filter)&&[o.name,o.category,findProductSource(o.kind)?.reference].some(value=>value?.toLowerCase().includes(search.toLowerCase()))),[filter,search]);
   const add=(entry:typeof catalog[number])=>{
     const id=makeId();
     // Tabletop objects land on the selected piece of furniture, turned like it, beside any already there.
@@ -181,6 +185,7 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
     }catch(error){setLibraryError(error instanceof Error?error.message:'No se ha podido recuperar el modelo.');}
   };
   const applyStyle=(name:string,palette:Palette)=>change(p=>{p.palette={...palette};p.furniture=p.furniture.map(f=>({...f,color:f.kind==='sofa'?palette.textile:f.kind==='chair'||f.kind==='table'?palette.wood:f.color}));});
+  const addRef=useRef(add);addRef.current=add;
   return <aside className="sidebar">
     <div className="sidebar-heading"><div><span className="eyebrow">TU ESTUDIO</span><h2>Elementos y acabados</h2></div><div className="sidebar-count">{project.furniture.length} objetos</div></div>
     <div className="sidebar-tabs">
@@ -194,7 +199,7 @@ function Sidebar({importModel,modelUnits,setModelUnits}:{importModel:()=>void;mo
         <input className="search" placeholder="Buscar muebles..." value={search} onChange={e=>setSearch(e.target.value)}/>
         <div className="chips">{groups.map(g=><button key={g} className={filter===g?'active':''} onClick={()=>setFilter(g)}>{g}</button>)}</div>
         <div className="section-label">CATÁLOGO PARAMÉTRICO · V{PRODUCT_CATALOG_VERSION}</div>
-        <div className="catalog-grid">{visible.map(c=><button className="catalog-card" key={c.kind} onClick={()=>add(c)} title={`Añadir ${c.name}`}><span className="catalog-icon">{c.icon}</span><span className="catalog-name">{c.name}</span><small>{c.w} × {c.d} m</small><small title="Geometría original, no producto comercial">{findProductSource(c.kind)?.reference} · Diseño propio</small><span className="add-overlay"><Plus size={15}/></span></button>)}</div>
+        <CatalogGrid entries={visible} onAdd={addRef}/>
         <div className="section-label">BIBLIOTECA GLB LOCAL <button type="button" onClick={()=>void refreshModels()} title="Actualizar biblioteca">Actualizar</button></div>
         <p className="small-help">Modelos guardados en este navegador, incluso de otros proyectos. No se sincronizan entre dispositivos.</p>
         <input className="search" aria-label="Buscar en biblioteca GLB" placeholder="Buscar modelos, origen o licencia…" value={librarySearch} onChange={e=>setLibrarySearch(e.target.value)}/>

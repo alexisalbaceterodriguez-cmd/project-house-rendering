@@ -1,4 +1,4 @@
-import { createContext, Suspense, useContext, useEffect, useMemo, useState, type MutableRefObject } from 'react';
+import { createContext, memo, Suspense, useContext, useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, SoftShadows, useGLTF, useProgress } from '@react-three/drei';
@@ -29,16 +29,23 @@ function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metaln
 // `surface` adds metre-scaled image maps (textile weave, wood grain) that also travel in the render GLB.
 // `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); `crown` domes a cushion face. The GLB carries the same mesh.
 const FLAME_GLOW='#ffb04a';
-function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe,axis}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z'}) {
+const Box=memo(function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe,axis}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z'}) {
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
-  const geometry=useMemo(()=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,crown?.both,lathe,axis]);
+  const geometry=useMemo(()=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,crown?.both,lathe&&JSON.stringify(lathe),axis]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   if(role==='flame')return <mesh position={position}><primitive object={geometry} attach="geometry"/><meshStandardMaterial name="atelier:flame" color={color} emissive={FLAME_GLOW} emissiveIntensity={1.6} roughness={1}/></mesh>;
   return <mesh castShadow={material!=='glass'&&role!=='sheer'} receiveShadow position={position}>
     <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity} depthWrite={opacity>=1}/>}
   </mesh>;
-}
+},(a,b)=>{
+  // Part builders return fresh arrays on every call: compare tuples and profiles by value.
+  for(const k of Object.keys({...a,...b}) as (keyof typeof a)[]){
+    const x=a[k],y=b[k];if(x===y)continue;
+    if(typeof x!=='object'||typeof y!=='object'||x===null||y===null||JSON.stringify(x)!==JSON.stringify(y))return false;
+  }
+  return true;
+});
 function FloorSurface({room}:{room:Project['rooms'][number]}){
   const finish=floors[room.floor]??floors.oak;
   const shape=useMemo(()=>{
@@ -63,17 +70,16 @@ function FloorSurface({room}:{room:Project['rooms'][number]}){
       :<meshStandardMaterial name={`atelier:floor-${room.floor}`} color="#ffffff" roughness={1} metalness={0} {...textureProps(`floor:${floors[room.floor]?room.floor:'oak'}`)}/>}
   </mesh>;
 }
-function WallModel({wall,project,cutaway,selected}:{wall:Wall;project:Project;cutaway:boolean;selected:boolean}){
+const WallModel=memo(function WallModel({wall,openings,wallHeight,color,cutaway,selected}:{wall:Wall;openings:Opening[];wallHeight:number;color:string;cutaway:boolean;selected:boolean}){
   const len=wallLength(wall);
   const angle=Math.atan2(wall.b.y-wall.a.y,wall.b.x-wall.a.x);
-  const height=cutaway ? .9 : project.wallHeight;
-  const openings=project.openings.filter(o=>o.wallId===wall.id);
+  const height=cutaway ? .9 : wallHeight;
   const parts=wallParts(wall,openings,height);
   return <group position={[wall.a.x,0,wall.a.y]} rotation={[0,-angle,0]} userData={{atelierId:wall.id,atelierType:'wall'}}>
-    {parts.map((p,i)=><group key={i}><Box position={[(p.from+p.to)/2,(p.bottom+p.top)/2,0]} size={[p.to-p.from,p.top-p.bottom,wall.thickness]} finishId={wall.materialId} color={project.palette.walls}/>{selected&&<mesh userData={{editorOverlay:true}} position={[(p.from+p.to)/2,(p.bottom+p.top)/2,0]}><boxGeometry args={[p.to-p.from+.005,p.top-p.bottom+.005,wall.thickness+.005]}/><meshBasicMaterial color="#2b9071" wireframe/></mesh>}</group>)}
+    {parts.map((p,i)=><group key={i}><Box position={[(p.from+p.to)/2,(p.bottom+p.top)/2,0]} size={[p.to-p.from,p.top-p.bottom,wall.thickness]} finishId={wall.materialId} color={color}/>{selected&&<mesh userData={{editorOverlay:true}} position={[(p.from+p.to)/2,(p.bottom+p.top)/2,0]}><boxGeometry args={[p.to-p.from+.005,p.top-p.bottom+.005,wall.thickness+.005]}/><meshBasicMaterial color="#2b9071" wireframe/></mesh>}</group>)}
     {!cutaway&&openings.map(o=><OpeningModel key={o.id} opening={o} length={len} thickness={wall.thickness}/>)}
   </group>;
-}
+},(a,b)=>a.wall===b.wall&&a.wallHeight===b.wallHeight&&a.color===b.color&&a.cutaway===b.cutaway&&a.selected===b.selected&&a.openings.length===b.openings.length&&a.openings.every((o,i)=>o===b.openings[i]));
 function OpeningModel({opening:o,length,thickness}:{opening:Opening;length:number;thickness:number}){
   const x=o.offset*length;
   const pale='#d9d8d1';
@@ -257,10 +263,9 @@ function Plant({item,wood}:{item:Furniture;wood:string}){
     {foliage.leaves.map((g,i)=><mesh key={i} castShadow receiveShadow geometry={g}><meshStandardMaterial name="atelier:leaf" color={tones[i]} roughness={.55} side={THREE.DoubleSide}/></mesh>)}
   </>;
 }
-function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;selected:boolean}){
-  if(item.module)return <ModuleModel item={item} wood={project.palette.wood}/>;
+function FurnitureShape({item,wood,night,selected}:{item:Furniture;wood:string;night:boolean;selected:boolean}){
+  if(item.module)return <ModuleModel item={item} wood={wood}/>;
   const {w,d,h}=item;
-  const wood=project.palette.wood,night=project.render?.lighting==='night';
   switch(item.kind){
     case 'bed':case 'single-bed':case 'storage-bed':return <Parts parts={bedParts(w,d,item.kind==='storage-bed')} item={item} wood={wood}/>;
     case 'sofa':return <Parts parts={sofaParts(w,d)} item={item} wood={wood}/>;
@@ -326,17 +331,19 @@ function FurnitureShape({item,project,selected}:{item:Furniture;project:Project;
     case 'model':return <ModelShape item={item} selected={selected}/>;
   }
 }
-function ObjectModel({item,project,selected,onSelect}:{item:Furniture;project:Project;selected:boolean;onSelect:()=>void}){
+const selectFurniture=(id:string)=>useEditor.getState().setSelection({type:'furniture',id});
+// Memoised per item: an edit re-renders only the objects whose data, support height or selection changed.
+const ObjectModel=memo(function ObjectModel({item,elevation,wood,night,selected}:{item:Furniture;elevation:number;wood:string;night:boolean;selected:boolean}){
+  const onSelect=()=>selectFurniture(item.id);
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]} userData={{atelierId:item.id,atelierType:'furniture',atelierKind:item.kind}} onClick={e=>{e.stopPropagation();onSelect();}} onPointerOver={()=>{document.body.style.cursor='pointer';}} onPointerOut={()=>{document.body.style.cursor='';}}>
-    <SurfaceContext.Provider value={item.materialId}><group position={[0,item.module?0:placedElevation(item,project.furniture,project.wallHeight),0]}><FurnitureShape item={item} project={project} selected={selected}/></group></SurfaceContext.Provider>
+    <SurfaceContext.Provider value={item.materialId}><group position={[0,elevation,0]}><FurnitureShape item={item} wood={wood} night={night} selected={selected}/></group></SurfaceContext.Provider>
     {selected&&<mesh userData={{editorOverlay:true}} rotation={[-Math.PI/2,0,0]} position={[0,.03,0]}><ringGeometry args={[Math.max(item.w,item.d)*.66,Math.max(item.w,item.d)*.68,40]}/><meshBasicMaterial color="#2b9071" side={THREE.DoubleSide}/></mesh>}
   </group>;
-}
+});
 // Approximate near-floor occlusion from the placed footprint. Unlike a projected
 // key-light shadow it stays under the furniture as the studio light rotates.
-function FloorContact({item,furniture,wallHeight}:{item:Furniture;furniture:Furniture[];wallHeight:number}){
+const FloorContact=memo(function FloorContact({item}:{item:Furniture}){
   const lift=Math.max(0,item.modelElevation??0);
-  if(item.kind==='rug'||placedElevation(item,furniture,wallHeight)>0||lift>=.45)return null;
   return <group position={[item.x,0,item.y]} rotation={[0,-item.rotation*Math.PI/180,0]}>
     <mesh raycast={()=>{}} userData={{renderExclude:true}} position={[item.modelOffsetX??0,.031,item.modelOffsetZ??0]} rotation={[-Math.PI/2,0,0]} scale={[item.w*1.45,item.d*1.45,1]}>
       <planeGeometry/>
@@ -353,7 +360,7 @@ function FloorContact({item,furniture,wallHeight}:{item:Furniture;furniture:Furn
           }`}/>
     </mesh>
   </group>;
-}
+});
 function CameraRig({project,top}:{project:Project;top:boolean}){
   const {camera,controls}=useThree();
   const saved=project.render?.camera;
@@ -373,6 +380,24 @@ function CameraRig({project,top}:{project:Project;top:boolean}){
     observer();events?.addEventListener('end',observer);events?.addEventListener('unlock',observer);
     return()=>{events?.removeEventListener('end',observer);events?.removeEventListener('unlock',observer);};
   },[camera,controls,top,project.render?.walk]);
+  return null;
+}
+// While the camera is being dragged nothing in the scene moves, so the shadow maps stay valid:
+// freeze them, and draw glass transmission and pixel density at draft level until the gesture ends.
+// The final frame after release (and every capture) uses the full settings again.
+export const viewerDpr=(high:boolean):[number,number]=>high?[1,2]:[1,1.3];
+function InteractionQuality({high}:{high:boolean}){
+  const {gl,controls,setDpr,invalidate}=useThree();
+  useEffect(()=>{
+    const events=controls as unknown as THREE.EventDispatcher<{start:object;end:object}>|null;
+    if(!events?.addEventListener)return;
+    let timer=0;
+    const start=()=>{window.clearTimeout(timer);gl.shadowMap.autoUpdate=false;gl.transmissionResolutionScale=.25;if(high)setDpr(1);};
+    // Damping keeps the camera gliding briefly after release; restore once it has settled.
+    const end=()=>{window.clearTimeout(timer);timer=window.setTimeout(()=>{gl.shadowMap.autoUpdate=true;gl.shadowMap.needsUpdate=true;gl.transmissionResolutionScale=high?1:.25;if(high)setDpr(viewerDpr(true));invalidate();},350);};
+    events.addEventListener('start',start);events.addEventListener('end',end);
+    return()=>{window.clearTimeout(timer);events.removeEventListener('start',start);events.removeEventListener('end',end);gl.shadowMap.autoUpdate=true;};
+  },[gl,controls,setDpr,invalidate,high]);
   return null;
 }
 function CaptureRig({exposure,high}:{exposure:number;high:boolean}){
@@ -466,7 +491,7 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
   const ground=subject?(subject.modelElevation??0)-.012:-.009;
   return <div className="scene-wrap" aria-busy={active||textureMapsPending((project.materials??[]).flatMap(material=>Object.values(material.maps??{})))}>
     <div className="scene-title"><span>{subject?'Estudio de producto':'Perspectiva 3D'}</span><strong>{subject?.name??project.name}</strong></div>
-    <Canvas frameloop="demand" shadows dpr={high?[1,2]:[1,1.3]} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
+    <Canvas frameloop="demand" shadows dpr={viewerDpr(high)} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
       <SurfaceRefresh/>
       <color attach="background" args={[studio?(render.studio??defaultStudio).background:'#f4f3ef']}/>
       {studio?<StudioLights project={project} subject={subject} high={high}/>:<>
@@ -477,18 +502,18 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       <directionalLight castShadow position={[-5,13,7]} intensity={render.lighting==='night'?.2:2.3} color={render.lighting==='night'?'#a8bfff':'#fff5e8'} shadow-mapSize-width={high?2048:1024} shadow-mapSize-height={high?2048:1024} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} shadow-bias={-.0001}/>
       {render.lighting==='night'&&<pointLight position={[project.width/2,2.3,project.depth/2]} intensity={35} color="#ffd6a3" decay={2}/>}
       </>}
-      <CaptureRig exposure={render.exposure} high={high}/>
+      <CaptureRig exposure={render.exposure} high={high}/><InteractionQuality high={high}/>
       <CameraRig project={project} top={!cameraLocked&&topView}/>
       {render.walk&&!subject?<WalkRig project={project}/>:<OrbitControls makeDefault target={project.render?.camera?.target??[project.width/2,.05,project.depth/2]} enableRotate={!cameraLocked} enableZoom={!cameraLocked} enablePan={!cameraLocked} enableDamping dampingFactor={.08} minDistance={.4} maxDistance={500} maxPolarAngle={Math.PI*.495}/>}
       <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[center[0],subject?ground:-.1,center[2]]} userData={{atelierId:'ground',atelierType:'ground'}}><planeGeometry args={subject?[span*8+50,span*8+50]:[project.width+50,project.depth+50]}/><meshStandardMaterial color={studio?(render.studio??defaultStudio).background:'#ebeae5'} roughness={studio?.85:1}/></mesh>
       {!subject&&<>
       {project.rooms.map(room=><FloorSurface key={room.id} room={room}/>)}
       <group userData={{atelierId:'slab',atelierType:'slab'}}><Box position={[project.width/2,-.065,project.depth/2]} size={[project.width,.10,project.depth]} color="#d4c7b5"/></group>
-      {wallsVisible&&project.walls.map(w=><WallModel key={w.id} wall={w} project={project} cutaway={cutaway} selected={selection?.type==='wall'&&selection.id===w.id}/>)}
+      {wallsVisible&&project.walls.map(w=><WallModel key={w.id} wall={w} openings={project.openings.filter(o=>o.wallId===w.id)} wallHeight={project.wallHeight} color={project.palette.walls} cutaway={cutaway} selected={selection?.type==='wall'&&selection.id===w.id}/>)}
       </>}
-      {(subject?[subject]:project.furniture).map(item=><ObjectModel key={item.id} item={item} project={project} selected={selection?.type==='furniture'&&selection.id===item.id} onSelect={()=>setSelection({type:'furniture',id:item.id})}/>)}
+      {(subject?[subject]:project.furniture).map(item=><ObjectModel key={item.id} item={item} elevation={item.module?0:placedElevation(item,project.furniture,project.wallHeight)} wood={project.palette.wood} night={render.lighting==='night'} selected={selection?.type==='furniture'&&selection.id===item.id}/>)}
       {subject?<group userData={{renderExclude:true}}><ContactShadows key={JSON.stringify([subject.id,subject.w,subject.d,subject.h,subject.x,subject.y,subject.rotation,ground])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={.35} blur={2.5} far={span*2}/></group>
-        :project.furniture.map(item=><FloorContact key={item.id} item={item} furniture={project.furniture} wallHeight={project.wallHeight}/>)}
+        :project.furniture.filter(item=>item.kind!=='rug'&&placedElevation(item,project.furniture,project.wallHeight)<=0&&Math.max(0,item.modelElevation??0)<.45).map(item=><FloorContact key={item.id} item={item}/>)}
 
     </Canvas>
     <div className="scene-navigation">{render.walk&&!subject?'WASD para caminar · Esc para liberar el cursor':'Arrastra para orbitar · Rueda para acercar · Mayús + clic para editar un material'}</div>
