@@ -4,6 +4,7 @@ import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, SoftShadows, useGLTF, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { floors } from '../data/catalog';
 import { clamp, wallLength, wallParts, wallProjection } from '../lib/geometry';
 import { roomLabelPoint,roomVertices } from '../lib/topology';
@@ -29,23 +30,49 @@ function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metaln
 // `surface` adds metre-scaled image maps (textile weave, wood grain) that also travel in the render GLB.
 // `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); `crown` domes a cushion face. The GLB carries the same mesh.
 const FLAME_GLOW='#ffb04a';
-const Box=memo(function Box({position=[0,0,0],size,color,material='matte',opacity=1,finishId,role,surface,bevel=0,crown,lathe,axis}:{position?:[number,number,number];size:[number,number,number];color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>;bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z'}) {
+type Look={color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>};
+type Shape={size:readonly [number,number,number];bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z'};
+const shapeGeometry=({size,bevel=0,crown,lathe,axis}:Shape)=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown);
+/** One mesh with the material a part look describes; `thickness` is the glass slab depth. */
+function LookMesh({geometry,position,thickness,look:{color,material='matte',opacity=1,finishId,role,surface}}:{geometry:THREE.BufferGeometry;position?:[number,number,number];thickness:number;look:Look}){
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
-  const geometry=useMemo(()=>lathe?latheGeometry(lathe,size,undefined,axis):physicalBox(size,bevel,crown),[...size,bevel,crown?.axis,crown?.amount,crown?.both,lathe&&JSON.stringify(lathe),axis]);
-  useEffect(()=>()=>geometry.dispose(),[geometry]);
   if(role==='flame')return <mesh position={position}><primitive object={geometry} attach="geometry"/><meshStandardMaterial name="atelier:flame" color={color} emissive={FLAME_GLOW} emissiveIntensity={1.6} roughness={1}/></mesh>;
   return <mesh castShadow={material!=='glass'&&role!=='sheer'} receiveShadow position={position}>
-    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={Math.min(...size)}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity} depthWrite={opacity>=1}/>}
+    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={thickness}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity} depthWrite={opacity>=1}/>}
   </mesh>;
-},(a,b)=>{
-  // Part builders return fresh arrays on every call: compare tuples and profiles by value.
-  for(const k of Object.keys({...a,...b}) as (keyof typeof a)[]){
-    const x=a[k],y=b[k];if(x===y)continue;
-    if(typeof x!=='object'||typeof y!=='object'||x===null||y===null||JSON.stringify(x)!==JSON.stringify(y))return false;
+}
+// Part builders return fresh arrays on every call: compare tuples and profiles by value.
+const sameProps=(a:object,b:object)=>{
+  const x=a as Record<string,unknown>,y=b as Record<string,unknown>;
+  for(const k of Object.keys({...x,...y})){
+    const p=x[k],q=y[k];if(p===q)continue;
+    if(typeof p!=='object'||typeof q!=='object'||p===null||q===null||JSON.stringify(p)!==JSON.stringify(q))return false;
   }
   return true;
-});
+};
+const Box=memo(function Box({position=[0,0,0],size,bevel,crown,lathe,axis,...look}:{position?:[number,number,number]}&Shape&Look){
+  const geometry=useMemo(()=>shapeGeometry({size,bevel,crown,lathe,axis}),[...size,bevel,crown?.axis,crown?.amount,crown?.both,lathe&&JSON.stringify(lathe),axis]);
+  useEffect(()=>()=>geometry.dispose(),[geometry]);
+  return <LookMesh geometry={geometry} position={position} thickness={Math.min(...size)} look={look}/>;
+},sameProps);
+/**
+ * Every part of one object that shares a look, merged into a single mesh: one draw call (and one
+ * shadow-map draw) per material instead of one per part. Materials, names and UVs are unchanged, so
+ * the viewer and the render GLB look the same; Cycles reads roles per material, never per part.
+ */
+const PartGroup=memo(function PartGroup({parts,look}:{parts:readonly FurniturePart[];look:Look}){
+  const geometry=useMemo(()=>{
+    if(parts.length<2)return undefined;
+    const pieces=parts.map(p=>{const g=shapeGeometry(p);g.clearGroups();g.translate(...p.position);return g;});
+    const merged=mergeGeometries(pieces,false);for(const g of pieces)g.dispose();
+    merged?.computeBoundingBox();merged?.computeBoundingSphere();
+    return merged??undefined;
+  },[JSON.stringify(parts.map(p=>[p.position,p.size,p.bevel,p.crown,p.lathe,p.axis]))]);
+  useEffect(()=>()=>geometry?.dispose(),[geometry]);
+  if(!geometry)return <>{parts.map(p=><Box key={p.name} position={p.position} size={p.size} bevel={p.bevel} crown={p.crown} lathe={p.lathe} axis={p.axis} {...look}/>)}</>;
+  return <LookMesh geometry={geometry} thickness={Math.min(...parts.flatMap(p=>p.size))} look={look}/>;
+},sameProps);
 function FloorSurface({room}:{room:Project['rooms'][number]}){
   const finish=floors[room.floor]??floors.oak;
   const shape=useMemo(()=>{
@@ -201,7 +228,13 @@ function ModuleModel({item,wood}:{item:Furniture;wood:string}){
 // Share of light a voile stops; exported as glTF alpha, which Cycles reads back (make_sheer).
 const SHEER_OPACITY=.55;
 function Parts({parts,item,wood,worktop}:{parts:FurniturePart[];item:Furniture;wood:string;worktop?:string}){
-  return <>{parts.map(p=><Box key={p.name} finishId={p.role==='worktop'?worktop:undefined} position={p.position} size={p.size} color={p.color==='item'?item.color:p.color==='wood'?wood:p.color} surface={p.surface} material={p.material} role={p.role} opacity={p.role==='sheer'?SHEER_OPACITY:undefined} bevel={p.bevel} crown={p.crown} lathe={p.lathe} axis={p.axis}/>)}</>;
+  const groups=new Map<string,{look:Look;parts:FurniturePart[]}>();
+  for(const p of parts){
+    const look:Look={color:p.color==='item'?item.color:p.color==='wood'?wood:p.color,material:p.material,surface:p.surface,role:p.role,finishId:p.role==='worktop'?worktop:undefined,opacity:p.role==='sheer'?SHEER_OPACITY:undefined};
+    const key=JSON.stringify(look),group=groups.get(key);
+    if(group)group.parts.push(p);else groups.set(key,{look,parts:[p]});
+  }
+  return <>{[...groups].map(([key,group])=><PartGroup key={key} parts={group.parts} look={group.look}/>)}</>;
 }
 function WovenRug({item}:{item:Furniture}){
   const weave=useMemo(()=>{
