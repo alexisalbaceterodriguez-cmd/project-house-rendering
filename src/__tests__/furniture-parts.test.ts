@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, supportTop, placedElevation, tabletopSpot, restHeight, softRest, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, supportTop, supportUnder, placedElevation, tabletopSpot, restHeight, softRest, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -306,6 +306,19 @@ describe('tabletop objects', () => {
     // Hung supports add their hang height; rugs and other lamps never carry one.
     expect(supportTop(lamp,[{...night,kind:'floating-nightstand',h:.25}],2.55)).toBeCloseTo(.6);
     expect(supportTop(lamp,[{...night,kind:'rug',h:.02},{...lamp,id:'o'}],2.55)).toBe(0);
+  });
+  it('stay on the worktop under a wall cabinet unless they do not fit below it', () => {
+    const base={id:'b',kind:'kitchen',x:1,y:1,w:1.2,d:.6,h:.9,rotation:0,module:{family:'base' as const}};
+    const wall={id:'w',kind:'kitchen',x:1,y:.85,w:.7,d:.35,h:.72,rotation:0,module:{family:'wall' as const}};
+    const kettle={...lamp,kind:'kettle',x:1,y:.9,h:.25};
+    expect(supportTop(kettle,[base,wall],2.55)).toBeCloseTo(.9);
+    expect(supportUnder(kettle,[base,wall])?.id).toBe('b');
+    // Too tall for the 55 cm gap: it goes on top of the cabinet. Alone under it, the cabinet carries it.
+    expect(supportTop({...kettle,h:.6},[base,wall],2.55)).toBeCloseTo(2.17);
+    expect(supportTop(kettle,[wall],2.55)).toBeCloseTo(2.17);
+    // A wall shelf over a sideboard: a vase fits beneath it and stays on the sideboard.
+    const sideboard={id:'s',kind:'sideboard',x:1,y:1,w:1.6,d:.45,h:.75,rotation:0},shelf={id:'h',kind:'wall-shelf',x:1,y:.9,w:.8,d:.25,h:.04,rotation:0};
+    expect(supportTop({...lamp,kind:'vase',y:.9,h:.4},[sideboard,shelf],2.55)).toBeCloseTo(.75);
   });
   it('follow the support rotation', () => {
     const long={id:'s',kind:'sideboard',x:1,y:1,w:1.6,d:.4,h:.75,rotation:0};

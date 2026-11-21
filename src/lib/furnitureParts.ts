@@ -1181,9 +1181,9 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
-export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer']);
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer','decor-tray','table-setting','wine-set','coffee-machine','dish-rack','herb-pots']);
 // Wall-only or soft items that never carry a tabletop object.
-const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket']);
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase']);
 /** Flat floor coverings: lie on the floor finish, never collide with furniture and cast no contact shadow. */
 export const FLOOR_COVER_KINDS:ReadonlySet<string>=new Set(['rug','doormat','bath-mat']);
 
@@ -1204,6 +1204,7 @@ const sofaRear=(d:number,back:number)=>-d/2+FACE_GAP*1.5+back;
 export function restHeight(f:{kind:string;w:number;d:number;h:number},u:number,v:number):number{
   const {w,d,h}=f;
   switch(f.kind){
+    case 'nesting-tables':return u>nestingLayout(w,d).split?h*NEST_LOW:h;
     case 'sofa':{
       const arm=clamp(w*.09,.12,.2),rear=sofaRear(d,Math.min(.2,d*.22));
       return Math.abs(u)>w/2-arm?.64:v<rear?h:.46;
@@ -1254,19 +1255,36 @@ export function softRest(f:{kind:string;w:number;d:number;h:number}):{center:num
  * Top height of the furniture under `item`'s centre (its elevation plus `restHeight` there,
  * usually its overall height `h`), or 0 when it stands on the floor. Uses each support's full
  * bounding height, so a desk with a hutch carries the lamp on its hutch top, not on the worktop;
- * seats and beds carry it on their seat, arm, mattress or duvet instead.
+ * seats and beds carry it on their seat, arm, mattress or duvet instead. An object that fits under
+ * a hung support stays on the surface below it (see `restingOn`).
  */
 export function supportTop(item:Placed,furniture:readonly Placed[],wallHeight:number):number{
-  let top=0;
+  return restingOn(item,furniture,wallHeight).top;
+}
+
+/**
+ * The surface `item` stands on: the highest support top under its centre, except that an object
+ * that fits in the clear gap between a lower surface and a hung support above it (a wall cabinet
+ * over the worktop, a wall shelf over a sideboard) stays on the lower surface instead of jumping
+ * onto the hung one. With nothing under it but a hung support, it stands on that support.
+ */
+function restingOn<T extends Placed>(item:Placed,furniture:readonly T[],wallHeight:number):{top:number;support?:T}{
+  const surfaces:{top:number;bottom:number;support:T}[]=[];
   for(const f of furniture){
     if(f.id===item.id||NO_SUPPORT.has(f.kind)||TABLETOP_KINDS.has(f.kind))continue;
     const a=-f.rotation*Math.PI/180,dx=item.x-f.x,dy=item.y-f.y;
     const u=dx*Math.cos(a)-dy*Math.sin(a),v=dx*Math.sin(a)+dy*Math.cos(a);
     if(Math.abs(u)>f.w/2+1e-9||Math.abs(v)>f.d/2+1e-9)continue;
-    const rest=restHeight(f,u,v);
-    if(rest>0)top=Math.max(top,furnitureElevation(f,wallHeight)+rest);
+    const rest=restHeight(f,u,v),bottom=furnitureElevation(f,wallHeight);
+    if(rest>0)surfaces.push({top:bottom+rest,bottom,support:f});
   }
-  return top;
+  surfaces.sort((p,q)=>p.top-q.top);
+  let best:{top:number;support?:T}={top:0};
+  for(const surface of surfaces){
+    if(best.support&&surface.bottom>best.top&&best.top+item.h<=surface.bottom+1e-9)break;
+    if(surface.top>best.top)best={top:surface.top,support:surface.support};
+  }
+  return best;
 }
 
 /** Height of `item`'s base above the floor: hung kinds by `furnitureElevation`, tabletop kinds on their support. */
@@ -1276,9 +1294,7 @@ export function placedElevation(item:Placed,furniture:readonly Placed[],wallHeig
 
 /** The support whose top `item` stands on (see `supportTop`), or undefined on the floor. */
 export function supportUnder<T extends Placed>(item:Placed,furniture:readonly T[]):T|undefined{
-  let best:T|undefined,top=0;
-  for(const f of furniture){const t=supportTop(item,[f],0);if(t>top){top=t;best=f;}}
-  return best;
+  return restingOn(item,furniture,0).support;
 }
 
 /** Whether furniture of `kind` can carry a tabletop object (see `supportTop`). */
@@ -1733,5 +1749,194 @@ export function blanketBasketParts(w:number,d:number,h:number):FurniturePart[]{
   ];
   for(const [i,color,x,z,top] of [[1,'#8c9b8a',-D*.17,-D*.06,h],[2,'#cdbb9f',D*.17,D*.08,h-.05]] as const)
     parts.push(turned(`Manta enrollada ${i}`,ROD,[roll,top-floor,roll],x,floor,z,{color,surface:'textile'}));
+  return parts;
+}
+
+/**
+ * Open clothes rail inside `w × d × h`: flat metal feet along z, two round uprights, a top rail
+ * along x, a low wooden shelf and three to seven garments on wooden hangers with metal hooks.
+ * Garments hang across the rail (their width runs along z), in staggered lengths and colours.
+ */
+export function clothesRailParts(w:number,d:number,h:number):FurniturePart[]{
+  const tube=.025,foot=.03,ux=w/2-tube/2-.005,railY=h-tube,metal={color:'#2f2e2c',material:'metal'} as const;
+  const parts:FurniturePart[]=[
+    ...[-1,1].map(s=>part(`Pie ${s<0?'izquierdo':'derecho'}`,[.035,foot,d],s*ux,0,0,{...metal,bevel:.008})),
+    ...[-1,1].map(s=>turned(`Montante ${s<0?'izquierdo':'derecho'}`,ROD,[tube,railY-foot,tube],s*ux,foot,0,metal)),
+    part('Barra',[w,tube,tube],0,railY,0,{...metal,bevel:.012}),
+    part('Balda',[w-.08,.018,d*.7],0,.14,0,{color:'wood',surface:'woodgrain',bevel:.004}),
+  ];
+  const n=clamp(Math.round((w-.2)/.13),3,7),span=w-.24,colors=['item','#3f4a4f','#e9e4da','#8c9b8a','#a8603f','#5b6b7e','#d9cfc0'];
+  const hookTop=railY,hangerY=railY-.06,longest=Math.max(.2,Math.min(.95,hangerY-.02-.16-.04));
+  for(let i=0;i<n;i++){
+    const x=-span/2+(n===1?span/2:i*span/(n-1))+(i%2?.012:-.008),length=longest*[1,.72,.86,.64,.94,.78,.9][i%7],gd=Math.min(d*.84,.46);
+    parts.push(turned(`Gancho ${i+1}`,ROD,[.005,hookTop-hangerY-.012,.005],x,hangerY+.012,0,{color:'#b9b6b0',material:'metal'}));
+    parts.push(part(`Percha ${i+1}`,[.012,.014,gd*.96],x,hangerY,0,{color:'wood',bevel:.006}));
+    const cloth={color:colors[i%colors.length],surface:'textile'} as const,shoulder=Math.min(.09,length*.25);
+    parts.push(part(`Hombros ${i+1}`,[.05,shoulder,gd],x,hangerY-shoulder+.006,0,{...cloth,bevel:.022}));
+    parts.push(part(`Prenda ${i+1}`,[.044,length-shoulder*.6,gd*.86],x,hangerY-length+.004,0,{...cloth,bevel:.02}));
+  }
+  return parts;
+}
+
+/** Tall floor vase: a full belly narrowing to a short neck and a flared lip (lathe profile). */
+const FLOOR_VASE:Profile=[[0,0],[.72,0],[.94,.14],[1,.4],[.88,.66],[.5,.86],[.36,.95],[.42,1],[0,1]];
+/**
+ * Floor vase with dried pampas inside `w × d × h`: a glazed ceramic vase about half the height
+ * and five stems of staggered height, each ending in a soft elongated plume that reaches `h`.
+ */
+export function floorVaseParts(w:number,d:number,h:number):FurniturePart[]{
+  const D=Math.min(w,d),body=Math.min(h*.5,.62),plume=Math.min(.28,(h-body)*.6),pw=Math.min(.075,D*.22),parts:FurniturePart[]=[
+    turned('Jarrón',FLOOR_VASE,[D*.72,body,D*.72],0,0,0,{color:'item',material:'gloss'}),
+  ];
+  if(h-body>.08)for(const [i,x,z,top] of [[1,0,0,h],[2,-D*.29,D*.05,h-.07],[3,D*.28,-D*.06,h-.12],[4,D*.06,D*.28,h-.18],[5,-D*.04,-D*.29,h-.1]] as const){
+    const stemTop=top-plume*.85;
+    parts.push(turned(`Tallo ${i}`,ROD,[.006,stemTop-body*.9,.006],x,body*.9,z,{color:'#b49a72'}));
+    parts.push(turned(`Penacho ${i}`,BALL,[pw,plume,pw],x,top-plume,z,{color:'#e8dcc4',surface:'textile'}));
+  }
+  return parts;
+}
+
+/**
+ * Decorative tray inside `w × d × h`: a wooden tray with low rims holding an unlit pillar candle
+ * (−x, reaching `h`), a stone sphere and two stacked coasters (+x).
+ */
+export function decorTrayParts(w:number,d:number,h:number):FurniturePart[]{
+  const base=.01,rim=Math.min(.03,h*.35),t=.01,candle=Math.min(.075,d*.45),ball=Math.min(.055,d*.35,h-base),grain={color:'item',surface:'woodgrain'} as const;
+  const parts:FurniturePart[]=[
+    part('Fondo',[w,base,d],0,0,0,{...grain,bevel:.003}),
+    ...[-1,1].map(s=>part(`Borde ${s<0?'trasero':'delantero'}`,[w,rim,t],0,0,s*(d/2-t/2),{...grain,bevel:.004})),
+    ...[-1,1].map(s=>part(`Borde ${s<0?'izquierdo':'derecho'}`,[t,rim,d-2*t],s*(w/2-t/2),0,0,{...grain,bevel:.004})),
+    turned('Vela',ROD,[candle,h-base,candle],-w/2+t+candle/2+.02,base,0,{color:'#f1ebdd'}),
+    turned('Esfera',BALL,[ball,ball,ball],.01,base,d*.08,{color:'#b9b3aa'}),
+  ];
+  const coaster=Math.min(.08,d-2*t-.02,w*.25),cx=w/2-t-coaster/2-.015;
+  parts.push(turned('Posavasos 1',DISC,[coaster,.006,coaster],cx,base,-d*.06,{color:'#d8cbb5'}));
+  parts.push(turned('Posavasos 2',DISC,[coaster,.006,coaster],cx+.004,base+.006,-d*.06+.003,{color:'#3f4a4f'}));
+  return parts;
+}
+
+/** Square floor cushion inside `w × d × h`: one textile cover, puffed top and bottom, with a tufted centre button. */
+export function floorCushionParts(w:number,d:number,h:number):FurniturePart[]{
+  const puff=h*.18;
+  return [
+    part('Cojín',[w,h-puff*.6,d],0,0,0,{color:'item',surface:'textile',bevel:Math.min(.05,h*.35,w*.1),crown:{axis:'y',amount:puff,both:true}}),
+    turned('Botón',DISC,[.035,.008,.035],0,h-puff*.6+puff*.25,0,{color:'#4a4239'}),
+  ];
+}
+
+/** Top height of the lower table of a nest, as a share of the overall height. */
+const NEST_LOW=.82;
+/** Diameters of the two round nesting tables inside `w × d`, side by side; `split` is the u where the lower one starts. */
+export function nestingLayout(w:number,d:number):{big:number;small:number;split:number}{
+  const big=Math.min(d,w*.58),small=Math.min(d*.84,w-big);
+  return {big,small,split:w/2-small};
+}
+/**
+ * Pair of round nesting tables inside `w × d × h`: the tall one (−x) reaches `h`, the lower one
+ * (+x) 82 % of it; each has a turned wooden top with a lipped edge on four slim metal legs.
+ */
+export function nestingTablesParts(w:number,d:number,h:number):FurniturePart[]{
+  const {big,small}=nestingLayout(w,d),top=.022,parts:FurniturePart[]=[];
+  for(const [name,D,th,cx] of [['alta',big,h,-w/2+big/2],['baja',small,h*NEST_LOW,w/2-small/2]] as const){
+    parts.push(turned(`Tablero ${name}`,[[0,0],[.96,0],[1,.3],[1,1],[.95,1],[.95,.7],[0,.7]],[D,top,D],cx,th-top,0,{color:'item',surface:'woodgrain'}));
+    for(let k=0;k<4;k++){
+      const a=Math.PI/4+k*Math.PI/2,r=D*.36;
+      parts.push(turned(`Pata ${name} ${k+1}`,ROD,[.016,th-top,.016],cx+Math.cos(a)*r,0,Math.sin(a)*r,{color:'#2f2e2c',material:'metal'}));
+    }
+  }
+  return parts;
+}
+
+/** Shallow dinner plate: flat well, sloped rim (lathe profile; open dish). */
+const PLATE:Profile=[[0,0],[.62,0],[.66,.35],[.95,.8],[1,1],[.94,1],[.62,.5],[0,.5]];
+/** Thin-walled tumbler, open at the top (lathe profile). */
+const TUMBLER:Profile=[[0,0],[.86,0],[1,1],[.93,1],[.8,.07],[0,.07]];
+/**
+ * One place setting inside `w × d × h`: a textile placemat, a dinner plate with a side plate on
+ * it, a fork (−x) and a knife (+x), and a water glass behind the knife that reaches `h`.
+ */
+export function tableSettingParts(w:number,d:number,h:number):FurniturePart[]{
+  const mat=.004,plate=Math.min(.27,d*.78,w*.55),side=plate*.7,glass=Math.min(.075,d*.22),steel={color:'#c9ccd0',material:'metal'} as const;
+  const gx=Math.min(w/2-glass/2,plate/2+.05),gz=-d/2+glass/2+.005;
+  return [
+    part('Mantel individual',[w,mat,d],0,0,0,{color:'item',surface:'textile',bevel:.002}),
+    turned('Plato llano',PLATE,[plate,.022,plate],0,mat,d*.04,{color:CERAMIC,material:'gloss'}),
+    turned('Plato de postre',PLATE,[side,.018,side],0,mat+.011,d*.04,{color:'#e9e4da',material:'gloss'}),
+    part('Tenedor',[.018,.004,Math.min(.19,d*.6)],-plate/2-.03,mat,d*.04,{...steel,bevel:.0015}),
+    part('Cuchillo',[.016,.004,Math.min(.21,d*.66)],plate/2+.03,mat,d*.04,{...steel,bevel:.0015}),
+    turned('Vaso',TUMBLER,[glass,h-mat,glass],gx,mat,gz,{color:'#eef3f2',material:'glass'}),
+  ];
+}
+
+/** Wine bottle: cylinder, rounded shoulder, long neck and lip (lathe profile). */
+const BOTTLE:Profile=[[0,0],[1,0],[1,.6],[.92,.67],[.4,.77],[.32,.8],[.32,.96],[.38,.97],[.38,1],[0,1]];
+/** Stemmed wine glass: foot, stem and an open tulip bowl (lathe profile). */
+const WINE_GLASS:Profile=[[0,0],[.5,0],[.5,.02],[.07,.05],[.07,.47],[.62,.57],[.78,.77],[.7,1],[.65,1],[.72,.78],[.57,.6],[0,.53]];
+/** Bottle of wine with two stemmed glasses inside `w × d × h`: the bottle (−x) reaches `h`. */
+export function wineSetParts(w:number,d:number,h:number):FurniturePart[]{
+  const bottle=Math.min(.078,d*.5,w*.3),gl=Math.min(.085,d*.48),gh=Math.min(.2,h*.68),bx=-w/2+bottle/2+.005;
+  return [
+    turned('Botella',BOTTLE,[bottle,h,bottle],bx,0,0,{color:'#24372a',material:'gloss'}),
+    turned('Etiqueta',ROD,[bottle*1.01,h*.17,bottle*1.01],bx,h*.22,0,{color:'#efe6d2'}),
+    turned('Copa 1',WINE_GLASS,[gl,gh,gl],w/2-gl*1.5-.01,0,-d/2+gl/2+.004,{color:'#eef3f2',material:'glass'}),
+    turned('Copa 2',WINE_GLASS,[gl,gh,gl],w/2-gl/2-.004,0,d/2-gl/2-.004,{color:'#eef3f2',material:'glass'}),
+  ];
+}
+
+/**
+ * Espresso machine inside `w × d × h` (front +z): a metal body, a darker water tank cover on top,
+ * a drip tray at the front, a turned group head with a portafilter handle and a cup on the tray.
+ */
+export function coffeeMachineParts(w:number,d:number,h:number):FurniturePart[]{
+  const tray=Math.min(.05,h*.14),bodyD=d*.62,head=Math.min(.07,w*.25),hy=h*.55,front=-d/2+bodyD,handle=Math.max(.03,d/2-front-head/2-.005);
+  return [
+    part('Cuerpo',[w,h*.94,bodyD],0,0,-d/2+bodyD/2,{color:'item',material:'metal',bevel:.012}),
+    part('Tapa del depósito',[w*.9,h*.06,bodyD*.9],0,h*.94,-d/2+bodyD/2,{color:'#2b2a28',bevel:.008}),
+    part('Bandeja',[w*.86,tray,d-bodyD+.02],0,0,d/2-(d-bodyD)/2-.01,{color:'#3a3836',material:'metal',bevel:.006}),
+    part('Rejilla',[w*.8,.003,d-bodyD-.01],0,tray,d/2-(d-bodyD)/2-.005,{color:'#9b9a96',material:'metal',bevel:0}),
+    part('Frontal',[w*.78,h*.62,.008],0,h*.26,-d/2+bodyD+.004,{color:'#2f2e2c',bevel:.004}),
+    turned('Grupo',ROD,[head,.05,head],0,hy,-d/2+bodyD+head/2,{color:'#c9ccd0',material:'metal'}),
+    part('Mango',[.024,.022,handle],0,hy-.012,front+head/2+handle/2,{color:'#1d1c1b',bevel:.009}),
+    turned('Taza',CROCK,[.06,.055,.06],0,tray+.003,-d/2+bodyD+head/2,{color:CERAMIC,material:'gloss'}),
+    turnedFront('Manómetro',DISC,[.045,.045,.008],0,h*.74,front+.004,{color:'#efe9df'}),
+  ];
+}
+
+/**
+ * Dish rack inside `w × d × h`: a metal drip tray, two wire rails, five plates standing on edge
+ * along z (−x half) and a cutlery cup (+x).
+ */
+export function dishRackParts(w:number,d:number,h:number):FurniturePart[]{
+  const tray=.015,plate=Math.min(h-tray-.005,w*.5,.24),px=-w/2+plate/2+.02,steel={color:'#c9ccd0',material:'metal'} as const,n=5,pitch=Math.min(.045,(d-.06)/(n-1));
+  const parts:FurniturePart[]=[
+    part('Bandeja',[w,tray,d],0,0,0,{color:'#d9d6d0',bevel:.006}),
+    ...[-1,1].map(s=>part(`Varilla ${s<0?'trasera':'delantera'}`,[w-.02,.008,.008],0,h*.45,s*(d/2-.012),{...steel,bevel:.004})),
+    ...[-1,1].flatMap(sx=>[-1,1].map(sz=>turned(`Poste ${sx} ${sz}`,ROD,[.008,h*.45+.008-tray,.008],sx*(w/2-.015),tray,sz*(d/2-.012),steel))),
+  ];
+  for(let i=0;i<n;i++)parts.push(turnedFront(`Plato ${i+1}`,DISC,[plate,plate,.014],px,tray,-(n-1)*pitch/2+i*pitch,{color:i%2?'#e9e4da':CERAMIC,material:'gloss'}));
+  const cup=Math.min(.09,d*.4,w*.25),cx=w/2-cup/2-.025;
+  parts.push(turned('Cubertero',CROCK,[cup,Math.min(.13,h*.65),cup],cx,tray,0,steel));
+  for(const [i,dx,dz] of [[1,-.012,-.008],[2,.012,.006],[3,0,.014]] as const)parts.push(part(`Cubierto ${i}`,[.012,Math.min(h-tray,.2)-.006,.004],cx+dx,tray+.006,dz,{...steel,bevel:.002}));
+  return parts;
+}
+
+/** Terracotta herb pot with a rolled rim (lathe profile). */
+const HERB_POT:Profile=[[0,0],[.78,0],[.92,.82],[1,.84],[1,1],[.9,1],[.88,.9],[0,.9]];
+/**
+ * Three potted kitchen herbs in a row inside `w × d × h`: terracotta pots with soil and leafy
+ * crowns of rounded clusters in three greens, the tallest reaching `h`.
+ */
+export function herbPotsParts(w:number,d:number,h:number):FurniturePart[]{
+  const pot=Math.min(d,w/3-.01,.13),ph=Math.min(pot*.95,h*.45),parts:FurniturePart[]=[];
+  const greens=['#5f7f45','#7b8f5a','#4f6b3f'];
+  for(let i=0;i<3;i++){
+    const x=(i-1)*(w-pot)/2,top=h-[0,.04,.02][i],foliage=top-ph*.85;
+    parts.push(turned(`Maceta ${i+1}`,HERB_POT,[pot,ph,pot],x,0,0,{color:'item'}));
+    parts.push(turned(`Tierra ${i+1}`,DISC,[pot*.8,.008,pot*.8],x,ph*.84,0,{color:'#4a3b2c'}));
+    for(const [k,dx,dz,s] of [[1,0,0,1],[2,-.25,.18,.72],[3,.24,-.16,.78],[4,.1,.26,.6]] as const){
+      const size=pot*.62*s,fh=Math.min(foliage*s,foliage);
+      parts.push(turned(`Hojas ${i+1}.${k}`,BALL,[size,fh,size],x+dx*pot,top-fh-(k===1?0:foliage*(1-s)*.6),dz*pot,{color:greens[(i+k)%3]}));
+    }
+  }
   return parts;
 }
