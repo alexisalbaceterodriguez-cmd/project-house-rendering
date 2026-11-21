@@ -18,7 +18,7 @@ import { defaultStudio, objectCamera, physicalProperties, studioSubject } from '
 import { textureMapsPending, useTextureLibraryRevision } from '../lib/textureCache';
 import { heightToNormal, onSurfaceTexturesLoaded, surfaceMaps, type SurfaceKind } from '../lib/surfaceTextures';
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
-import { arcLampParts, arcLampBulb, leaningArtParts, blanketLadderParts, bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, cuttingBoardParts, kettleParts, utensilJarParts, umbrellaStandParts, doormatParts, soapDispenserParts, toothbrushCupParts, bathMatParts, towelStackParts, deskLampParts, laptopParts, wastebasketParts, deskOrganizerParts, blanketBasketParts, clothesRailParts, floorVaseParts, decorTrayParts, floorCushionParts, nestingTablesParts, tableSettingParts, wineSetParts, coffeeMachineParts, dishRackParts, herbPotsParts, FLOOR_COVER_KINDS, candleParts, candleFlames, photoFrameParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
+import { arcLampParts, arcLampBulb, leaningArtParts, blanketLadderParts, foldingScreenParts, wallCoatRackParts, barCartParts, officeChairParts, floorMirrorParts, recordConsoleParts, rotateEuler, bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, cuttingBoardParts, kettleParts, utensilJarParts, umbrellaStandParts, doormatParts, soapDispenserParts, toothbrushCupParts, bathMatParts, towelStackParts, deskLampParts, laptopParts, wastebasketParts, deskOrganizerParts, blanketBasketParts, clothesRailParts, floorVaseParts, decorTrayParts, floorCushionParts, nestingTablesParts, tableSettingParts, wineSetParts, coffeeMachineParts, dishRackParts, herbPotsParts, FLOOR_COVER_KINDS, candleParts, candleFlames, photoFrameParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 const SurfaceContext=createContext<string|undefined>(undefined);
 /** Redraw the on-demand canvas when scanned surface maps replace their procedural fallback. */
@@ -285,8 +285,8 @@ function WovenRug({item}:{item:Furniture}){
 // The viewer's environment map is not the room, so a mirror reflects the scene through a planar
 // Reflector laid 0.5 mm over its glass. It is excluded from the render GLB, where Cycles traces
 // the metal glass (material `mirror`) itself.
-function Mirror({item,wood}:{item:Furniture;wood:string}){
-  const parts=useMemo(()=>mirrorParts(item.w,item.d,item.h),[item.w,item.d,item.h]);
+function Mirror({item,wood,build=mirrorParts}:{item:Furniture;wood:string;build?:(w:number,d:number,h:number)=>FurniturePart[]}){
+  const parts=useMemo(()=>build(item.w,item.d,item.h),[build,item.w,item.d,item.h]);
   const glass=parts.find(p=>p.name==='Luna')!;
   const reflector=useMemo(()=>{
     const [gw,gh]=glass.size,scale=640/Math.max(gw,gh);
@@ -294,7 +294,9 @@ function Mirror({item,wood}:{item:Furniture;wood:string}){
     r.userData.renderExclude=true;return r;
   },[glass.size[0],glass.size[1]]);
   useEffect(()=>()=>{reflector.geometry.dispose();reflector.dispose();},[reflector]);
-  return <><Parts parts={parts} item={item} wood={wood}/><primitive object={reflector} position={[glass.position[0],glass.position[1],glass.position[2]+glass.size[2]/2+.0005]}/></>;
+  // Just in front of the glass along its own normal, so a tilted mirror keeps its reflector flush.
+  const lift=rotateEuler([0,0,glass.size[2]/2+.0005],glass.rotation);
+  return <><Parts parts={parts} item={item} wood={wood}/><primitive object={reflector} position={[glass.position[0]+lift[0],glass.position[1]+lift[1],glass.position[2]+lift[2]]} rotation={glass.rotation??[0,0,0]}/></>;
 }
 // Turned pot plus seeded foliage (src/lib/plantGeometry.ts): the same item id always grows the same plant.
 function Plant({item,wood}:{item:Furniture;wood:string}){
@@ -351,6 +353,12 @@ function FurnitureShape({item,wood,night,selected}:{item:Furniture;wood:string;n
     case 'arc-lamp':return <><Parts parts={arcLampParts(w,d,h)} item={item} wood={wood}/><pointLight position={arcLampBulb(w,d,h)} intensity={.13} color="#fff2d3" distance={2.2}/></>;
     case 'leaning-art':return <Parts parts={leaningArtParts(w,d,h)} item={item} wood={wood}/>;
     case 'blanket-ladder':return <Parts parts={blanketLadderParts(w,d,h)} item={item} wood={wood}/>;
+    case 'folding-screen':return <Parts parts={foldingScreenParts(w,d,h)} item={item} wood={wood}/>;
+    case 'wall-coat-rack':return <Parts parts={wallCoatRackParts(w,d,h)} item={item} wood={wood}/>;
+    case 'bar-cart':return <Parts parts={barCartParts(w,d,h)} item={item} wood={wood}/>;
+    case 'office-chair':return <Parts parts={officeChairParts(w,d,h)} item={item} wood={wood}/>;
+    case 'floor-mirror':return <Mirror item={item} wood={wood} build={floorMirrorParts}/>;
+    case 'record-console':return <Parts parts={recordConsoleParts(w,d,h)} item={item} wood={wood}/>;
     case 'floor-vase':return <Parts parts={floorVaseParts(w,d,h)} item={item} wood={wood}/>;
     case 'decor-tray':return <Parts parts={decorTrayParts(w,d,h)} item={item} wood={wood}/>;
     case 'floor-cushion':return <Parts parts={floorCushionParts(w,d,h)} item={item} wood={wood}/>;
