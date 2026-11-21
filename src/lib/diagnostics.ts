@@ -1,7 +1,7 @@
 import type { Furniture, Point, Project, Room } from '../types';
 import { wallProjection } from './geometry';
 import { roomArea, roomVertices } from './topology';
-import { TABLETOP_KINDS, furnitureElevation } from './furnitureParts';
+import { FLOOR_COVER_KINDS, TABLETOP_KINDS, furnitureElevation } from './furnitureParts';
 function corners(f:Furniture):Point[]{const a=f.rotation*Math.PI/180,c=Math.cos(a),s=Math.sin(a);return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>({x:f.x+x*f.w/2*c-y*f.d/2*s,y:f.y+x*f.w/2*s+y*f.d/2*c}));}
 function overlaps(a:Point[],b:Point[]){for(const p of [a,b])for(let i=0;i<p.length;i++){const next=p[(i+1)%p.length],dx=next.x-p[i].x,dy=next.y-p[i].y;const project=(shape:Point[])=>shape.map(v=>v.x*-dy+v.y*dx);const x=project(a),y=project(b);if(Math.max(...x)<=Math.min(...y)+.001||Math.max(...y)<=Math.min(...x)+.001)return false;}return true;}
 export function findFreePlacement(project:Project,w:number,d:number):Point{
@@ -14,7 +14,7 @@ export function findFreePlacement(project:Project,w:number,d:number):Point{
 }
 export function furnitureCollisions(project:Project):string[]{
   // Hung items (wall cabinets, hoods, pendants, mirrors, prints, TVs) only clash with each other and stay out of the wall check.
-  const notices:string[]=[];const items=project.furniture.filter(f=>f.kind!=='rug'&&f.kind!=='lamp'&&!TABLETOP_KINDS.has(f.kind));
+  const notices:string[]=[];const items=project.furniture.filter(f=>!FLOOR_COVER_KINDS.has(f.kind)&&f.kind!=='lamp'&&!TABLETOP_KINDS.has(f.kind));
   const hung=items.map(f=>furnitureElevation(f,project.wallHeight)>0);
   for(let i=0;i<items.length;i++){
     const f=items[i],shape=corners(f);

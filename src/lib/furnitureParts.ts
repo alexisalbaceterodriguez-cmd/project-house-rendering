@@ -1181,9 +1181,11 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
-export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray']);
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack']);
 // Wall-only or soft items that never carry a tabletop object.
-const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack']);
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat']);
+/** Flat floor coverings: lie on the floor finish, never collide with furniture and cast no contact shadow. */
+export const FLOOR_COVER_KINDS:ReadonlySet<string>=new Set(['rug','doormat','bath-mat']);
 
 type Placed={id:string;kind:string;x:number;y:number;w:number;d:number;h:number;rotation:number;module?:{family:ModuleFamily}};
 
@@ -1498,4 +1500,157 @@ export function bathTrayParts(w:number,d:number,h:number):FurniturePart[]{
   parts.push(part('Jabón',[.085,soap,Math.min(.055,d*.3)],w*.16,top,0,{color:'#ece3d2',bevel:Math.min(.008,soap*.4),crown:{axis:'y',amount:.004}}));
   parts.push(turned('Vela',ROD,[candle,h-top,candle],-w*.2,top,0,{color:'#f1ebdf'}));
   return parts;
+}
+
+/**
+ * Wooden chopping board inside `w × d × h` lying flat: a board with a handle tab on +x pierced by
+ * a hanging hole, and a kitchen knife (steel blade, dark grip) lying on it when `h` leaves room.
+ */
+export function cuttingBoardParts(w:number,d:number,h:number):FurniturePart[]{
+  const knife=h>=.03?.016:0,t=clamp(h-knife,.008,.03),grip=Math.min(.09,w*.22),board=w-grip;
+  const tab=Math.min(d*.4,.07),hole=Math.min(.022,tab*.4),hx=grip*.55,bar=(tab-hole)/2,wood={color:'item',surface:'woodgrain'} as const;
+  const parts:FurniturePart[]=[
+    part('Tabla',[board,t,d],-grip/2,0,0,{...wood,bevel:Math.min(.005,t*.3)}),
+    part('Asa trasera',[grip,t,bar],w/2-grip/2,0,-hole/2-bar/2,{...wood,bevel:.003}),
+    part('Asa delantera',[grip,t,bar],w/2-grip/2,0,hole/2+bar/2,{...wood,bevel:.003}),
+    part('Asa extremo',[grip-hx,t,hole],w/2-(grip-hx)/2,0,0,{...wood,bevel:.002}),
+  ];
+  if(knife){
+    const L=Math.min(.26,board*.8),x0=-grip/2-L/2,z=Math.min(d*.22,d/2-.02);
+    parts.push(part('Mango del cuchillo',[L*.36,knife,.02],x0+L*.18,t,z,{color:'#2b2723',bevel:.004}));
+    parts.push(part('Hoja del cuchillo',[L*.64,.0025,.028],x0+L*.36+L*.32,t,z,{color:'#c9ccd0',material:'metal',bevel:0}));
+  }
+  return parts;
+}
+
+/** Electric kettle body: a flat bottom, walls tapering in towards a domed shoulder (lathe profile). */
+const KETTLE:Profile=[[0,0],[1,0],[1,.05],[.97,.6],[.86,.93],[.78,1],[0,1]];
+/**
+ * Electric kettle inside `w × d × h` (spout on +x, handle on −x): a dark power base, a turned
+ * steel body, a lid with a knob, a spout and a handle made of a grip and two arms.
+ */
+export function kettleParts(w:number,d:number,h:number):FurniturePart[]{
+  const D=Math.min(d,w*.66),base=Math.min(.018,h*.08),knob=Math.min(.02,h*.08),lid=.01,body=h-base-lid-knob;
+  const dark={color:'#2b2723',bevel:.004},steel={color:'item',material:'metal'} as const;
+  const g=.022,arm=w/2-g-D*.42,spout=w/2-D*.42;
+  return [
+    turned('Base',DISC,[D*1.04,base,D*1.04],0,0,0,{color:'#2b2723'}),
+    turned('Cuerpo',KETTLE,[D,body,D],0,base,0,steel),
+    turned('Tapa',DISC,[D*.62,lid,D*.62],0,base+body,0,steel),
+    turned('Pomo',KNOB,[.03,knob,.03],0,base+body+lid,0,{color:'#2b2723'}),
+    part('Asidero',[g,body*.62,.026],-w/2+g/2,base+body*.25,0,dark),
+    part('Brazo superior',[arm,.02,.024],-D*.42-arm/2,base+body*.87-.02,0,dark),
+    part('Brazo inferior',[arm,.02,.024],-D*.42-arm/2,base+body*.25,0,dark),
+    part('Pico',[spout,.028,.032],D*.42+spout/2,base+body*.68,0,{...steel,bevel:.008}),
+  ];
+}
+
+/** Open stoneware crock: straight walls with a thick floor (lathe profile). */
+const CROCK:Profile=[[0,0],[.96,0],[1,.04],[1,1],[.9,1],[.9,.07],[0,.07]];
+/**
+ * Utensil crock inside `w × d × h`: a glazed jar of diameter `min(w, d)` holding a wooden spoon
+ * whose bowl reaches `h`, a dark spatula and a pair of steel tongs, all standing on its floor.
+ */
+export function utensilJarParts(w:number,d:number,h:number):FurniturePart[]{
+  const D=Math.min(w,d),jar=Math.min(h*.55,.16),floor=jar*.07,r=D*.22;
+  const parts:FurniturePart[]=[turned('Bote',CROCK,[D,jar,D],0,0,0,{color:'item',material:'gloss'})];
+  if(h-jar<.06)return parts;
+  const head=Math.min(.065,(h-jar)*.8),spoon=-r,top=h-head;
+  parts.push(turned('Mango de la cuchara',ROD,[.012,top+.01-floor,.012],spoon,floor,-r*.3,{color:'#b58a5c'}));
+  parts.push(turned('Cuchara',BALL,[.045,head,.02],spoon,top,-r*.3,{color:'#b58a5c'}));
+  const blade=Math.min(.075,(h-jar)*.8),sTop=h-.02;
+  parts.push(turned('Mango de la espátula',ROD,[.014,sTop-blade+.005-floor,.014],r*.8,floor,-r*.4,{color:'#2b2723'}));
+  parts.push(part('Pala de la espátula',[.055,blade,.004],r*.8,sTop-blade,-r*.4,{color:'#2b2723',bevel:.0015}));
+  const tTop=h-.04;
+  for(const s of [-1,1])parts.push(part(`Brazo de pinza ${s<0?'trasero':'delantero'}`,[.012,tTop-.012-floor,.003],0,floor,r*.8+s*.009,{color:'#c9ccd0',material:'metal',bevel:0}));
+  parts.push(part('Anilla de pinza',[.016,.012,.022],0,tTop-.012,r*.8,{color:'#c9ccd0',material:'metal',bevel:.003}));
+  return parts;
+}
+
+/** Folded umbrella canopy from the ferrule (bottom) to the top notch (lathe profile). */
+const FOLDED_UMBRELLA:Profile=[[0,0],[.12,0],[.5,.3],[.85,.62],[1,.82],[.6,.96],[.2,1],[0,1]];
+/** Round umbrella stand: a thick floor and straight walls (lathe profile). */
+const STAND:Profile=[[0,0],[1,0],[1,1],[.93,1],[.93,.04],[0,.04]];
+/**
+ * Umbrella stand inside `w × d × h`: an open round stand of diameter `min(w, d)` and two folded
+ * umbrellas (navy and red) standing in it, each with its canopy, shaft and wooden handle; the
+ * taller handle reaches `h`.
+ */
+export function umbrellaStandParts(w:number,d:number,h:number):FurniturePart[]{
+  const D=Math.min(w,d),stand=Math.min(h*.5,.45),floor=stand*.04+.002;
+  const parts:FurniturePart[]=[turned('Paragüero',STAND,[D,stand,D],0,0,0,{color:'item',material:'gloss'})];
+  const umbrellas=[[1,'#2f3e4f',-D*.17,-D*.06,h],[2,'#8a3b32',D*.17,D*.07,h-.06]] as const;
+  for(const [i,color,x,z,top] of umbrellas){
+    const handle=Math.min(.11,(top-floor)*.15),canopy=(top-handle-floor)*.9,shaft=top-handle-floor-canopy+.01;
+    if(canopy<=.05)continue;
+    parts.push(turned(`Paraguas ${i}`,FOLDED_UMBRELLA,[.06,canopy,.06],x,floor,z,{color,surface:'textile'}));
+    parts.push(turned(`Varilla ${i}`,ROD,[.01,shaft,.01],x,floor+canopy-.01,z,{color:'#c9ccd0',material:'metal'}));
+    parts.push(turned(`Puño ${i}`,ROD,[.03,handle,.03],x,top-handle,z,{color:'#6b4a33'}));
+  }
+  return parts;
+}
+
+/** Height of the top of a room's floor finish, where the viewer draws room floors (rugs and mats lie on it). */
+export const FLOOR_FINISH=.021;
+/**
+ * Coir doormat of thickness `h` lying on the floor finish (`FLOOR_FINISH`) over `w × d`: a dark
+ * rubber backing and a coir pile inset 1.5 cm from its edges (surface `textile`).
+ */
+export function doormatParts(w:number,d:number,h:number):FurniturePart[]{
+  const back=Math.max(.003,h*.4),inset=Math.min(.015,w*.05,d*.05),y=FLOOR_FINISH;
+  return [
+    part('Base de goma',[w,back,d],0,y,0,{color:'#2b2723',bevel:Math.min(.002,back*.4)}),
+    part('Fibra de coco',[w-2*inset,h-back*.5,d-2*inset],0,y+back*.5,0,{color:'item',surface:'textile',bevel:Math.min(.004,h*.3)}),
+  ];
+}
+
+/** Soap bottle: straight body, rounded shoulder and a short neck (lathe profile). */
+const SOAP_BOTTLE:Profile=[[0,0],[.96,0],[1,.04],[1,.74],[.9,.86],[.38,.92],[.36,1],[0,1]];
+/**
+ * Soap dispenser inside `w × d × h` (nozzle towards +z): a glazed bottle of diameter `min(w, d)`,
+ * a steel collar and stem and a pump head whose nozzle points forward; the head's top is `h`.
+ */
+export function soapDispenserParts(w:number,d:number,h:number):FurniturePart[]{
+  const D=Math.min(w,d),body=h*.68,collar=.012,head=Math.min(.018,h*.1),steel={color:'#c9ccd0',material:'metal'} as const;
+  const nozzle=clamp(D/2-.012,.01,.03);
+  return [
+    turned('Frasco',SOAP_BOTTLE,[D,body,D],0,0,0,{color:'item',material:'gloss'}),
+    turned('Collarín',ROD,[D*.38,collar,D*.38],0,body-.002,0,steel),
+    turned('Vástago',ROD,[.008,h-head-body-collar+.004,.008],0,body+collar-.002,0,steel),
+    part('Cabezal',[.024,head,.024],0,h-head,0,{...steel,bevel:.004}),
+    part('Boquilla',[.008,.008,nozzle],0,h-head+.004,.012+nozzle/2,{...steel,bevel:.002}),
+  ];
+}
+
+/**
+ * Toothbrush cup inside `w × d × h`: a glazed cup of diameter `min(w, d)` holding two toothbrushes
+ * (flat handles, white bristle heads facing +z); the taller one reaches `h`.
+ */
+export function toothbrushCupParts(w:number,d:number,h:number):FurniturePart[]{
+  const D=Math.min(w,d),cup=Math.min(h*.52,.11),floor=cup*.07;
+  const parts:FurniturePart[]=[turned('Vaso',CROCK,[D,cup,D],0,0,0,{color:'item',material:'gloss'})];
+  if(h-cup<.04)return parts;
+  for(const [i,color,x,top] of [[1,'#7fa9b8',-D*.15,h],[2,'#e7e2d8',D*.15,h-.015]] as const){
+    const bristle=.024;
+    parts.push(part(`Mango ${i}`,[.012,top-floor,.007],x,floor,0,{color,bevel:.003}));
+    parts.push(part(`Cerdas ${i}`,[.01,bristle,.01],x,top-bristle-.004,.0085,{color:'#f6f6f3',bevel:.002}));
+  }
+  return parts;
+}
+
+/**
+ * Cotton bath mat of thickness `h` lying on the floor finish (`FLOOR_FINISH`) over `w × d`:
+ * one soft textile pad with rounded edges and a slightly domed top.
+ */
+export function bathMatParts(w:number,d:number,h:number):FurniturePart[]{
+  return [part('Alfombrilla',[w,h,d],0,FLOOR_FINISH,0,{color:'item',surface:'textile',bevel:Math.min(.006,h*.45),crown:{axis:'y',amount:h*.2}})];
+}
+
+/**
+ * Stack of folded towels inside `w × d × h`: three towels with fully rounded, slightly puffed folds,
+ * the middle one in an ivory contrast tone and each shifted a little so every fold edge reads.
+ */
+export function towelStackParts(w:number,d:number,h:number):FurniturePart[]{
+  const t=h/3,colors=['item','#ece7dd','item'],shift=[.006,-.008,.004];
+  return colors.map((color,i)=>part(`Toalla ${i+1}`,[w-(i%2)*.012,t,d-.012],shift[i],i*t,shift[2-i],{color,surface:'textile',bevel:t*.45,crown:{axis:'y',amount:t*.18,both:true}}));
 }
