@@ -3,7 +3,20 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, paquete de ocio e infantil)
+## Último cambio publicado (27/11/2026, paquete de despacho y estudio)
+
+- **`8f75fbe`:** siete objetos paramétricos nuevos. Comparten geometría entre el visor y el GLB de Cycles.
+  - De suelo: archivador metálico de tres cajones (zócalo, tiradores, portaetiquetas), cajonera con ruedas (cajón de lápices, estándar y de carpetas) y pizarra blanca con caballete de trípode (patas con la inclinación resuelta para alcanzar `h`).
+  - De sobremesa (`TABLETOP_KINDS`): impresora multifunción, monitor con teclado y ratón, globo terráqueo con meridiano de latón y cajas archivadoras.
+- **Integración:** tipos, validación JSON, catálogo (Dormitorio; el globo en Decoración), catálogo de productos y símbolos del plano. Archivador y cajonera admiten objetos encima; la pizarra entra en `NO_SUPPORT`.
+- **Tests:** la tabla genérica de `furniture-parts.test.ts` cubre los siete con dos tamaños cada uno (301/301).
+- **Revisión visual:** escena en blanco de 6 × 4 m solo en WebGL (motor local inactivo), con escritorio, archivador con globo encima, cajonera y pizarra. El globo pasa a un perfil de esfera de 17 puntos porque con `BALL` se veía facetado.
+- **Validación local:** unitarias 452/452, build y smoke 8/8.
+- **CI:** [Test and build 45982780869](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45982780869), SHA `8f75fbe`, completed/success (unitarias, build y E2E completa).
+- **Límites:** no se ha comparado con Cycles. El globo no tiene continentes (color liso) y las cajas archivadoras son bloques escalonados sin hueco interior.
+- **Siguiente tarea exacta:** comparar los paquetes de ocio/infantil y de despacho en Cycles con la misma cámara (`scripts/accessory-compare.mjs` con el motor activo). Después, una función de edición o una textura de continentes para el globo.
+
+## Cambio publicado el 27/11/2026 (paquete de ocio e infantil)
 
 - **`67a4b4b`:** ocho objetos paramétricos nuevos. Comparten geometría entre el visor y el GLB de Cycles.
   - Salón: piano vertical (88 teclas, atril, pedales), guitarra acústica con soporte, altavoz de columna, puf pera y revistero.
