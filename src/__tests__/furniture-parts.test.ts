@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filingCabinetParts, mobilePedestalParts, whiteboardEaselParts, printerParts, desktopMonitorParts, deskGlobeParts, fileBoxesParts, uprightPianoParts, guitarStandParts, floorSpeakerParts, beanbagParts, magazineRackParts, toyBoxParts, playTentParts, kidsTableParts, blanketLadderParts, floorMirrorParts, nestingTablesParts, FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, supportTop, supportUnder, placedElevation, tabletopSpot, restHeight, softRest, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { microwaveParts, toasterParts, standMixerParts, wineRackParts, kitchenTrolleyParts, ironingBoardParts, dryingRackParts, filingCabinetParts, mobilePedestalParts, whiteboardEaselParts, printerParts, desktopMonitorParts, deskGlobeParts, fileBoxesParts, uprightPianoParts, guitarStandParts, floorSpeakerParts, beanbagParts, magazineRackParts, toyBoxParts, playTentParts, kidsTableParts, blanketLadderParts, floorMirrorParts, nestingTablesParts, FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, supportTop, supportUnder, placedElevation, tabletopSpot, restHeight, softRest, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -136,6 +136,13 @@ const builders={
   'desktop-monitor':[desktopMonitorParts,[[.6,.42,.45],[.7,.45,.5]]],
   'desk-globe':[deskGlobeParts,[[.3,.3,.42],[.25,.25,.36]]],
   'file-boxes':[fileBoxesParts,[[.36,.26,.3],[.3,.25,.28]]],
+  'microwave':[microwaveParts,[[.5,.38,.3],[.45,.34,.27]]],
+  'toaster':[toasterParts,[[.3,.18,.2],[.38,.2,.21]]],
+  'stand-mixer':[standMixerParts,[[.24,.36,.36],[.22,.3,.34]]],
+  'wine-rack':[wineRackParts,[[.6,.3,.9],[.4,.28,.6]]],
+  'kitchen-trolley':[kitchenTrolleyParts,[[.5,.4,.85],[.42,.36,.8]]],
+  'ironing-board':[ironingBoardParts,[[1.2,.38,.9],[1.1,.34,.8]]],
+  'drying-rack':[dryingRackParts,[[1.1,.55,.95],[.9,.5,.85]]],
 } as const;
 
 describe('parametric furniture', () => {

@@ -1196,9 +1196,9 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
-export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer','decor-tray','table-setting','wine-set','coffee-machine','dish-rack','herb-pots','printer','desktop-monitor','desk-globe','file-boxes']);
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer','decor-tray','table-setting','wine-set','coffee-machine','dish-rack','herb-pots','printer','desktop-monitor','desk-globe','file-boxes','microwave','toaster','stand-mixer']);
 // Wall-only or soft items that never carry a tabletop object.
-const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase','arc-lamp','leaning-art','blanket-ladder','folding-screen','wall-coat-rack','bar-cart','office-chair','floor-mirror','record-console','guitar-stand','floor-speaker','beanbag','magazine-rack','play-tent','kids-table','whiteboard-easel']);
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase','arc-lamp','leaning-art','blanket-ladder','folding-screen','wall-coat-rack','bar-cart','office-chair','floor-mirror','record-console','guitar-stand','floor-speaker','beanbag','magazine-rack','play-tent','kids-table','whiteboard-easel','ironing-board','drying-rack']);
 /** Flat floor coverings: lie on the floor finish, never collide with furniture and cast no contact shadow. */
 export const FLOOR_COVER_KINDS:ReadonlySet<string>=new Set(['rug','doormat','bath-mat']);
 
@@ -2620,5 +2620,172 @@ export function fileBoxesParts(w:number,d:number,h:number):FurniturePart[]{
     parts.push(part(`Etiqueta ${i+1}`,[fw*.6,h*.12,.002],x,h*.16,d/2-.001,{color:'#f4f1e8',bevel:0}));
     parts.push(part(`Papeles ${i+1}`,[fw-.012,h*.08,lowD*.7],x,h*.42,-d/2+back+lowD*.38,{color:'#f6f5f0',bevel:0}));
   }
+  return parts;
+}
+
+/**
+ * Leg of square section `t` standing on the floor, turned by `a` around x, with its foot touching
+ * z = `foot` and leaning inwards (`inward` = 1 from the front, −1 from the back) so that its top
+ * reaches exactly `h`: its bounds are L·cos a + t·sin|a| tall and L·sin|a| + t·cos a deep.
+ */
+function leaningLeg(name:string,x:number,a:number,foot:number,inward:1|-1,h:number,t:number,rest:Omit<FurniturePart,'name'|'size'|'position'|'rotation'>):FurniturePart{
+  const L=(h-t*Math.sin(Math.abs(a)))/Math.cos(a),zHalf=L/2*Math.sin(Math.abs(a))+t/2*Math.cos(a);
+  return {name,size:[t,L,t],position:[x,h/2,foot-inward*zHalf],rotation:[a,0,0],...rest};
+}
+/** Places a part on the plane of `leg` at height `along`, `off` in front of (or behind) its axis, turned like it. */
+function onLeg(leg:FurniturePart,name:string,size:Vec3,along:number,off:number,rest:Omit<FurniturePart,'name'|'size'|'position'|'rotation'>):FurniturePart{
+  const a=leg.rotation![0],[,yc,zc]=leg.position,s=(along-yc)/Math.cos(a);
+  return {name,size,position:[0,yc+s*Math.cos(a)-off*Math.sin(a),zc+s*Math.sin(a)+off*Math.cos(a)],rotation:[a,0,0],...rest};
+}
+
+/**
+ * Microwave inside `w × d × h` (front +z): a body in the item colour on four small feet, a dark
+ * glass door with a window and a pull handle, and a control strip with a display and a dial.
+ */
+export function microwaveParts(w:number,d:number,h:number):FurniturePart[]{
+  const f=.01,front=d/2-.04,doorW=w*.7,doorX=-w/2+.015+doorW/2,panelW=w*.22,panelX=w/2-.015-panelW/2,bodyH=h-f;
+  const parts:FurniturePart[]=[
+    part('Cuerpo',[w,bodyH,d-.04],0,f,-.02,{color:'item',bevel:.008}),
+    part('Puerta',[doorW,bodyH-.03,.012],doorX,f+.015,front+.006,{color:'#2b2d30',material:'gloss',bevel:.004}),
+    part('Ventana',[doorW*.72,bodyH*.55,.002],doorX-doorW*.06,f+bodyH*.22,front+.013,{color:'#0c0d0f',material:'gloss',bevel:0}),
+    part('Asa',[.018,bodyH*.6,.016],doorX+doorW/2-.03,f+bodyH*.2,front+.02,{color:'#b9bcc0',material:'metal',bevel:.006}),
+    part('Panel de mandos',[panelW,bodyH-.03,.006],panelX,f+.015,front+.003,{color:'#26282b',bevel:.002}),
+    part('Pantalla',[panelW*.64,.025,.002],panelX,f+bodyH*.72,front+.007,{color:'#101418',material:'gloss',bevel:0}),
+    turnedFront('Mando',KNOB,[.045,.045,.012],panelX,f+bodyH*.3,front+.012,{color:'#b9bcc0',material:'metal'}),
+  ];
+  for(const s of [-1,1])for(const t of [-1,1])parts.push(turned(`Pie ${s<0?'izquierdo':'derecho'} ${t<0?'trasero':'delantero'}`,DISC,[.03,f,.03],s*(w/2-.05),0,t*(d/2-.07),{color:'#1d1f22'}));
+  return parts;
+}
+
+/**
+ * Two-slot toaster inside `w × d × h` (front +z): a glossy body in the item colour on a dark base,
+ * two dark bread slots on top, and a lever and browning dial on the front.
+ */
+export function toasterParts(w:number,d:number,h:number):FurniturePart[]{
+  const base=.01,slot=.002,front=d/2-.03;
+  return [
+    part('Base',[w-.02,base,d-.05],0,0,-.015,{color:'#2b2d30',bevel:.003}),
+    part('Cuerpo',[w,h-base-slot,d-.03],0,base,-.015,{color:'item',material:'gloss',bevel:Math.min(.02,h*.1)}),
+    ...[-1,1].map(s=>part(`Ranura ${s<0?'trasera':'delantera'}`,[w*.62,slot,.026],0,h-slot,-.015+s*(d-.03)*.17,{color:'#151515',bevel:0})),
+    part('Palanca',[.03,.012,.025],w*.3,h*.55,front+.0125,{color:'#2b2d30',bevel:.004}),
+    turnedFront('Mando',KNOB,[.024,.024,.01],-w*.3,h*.3,front+.005,{color:'#b9bcc0',material:'metal'}),
+  ];
+}
+
+/** Mixing bowl with a rolled rim (lathe profile: outer skin up to the rim, inner skin back down to the floor). */
+const MIX_BOWL:Profile=[[0,0],[.6,0],[.82,.2],[.95,.55],[1,1],[.96,1],[.91,.56],[.78,.23],[.58,.06],[0,.06]];
+/** Flat beater widening downwards (lathe profile). */
+const BEATER:Profile=[[0,0],[1,0],[.25,1],[0,1]];
+/**
+ * Tilt-head stand mixer inside `w × d × h` (front +z): a rounded base and column in the item
+ * colour, the head reaching `h` over a steel bowl of diameter `w`, a hub on its nose, the beater
+ * down into the bowl and a speed lever on the side.
+ */
+export function standMixerParts(w:number,d:number,h:number):FurniturePart[]{
+  const lacquer={color:'item',material:'gloss'} as const,baseH=h*.08,headH=h*.22,headD=d*.86,zb=d/2-w/2,headBottom=h-headH;
+  return [
+    part('Base',[w*.8,baseH,d*.92],0,0,-d*.04,{...lacquer,bevel:Math.min(.02,baseH*.45)}),
+    part('Columna',[w*.5,headBottom-baseH,d*.24],0,baseH,-d/2+d*.14,{...lacquer,bevel:.02}),
+    part('Cabezal',[w*.56,headH,headD],0,headBottom,-d/2+headD/2,{...lacquer,bevel:Math.min(.03,headH*.4)}),
+    turnedFront('Buje',DISC,[w*.3,w*.3,.02],0,headBottom+headH/2-w*.15,-d/2+headD+.01,{color:'#c9ccd0',material:'metal'}),
+    turned('Bol',MIX_BOWL,[w,h*.36,w],0,baseH,zb,{color:'#d4d6d8',material:'metal'}),
+    turned('Eje del batidor',ROD,[.012,headBottom-h*.3,.012],0,h*.3,zb,{color:'#c9ccd0',material:'metal'}),
+    turned('Batidor',BEATER,[w*.3,h*.2,w*.3],0,h*.14,zb,{color:'#e8e6e1'}),
+    part('Palanca de velocidad',[.012,.01,.04],w*.28+.006,headBottom+headH*.4,-d/2+headD*.3,{color:'#c9ccd0',material:'metal',bevel:.003}),
+  ];
+}
+
+/** Wine bottle lying along z (lathe profile from its base to the neck). */
+const LYING_BOTTLE:Profile=[[0,0],[1,0],[1,.64],[.86,.72],[.34,.82],[.3,1],[0,1]];
+/**
+ * Wooden wine rack inside `w × d × h`: two sides, top and bottom, full-height dividers and thin
+ * shelves forming square cells, with bottles lying in most of them (necks to the front).
+ */
+export function wineRackParts(w:number,d:number,h:number):FurniturePart[]{
+  const t=.018,sep=.012,wood={color:'wood',surface:'woodgrain',bevel:.002} as const;
+  const cols=Math.max(2,Math.round((w-2*t)/.11)),rows=Math.max(2,Math.round((h-2*t)/.11));
+  const cellW=(w-2*t-(cols-1)*sep)/cols,cellH=(h-2*t-(rows-1)*sep)/rows;
+  const parts:FurniturePart[]=[
+    ...[-1,1].map(s=>part(`Costado ${s<0?'izquierdo':'derecho'}`,[t,h,d],s*(w/2-t/2),0,0,{...wood,bevel:.003})),
+    part('Base',[w-2*t,t,d],0,0,0,wood),
+    part('Tapa',[w-2*t,t,d],0,h-t,0,wood),
+  ];
+  for(let c=1;c<cols;c++)parts.push(part(`Divisor ${c}`,[sep,h-2*t,d-.012],-w/2+t+c*cellW+(c-.5)*sep,t,0,wood));
+  for(let r=1;r<rows;r++)parts.push(part(`Balda ${r}`,[w-2*t,sep,d-.01],0,t+r*cellH+(r-1)*sep,0,wood));
+  const D=Math.min(.08,cellW-.01,cellH-.01),L=Math.min(.3,d-.01);
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    if((r*7+c*3)%5===4)continue; // a few empty cells
+    const color=(r+c)%3===0?'#4a1d24':'#23402f';
+    parts.push(turnedFront(`Botella ${r+1}.${c+1}`,LYING_BOTTLE,[D,D,L],-w/2+t+c*(cellW+sep)+cellW/2,t+r*(cellH+sep),0,{color,material:'gloss'}));
+  }
+  return parts;
+}
+
+/**
+ * Three-tier kitchen trolley inside `w × d × h`: four slim posts on castors in the item colour
+ * carry three rimmed trays; storage jars stand on the middle tray and folded tea towels on the
+ * bottom one.
+ */
+export function kitchenTrolleyParts(w:number,d:number,h:number):FurniturePart[]{
+  const c=Math.min(.05,h*.08),rim=.05,plate=.004,metal={color:'item',material:'metal'} as const,trayH=rim+plate;
+  const parts:FurniturePart[]=[];
+  for(const s of [-1,1])for(const t of [-1,1]){
+    const n=`${s<0?'izquierdo':'derecho'} ${t<0?'trasero':'delantero'}`,x=s*(w/2-.02),z=t*(d/2-.02);
+    parts.push(part(`Poste ${n}`,[.02,h-c,.02],x,c,z,{...metal,bevel:.004}));
+    parts.push(turned(`Rueda ${n}`,BALL,[.04,c,.04],x,0,z,{color:'#2b2d30'}));
+  }
+  const levels=[c+.08,(c+.08+h-trayH)/2,h-trayH];
+  levels.forEach((y0,i)=>{
+    const n=['inferior','central','superior'][i];
+    parts.push(part(`Bandeja ${n}`,[w-.004,plate,d-.004],0,y0,0,{...metal,bevel:.001}));
+    for(const s of [-1,1]){
+      parts.push(part(`Borde ${n} ${s<0?'trasero':'delantero'}`,[w,rim,.006],0,y0+plate,s*(d/2-.003),{...metal,bevel:.002}));
+      parts.push(part(`Borde ${n} ${s<0?'izquierdo':'derecho'}`,[.006,rim,d-.012],s*(w/2-.003),y0+plate,0,{...metal,bevel:.002}));
+    }
+  });
+  const jar=Math.min(.09,d*.3),jarH=Math.min(.14,levels[2]-levels[1]-plate-.02);
+  for(const [i,dx] of [[1,-.3],[2,0],[3,.3]] as const)parts.push(turned(`Tarro ${i}`,CROCK,[jar,jarH-i*.015,jar],dx*w,levels[1]+plate,0,{color:'#e6e2da',material:'gloss'}));
+  parts.push(part('Paños doblados',[w*.42,.04,d*.6],-w*.15,levels[0]+plate,0,{color:'#c4572f',surface:'textile',bevel:.008}));
+  parts.push(part('Paño a cuadros',[w*.38,.03,d*.54],-w*.15,levels[0]+plate+.04,.005,{color:'#e8e2d6',surface:'textile',bevel:.008}));
+  return parts;
+}
+
+/**
+ * Ironing board inside `w × d × h` (length along x): a padded top in the item colour with a
+ * rounded nose at +x, standing on two crossed pairs of steel legs with floor bars.
+ */
+export function ironingBoardParts(w:number,d:number,h:number):FurniturePart[]{
+  const board=.02,nose=w*.4,t=.022,yt=h-board-.01,xf=w*.3,xt=w*.25,zz=d*.25,steel={color:'#c9ccd0',material:'metal'} as const;
+  const L=Math.hypot(xf+xt,yt),az=Math.atan2(xf+xt,yt),lift=t/2*Math.sin(az);
+  const parts:FurniturePart[]=[
+    part('Tabla',[w-nose/2,board,d],-nose/4,h-board,0,{color:'item',surface:'textile',bevel:.008}),
+    turned('Punta',ROD,[nose,board,d],w/2-nose/2,h-board,0,{color:'item',surface:'textile'}),
+  ];
+  for(const [n,s] of [['A',1],['B',-1]] as const){
+    for(const side of [-1,1])parts.push({name:`Pata ${n} ${side<0?'trasera':'delantera'}`,size:[t,L,t],position:[s*(xf-xt)/2,yt/2+lift,side*zz],rotation:[0,0,s*az],...steel,bevel:.006});
+    parts.push(part(`Pie ${n}`,[.03,.025,d*.8],s*xf,0,0,{color:'#2b2d30',bevel:.008}));
+  }
+  return parts;
+}
+
+/**
+ * Folding clothes airer inside `w × d × h`: two wings of steel legs splayed to the front and back
+ * with three rungs each, six rails across the top at `h`, and a towel, a shirt and a pair of socks
+ * hanging from them.
+ */
+export function dryingRackParts(w:number,d:number,h:number):FurniturePart[]{
+  const t=.02,top=d*.22,rail=.012,steel={color:'item',material:'metal'} as const;
+  const front=-Math.atan((d/2-top-t)/h),back=-front,parts:FurniturePart[]=[];
+  for(const [n,a,foot,inward] of [['delantera',front,d/2,1],['trasera',back,-d/2,-1]] as const){
+    const legs=[-1,1].map(s=>leaningLeg(`Pata ${n} ${s<0?'izquierda':'derecha'}`,s*(w/2-.015),a,foot,inward,h,t,{...steel,bevel:.005}));
+    parts.push(...legs);
+    for(const [i,y] of [[1,h*.25],[2,h*.48],[3,h*.71]] as const)parts.push(onLeg(legs[0],`Varilla ${n} ${i}`,[w-.05,.008,.008],y,0,{...steel,bevel:.003}));
+  }
+  const railZ=[0,1,2,3,4,5].map(i=>-top+i*2*top/5);
+  railZ.forEach((z,i)=>parts.push(part(`Barra superior ${i+1}`,[w,rail,rail],0,h-rail,z,{...steel,bevel:.004})));
+  const hang=h-rail;
+  parts.push(part('Toalla',[w*.32,Math.min(.42,h*.45),.004],-w*.24,hang-Math.min(.42,h*.45),railZ[1],{color:'#d9c7a8',surface:'textile',bevel:0}));
+  parts.push(part('Camiseta',[w*.26,Math.min(.34,h*.36),.004],w*.16,hang-Math.min(.34,h*.36),railZ[4],{color:'#5e7d9a',surface:'textile',bevel:0}));
+  for(const [i,dx] of [[1,0],[2,.06]] as const)parts.push(part(`Calcetín ${i}`,[.05,.16,.003+i*.0005],w*.36+dx,hang-.16,railZ[2],{color:'#e8e2d6',surface:'textile',bevel:0}));
   return parts;
 }
