@@ -1,9 +1,17 @@
 # Atelier 60 — Estado persistente
 
-Última revisión: 2026-11-21 (Europe/Madrid).
+Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio local (21/11/2026, sin publicar)
+## Último cambio publicado (27/11/2026)
+
+- **Publicado en main** el trabajo local del 21/11: `a746acf` (visor 3D persistente, shaders precompilados fuera de pantalla y encuadre de objeto sin muros) y `cb3a614` (manual para principiantes `MANUAL.md` con capturas en `docs/manual/` y scripts que las generan; se quitó del manual la ruta local del equipo). HEAD remoto comprobado antes del push (`bb2e0f7`, sin trabajo concurrente).
+- **Visor 3D persistente:** una vez abierto, el visor sigue montado y oculto (`frameloop="never"`) mientras se ve el plano 2D; al volver reutiliza contexto WebGL, shaders y texturas (`ResumeOnShow` redibuja el último estado). `WarmShaders` monta el contenido invisible y espera a que los programas enlacen en segundo plano (sondeo de `isReady()`, tope de 5 s) antes de mostrarlo; captura PNG y sombras de contacto del estudio se montan después. `aria-busy` del visor incluye este calentamiento.
+- **Validación local (27/11):** `object-camera` + `studio-render` (8/8), build, 8 smoke Playwright y `local-audit.e2e.ts` (4/4, incluido el cambio entre las tres vistas con PNG). CI del push: [Test and build 45961175245](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45961175245), SHA `cb3a614` (incluye `a746acf`), completed/success, job 140379089717: unitarias, 23 pruebas Python del motor (humo Blender omitido), build y suite E2E completa Chromium (42 passed).
+- **Pendiente de este bloque:** render Cycles del nuevo encuadre de objeto; una estantería alta puede seguir delante de la cámara; el visor oculto conserva memoria GPU mientras se edita en 2D (aceptado a cambio de reabrir al instante).
+- **Siguiente tarea exacta:** comparar en el visor y en Cycles, con la misma cámara, los complementos nuevos (lámpara de arco encendida de noche, espejo de pie, carrito de bar) y corregir lo que difiera (emisión de la pantalla de la lámpara, reflejo del espejo, vidrio y latón del carrito). Después volver a medir con `load.cjs`/`heavy.cjs` la apertura del 3D y la edición en el ejemplo.
+
+## Cambio del 21/11/2026 (publicado el 27/11 en `a746acf`)
 
 - **Encuadrar objeto seleccionado ya no mete la cámara en un muro:** `objectCamera(item, project)` (`src/lib/studioRender.ts`) prueba 16 direcciones alrededor de la diagonal habitual. En cada una avanza en pasos de 5 cm con 20 cm de margen sobre medio espesor de muro, se queda con el recorrido libre más largo y limita la altura a 15 cm bajo el techo. Sin muros cerca, el encuadre no cambia. El modo estudio sigue usando el encuadre sin muros, porque oculta las paredes. En el ejemplo, el sofá del salón pasa de la cámara (4,01; 4,5) dentro del tabique a (2,53; 5,34), con la estancia visible en el visor. Pruebas: `object-camera.test.ts` (3: todos los muebles del ejemplo sin cámara dentro ni muro delante, encuadre igual sin obstáculos y estancia diminuta) más `studio-render` (8/8) y build en local. **Pendiente:** el render Cycles del nuevo encuadre (no se lanzó el motor), commit, CI, y que un mueble alto como la estantería puede seguir delante de la cámara. Se actualizó el aviso de MANUAL.md §5.2.
 
