@@ -2,6 +2,8 @@
 
 Editor local de viviendas en 2D y 3D. Permite crear una planta, distribuir objetos, asignar acabados, preparar propuestas y exportar imágenes comparables. El ejemplo de 10 × 6 m es una plantilla, no una restricción de tamaño.
 
+**¿Es tu primera vez?** Empieza por el [manual de uso para principiantes](MANUAL.md): arrancar el editor, diseñar, hacer renders con Cycles y abrir la escena en Blender.
+
 ## Explorar un interior en 3D
 
 En **Estudio → Modelos**, pulsa **Abrir dormitorio en 3D**. Atelier 60 guarda una versión del proyecto activo y abre Dormitorio Salvia con siete objetos editables. Puedes recuperar tu proyecto desde **Estudio → Versiones**.
