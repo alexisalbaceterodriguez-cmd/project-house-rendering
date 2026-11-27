@@ -150,6 +150,7 @@ Abajo a la derecha del plano está el botón **Guía de uso**, con un resumen r�
 - **Plano 2D**: rueda del ratón para acercar; botón central o mantener `Espacio` para desplazar.
 - **Vista 3D**: arrastra con el ratón para girar, rueda para acercar.
 - `Escape` cancela lo que estés arrastrando. `Supr` borra lo seleccionado.
+- Con un mueble seleccionado (o varios a la vez): las **flechas** lo mueven 1 cm (10 cm con `Mayús`), `R` lo gira 90° (`Mayús + R` al revés) y `Ctrl + D` lo duplica 25 cm más allá. Un grupo se mueve y gira en bloque, alrededor de su centro. Mantener una flecha pulsada cuenta como un solo paso de deshacer.
 
 ![Modo Vista 3D con los botones Cenital y pantalla completa](docs/manual/07-vista-3d.png)
 

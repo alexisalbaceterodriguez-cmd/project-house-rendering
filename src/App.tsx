@@ -14,6 +14,7 @@ import { findProductSource, PRODUCT_CATALOG_VERSION } from './data/productCatalo
 import { blankProject } from './data/defaultProject';
 import { clamp, download, fileSafe, makeId, wallLength, wallProjection } from './lib/geometry';
 import { EXTENSION_LEAF, HANDED_KINDS, handOf, tabletopSpot } from './lib/furnitureParts';
+import { duplicateFurniture, NUDGE, nudgeFurniture, rotateFurniture } from './lib/keyboardEdit';
 import { reconcileRooms, resizeProject, roomArea, splitInteriorWall, splitWallAtTJunctions, splitWallsAtCrossing, splitAllWallCrossings, normalizeInteriorIntersections, mergeInteriorWalls, updateWallGeometry } from './lib/topology';
 import { dataURLToBlob, getModelAsset, listModelAssets, putModelAsset, putModelMetadata } from './lib/assets';
 import { isProject, saveLocal, useEditor, useEditorPick } from './store';
@@ -345,7 +346,7 @@ function EditorToolbar(){
   return <div className="editor-toolbar"><span className="toolbar-label">HERRAMIENTAS</span><div className="tool-group">{toolbar.map(t=><button key={t.type} title={t.hint} className={tool===t.type?'active':''} onClick={()=>{setTool(t.type);if(mode==='3d')setMode('split');}}>{t.icon}<span>{t.label}</span></button>)}</div><div className="toolbar-spacer"/><div className="view-controls"><button onClick={()=>{setSelection(null);setTool('select');setMode('2d');}} title="Cambiar ancho y fondo del piso"><Ruler size={16}/><span>Dimensiones</span></button><button title={wallsVisible?'Ocultar muros':'Mostrar muros'} onClick={()=>setWallsVisible(!wallsVisible)}>{wallsVisible?<Eye size={16}/>:<EyeOff size={16}/>}<span>Muros</span></button><button className={cutaway?'active-soft':''} onClick={()=>setCutaway(!cutaway)} title="Alternar muros seccionados o completos"><Layers size={16}/><span>Sección</span></button></div></div>;
 }
 function Help({onClose}:{onClose:()=>void}){
-  return <div className="modal-backdrop" onClick={onClose}><div className="help-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={onClose}>×</button><div className="eyebrow">GUÍA RÁPIDA</div><h2>Diseña tu casa paso a paso</h2><p>Atelier 60 permite modificar dimensiones y paredes a escala, con cálculo conceptual de recintos y una vista 3D sincronizada.</p><div className="help-steps"><div><Grid2X2/><strong>01 · Dibujar</strong><span>Elige tabique o estancia y marca dos puntos en el plano. Pulsa en un tabique para insertar puertas o ventanas.</span></div><div><Armchair/><strong>02 · Amueblar</strong><span>Añade muebles desde el catálogo y arrástralos en 2D. Selecciona una pared y mueve sus extremos o su posición.</span></div><div><WandSparkles/><strong>03 · Personalizar</strong><span>Aplica estilos y selecciona pavimentos. La vista 3D refleja las modificaciones.</span></div><div><ArrowDownToLine/><strong>04 · Exportar</strong><span>Guarda un JSON editable o captura un PNG de la vista 3D. También puedes exportar el plano en SVG.</span></div></div><p className="help-note">Atajos: Ctrl/⌘+Z para deshacer · Ctrl/⌘+Mayús+Z para rehacer · Supr para eliminar lo seleccionado.</p><button className="primary-btn" onClick={onClose}>Empezar a diseñar</button></div></div>;
+  return <div className="modal-backdrop" onClick={onClose}><div className="help-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={onClose}>×</button><div className="eyebrow">GUÍA RÁPIDA</div><h2>Diseña tu casa paso a paso</h2><p>Atelier 60 permite modificar dimensiones y paredes a escala, con cálculo conceptual de recintos y una vista 3D sincronizada.</p><div className="help-steps"><div><Grid2X2/><strong>01 · Dibujar</strong><span>Elige tabique o estancia y marca dos puntos en el plano. Pulsa en un tabique para insertar puertas o ventanas.</span></div><div><Armchair/><strong>02 · Amueblar</strong><span>Añade muebles desde el catálogo y arrástralos en 2D. Selecciona una pared y mueve sus extremos o su posición.</span></div><div><WandSparkles/><strong>03 · Personalizar</strong><span>Aplica estilos y selecciona pavimentos. La vista 3D refleja las modificaciones.</span></div><div><ArrowDownToLine/><strong>04 · Exportar</strong><span>Guarda un JSON editable o captura un PNG de la vista 3D. También puedes exportar el plano en SVG.</span></div></div><p className="help-note">Atajos: Ctrl/⌘+Z para deshacer · Ctrl/⌘+Mayús+Z para rehacer · Supr para eliminar lo seleccionado · Flechas para mover el mueble seleccionado 1 cm (con Mayús, 10 cm) · R para girarlo 90° (Mayús+R en sentido contrario) · Ctrl/⌘+D para duplicarlo. Con varios muebles seleccionados se mueven, giran y duplican en bloque.</p><button className="primary-btn" onClick={onClose}>Empezar a diseñar</button></div></div>;
 }
 export default function App(){
   const {project,change,load,reset,selection,setSelection,undo,redo,mode}=useEditorPick('project','change','load','reset','selection','setSelection','undo','redo','mode');
@@ -412,6 +413,15 @@ export default function App(){
       if(selection.type==='wall'){p.walls=p.walls.filter(i=>i.id!==selection.id);p.openings=p.openings.filter(i=>i.wallId!==selection.id);reconcileRooms(p);}
     });setSelection(null);}
     if(e.key==='Escape')setSelection(null);
+    // Keyboard editing of the selected furniture (one object or the group), unless walking in 3D.
+    if(selection?.type!=='furniture'||document.pointerLockElement||e.altKey)return;
+    const ids=useEditor.getState().selectedFurniture;
+    const step=e.shiftKey?NUDGE.coarse:NUDGE.fine;
+    const arrow={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]}[e.key];
+    // A held key repeats: the first press opens one undo step and the repeats extend it.
+    if(arrow&&!e.ctrlKey&&!e.metaKey){e.preventDefault();change(p=>{nudgeFurniture(p,ids,arrow[0],arrow[1]);},!e.repeat);return;}
+    if(e.key.toLowerCase()==='r'&&!e.ctrlKey&&!e.metaKey&&!e.repeat){e.preventDefault();change(p=>rotateFurniture(p,ids,e.shiftKey?-90:90));return;}
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='d'&&!e.repeat){e.preventDefault();let copies:string[]=[];change(p=>{copies=duplicateFurniture(p,ids,makeId);});if(copies.length)useEditor.getState().setFurnitureGroup(copies);}
   };window.addEventListener('keydown',fn);return()=>window.removeEventListener('keydown',fn);},[selection,change,undo,redo,setSelection]);
   const exportJSON=async()=>{
     try{
