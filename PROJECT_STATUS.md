@@ -3,7 +3,34 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, medición de la iluminación nocturna)
+## Último cambio publicado (27/11/2026, paquete de ocio e infantil)
+
+- **`67a4b4b`:** ocho objetos paramétricos nuevos. Comparten geometría entre el visor y el GLB de Cycles.
+  - Salón: piano vertical (88 teclas, atril, pedales), guitarra acústica con soporte, altavoz de columna, puf pera y revistero.
+  - Dormitorio: baúl de juguetes, tipi infantil (palos con la longitud resuelta para alcanzar `h`) y mesa infantil con dos sillas.
+- **Integración:** tipos, validación JSON, catálogo, catálogo de productos y símbolos del plano. Piano y baúl admiten objetos de sobremesa; el resto entra en `NO_SUPPORT`.
+- **Tests:** la tabla genérica de `furniture-parts.test.ts` cubre el paquete con 2–3 tamaños cada uno: huella exacta, sin caras coplanares y perfiles válidos.
+  - También cubre la escalera mantera, el espejo de pie y las mesas nido, que antes no estaban.
+  - Lámpara de arco, carrito, silla de oficina y otros complementos recientes no llenan la huella por diseño. Se dejan fuera de esa tabla.
+- **Revisión visual:** escena en blanco de 6 × 4 m solo en WebGL, porque el motor local no estaba activo. A raíz de ella:
+  - El puf pera pasa a un único cuerpo de pera con un rodillo de asiento; antes eran dos bolas.
+  - La entrada del tipi pasa a una abertura oscura escalonada; antes era una placa plana.
+  - Las dos cajas de la guitarra se solapan más.
+- **Validación local:** `furniture-parts` 287/287, unitarias 438/438, build y smoke 8/8.
+- **CI:** [Test and build 45977267348](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45977267348), SHA `67a4b4b`, completed/success (unitarias, build y E2E completa); Deploy to GitHub Pages 45978288199, success.
+- **Límites:** no se ha comparado con Cycles. Son modelos estilizados, no reproducciones fotográficas: la guitarra se forma con dos discos y el tipi con un cono liso.
+- **Siguiente tarea exacta:** comparar el paquete en Cycles con la misma cámara (`scripts/accessory-compare.mjs` con el motor activo). Después, añadir otro paquete (por ejemplo, despacho/estudio: archivador, pizarra, impresora, estantería de pared) o una función de edición.
+
+## Cambio publicado el 27/11/2026 (cielo nocturno del visor)
+
+- **`ee33b9b`:** de noche, el fondo del visor deja de ser un color plano y pasa a un cielo de crepúsculo como el que muestra Cycles por las ventanas.
+  - `src/lib/nightSky.ts` crea una textura equirectangular compartida con banda cálida en el horizonte, azul acero y cénit azul oscuro.
+  - `NightCeiling` añade un techo emisivo tenue que no aparece en los renders.
+  - Nueva opción `--webgl-only` en `scripts/accessory-compare.mjs`.
+- **Comparación** con la misma cámara: la ventana del visor muestra ya el mismo crepúsculo que Cycles. El interior del visor sigue siendo algo más claro.
+- **CI:** [Test and build 45974630078](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45974630078), completed/success. Localmente: 408 unitarias, build y smoke 8/8.
+
+## Cambio publicado el 27/11/2026 (medición de la iluminación nocturna)
 
 - **Medición** con Playwright Chromium sin interfaz (d3d11), usando `load.cjs`, `open3d.cjs` y `heavy.cjs <copias> <calidad> <día|noche>`. `mount` es el tiempo hasta el primer fotograma tras el cambio. Edición y fotograma están limitados por vsync a unos 33 ms.
 - **Coste encontrado en `9578c8f`:** al pasar a noche cambia el número de luces (una por recinto, y la lámpara de arco cambia su luz puntual por un foco). Three.js recompila entonces todos los shaders una vez.
