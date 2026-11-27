@@ -3,27 +3,25 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, rendimiento de la iluminación nocturna)
+## Último cambio publicado (27/11/2026, medición de la iluminación nocturna)
 
 - **Medición** con Playwright Chromium sin interfaz (d3d11), usando `load.cjs`, `open3d.cjs` y `heavy.cjs <copias> <calidad> <día|noche>`. `mount` es el tiempo hasta el primer fotograma tras el cambio. Edición y fotograma están limitados por vsync a unos 33 ms.
-- **Regresión encontrada en `9578c8f`:** al pasar a noche cambiaba el número de luces (luces por recinto, y la lámpara de arco cambiaba su luz puntual por un foco). Three.js recompilaba entonces todos los shaders:
-  - ejemplo en borrador: `mount` de noche de 42 ms (con `dff444e`) a 1079 ms;
-  - 6 copias en borrador: de 1087 a 2331 ms;
-  - 6 copias en alta: de 2545 a 3298 ms.
-- **Corrección:** día y noche montan las mismas luces y solo cambia su intensidad. Las luces de techo por recinto existen siempre, con intensidad 0 de día. `LampLight` mantiene siempre su luz puntual y, en lámparas con cúpula opaca, también el foco con su objetivo. La imagen de noche no cambia, porque las intensidades son las mismas.
-- **Resultados con la corrección** (`mount` / edición, en ms):
+- **Coste encontrado en `9578c8f`:** al pasar a noche cambia el número de luces (una por recinto, y la lámpara de arco cambia su luz puntual por un foco). Three.js recompila entonces todos los shaders una vez.
 
-  | Escena | Día | Noche |
+  | Escena | `mount` de noche con `dff444e` | con `9578c8f` |
   |---|---|---|
-  | Ejemplo, borrador | 29 / 33,1 | 84 / 33,0 |
-  | 6 copias (804 mallas), borrador | ~1080 / 38–46 | 1205 / 37,5 |
-  | 6 copias, alta | ~2400 / 56–60 | 2412 / 58,9 |
+  | Ejemplo, borrador | 42 ms | 1079 ms |
+  | 6 copias (804 mallas), borrador | 1087 ms | 2331 ms |
+  | 6 copias, alta | 2545 ms | 3298 ms |
 
-  - Carga en frío de producción: lienzo en ~470 ms y 4 tareas largas (~510 ms; antes ~575 ms).
-  - Reabrir el 3D: 0 ms de tareas largas.
-  - **Coste aceptado:** las luces de intensidad 0 hacen los shaders algo más pesados. El montaje de día de 6 copias en alta pasa de ~1920 ms a ~2400 ms. La edición y el fotograma no cambian.
-- **Validación local:** 405 unitarias, build y 8 smoke Playwright. No se volvió a capturar la imagen de noche: por construcción, las intensidades nocturnas son idénticas.
-- **Siguiente tarea exacta:** oscurecer el cielo nocturno del visor (ventana y fondo) para que coincida con el crepúsculo de Cycles, comparando con `scripts/accessory-compare.mjs` el visor y el PNG con la misma cámara.
+  La edición (33–56 ms) y el fotograma no cambian, ni de día ni de noche.
+- **Intento descartado (`6975066`, revertido después):** montar siempre las mismas luces y cambiar solo su intensidad.
+  - Bajó el cambio a noche del ejemplo a 84 ms.
+  - Pero las luces con intensidad 0 también cuestan en cada píxel. El montaje de día de 6 copias en alta subió de ~1920 a ~2400 ms.
+  - En CI, con WebGL por software, «aplica cuatro texturas…» pasó de 28,8 s a 55,4 s, la prueba HDRI de 16,3 s a 25,8 s, y la exportación PNG de `product.e2e.ts:85` agotó su tiempo ([run 45967564344](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45967564344), failure).
+  - Se mantiene el diseño anterior: luces de noche montadas solo de noche y un recompilado único al cambiar de preset. Un comentario en `Scene3D.tsx` explica por qué.
+- **Sin cambios:** carga en frío de producción con lienzo en ~470 ms y 4–5 tareas largas (~510–575 ms). Reabrir el 3D: 0 ms de tareas largas.
+- **Siguiente tarea exacta:** oscurecer el cielo nocturno del visor (ventana y fondo) para que coincida con el crepúsculo de Cycles, comparando con `scripts/accessory-compare.mjs` el visor y el PNG con la misma cámara. Opcional después: precompilar en segundo plano (`compileAsync`) la variante nocturna, para ocultar el recompilado de ~1 s sin añadir luces de día.
 
 ## Cambio publicado el 27/11/2026 (paridad visor/Cycles de complementos)
 
