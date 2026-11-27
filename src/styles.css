@@ -73,3 +73,8 @@
 .cycles-actions{display:flex;flex-wrap:wrap;align-items:center;gap:2px}.cycles-actions span{display:inline-flex}
 .cycles-error{color:#a1584b;margin:4px 0}
 .studio-body label.studio-check{flex-direction:row;align-items:flex-start;gap:10px;font-weight:600;line-height:1.45;margin:10px 0}.studio-body label.studio-check input[type=checkbox]{width:18px;height:18px;min-height:0;padding:0;margin:1px 0 0;flex:none;accent-color:#326d4b}
+.group-layout{border-bottom:1px solid #e9eee8;padding-bottom:6px;margin-bottom:4px}
+.group-buttons{display:grid;grid-template-columns:repeat(auto-fill,minmax(32px,1fr));gap:5px}
+.group-buttons button{height:32px;border:1px solid #e3e9e2;border-radius:7px;background:#f9faf8;color:#4f7360;display:grid;place-items:center;padding:0}
+.group-buttons button:hover:not(:disabled){background:#e8f1ea;border-color:#b9d1bf}
+.group-layout .small-help{margin:9px 0 6px;font-size:11px}
