@@ -34,6 +34,10 @@ Mapas originales JPEG de 1K (color, normal OpenGL y rugosidad), sin modificar, d
 - Tapicería: [Rough Linen](https://polyhaven.com/a/rough_linen), 0,271 m.
 - Veta de muebles: [Oak Veneer 01](https://polyhaven.com/a/oak_veneer_01), 1,83 m.
 
+### Mapa del globo terráqueo
+
+`public/materials/surfaces/globe-land.png` es una máscara de tierra de 1024 × 512 px en proyección equirectangular. Se rasteriza con `scripts/derive_globe_mask.py` a partir de los polígonos de tierra 1:50m de [Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/) (dominio público), del archivo `geojson/ne_50m_land.geojson` del repositorio [natural-earth-vector](https://github.com/nvkelso/natural-earth-vector). El visor colorea la máscara al vuelo (`src/lib/globeTexture.ts`): océanos en el color del objeto, tierra en tonos de pergamino.
+
 ## Presupuesto
 
 Modelos: 18,32 MB en disco; miniaturas: 1,17 MB; texturas: 6,78 MB; superficies escaneadas: 13,1 MB (se cargan solo las de los acabados usados); HDRI: 1,62 MB. Carga bajo demanda, compartida entre instancias. Cada GLB se guarda una vez en IndexedDB y se referencia por ID estable; el JSON portable deduplica recursos compartidos. Importaciones privadas: máximo 12 MB por modelo, JSON máximo 64 MB. Calidad rápida simplifica materiales físicos, reduce sombras y resolución; alta conserva los materiales del recurso. PNG de alta resolución se limita a 3840 px y 8 millones de píxeles.

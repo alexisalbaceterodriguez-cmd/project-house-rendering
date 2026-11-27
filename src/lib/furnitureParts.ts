@@ -2594,7 +2594,7 @@ const SPHERE:Profile=[[0,0],[.195,.01],[.383,.038],[.556,.084],[.707,.146],[.831
 const GLOBE_RING:Profile=[[.93,0],[1,0],[1,1],[.93,1],[.93,0]];
 /**
  * Desk globe inside `w × d × h`: a turned wooden foot and stem holding a brass meridian ring of
- * diameter `w` that reaches `h`, around a globe in the item colour.
+ * diameter `w` that reaches `h`, around a globe with continents and oceans in the item colour (globeTexture.ts).
  */
 export function deskGlobeParts(w:number,d:number,h:number):FurniturePart[]{
   const foot=Math.min(.025,h*.06),yc=h-w/2,globe=w*.86,stem=Math.max(.01,yc-w/2-foot),base=Math.min(w*.55,d);
@@ -2602,7 +2602,7 @@ export function deskGlobeParts(w:number,d:number,h:number):FurniturePart[]{
     turned('Peana',DISC,[base,foot,base],0,0,0,{color:'wood',surface:'woodgrain'}),
     turned('Vástago',TAPER,[.03,stem+.004,.03],0,foot,0,{color:'wood',surface:'woodgrain'}),
     turnedFront('Meridiano',GLOBE_RING,[w,w,Math.min(.012,d)],0,yc-w/2,0,{color:'#b08a4a',material:'metal'}),
-    turned('Globo',SPHERE,[globe,globe,globe],0,yc-globe/2,0,{color:'item',material:'gloss'}),
+    turned('Globo',SPHERE,[globe,globe,globe],0,yc-globe/2,0,{color:'item',material:'gloss',role:'globe'}),
   ];
 }
 

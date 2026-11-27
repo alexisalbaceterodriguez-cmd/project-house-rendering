@@ -311,6 +311,16 @@ export function surfaceMaps(kind: SurfaceKind): SurfaceMaps {
 export async function surfaceTexturesReady() {
   while (pending.size) await Promise.all([...pending]);
 }
+/**
+ * Let another texture loader (the globe map) join the wait: `surfaceTexturesReady` also waits for
+ * `job`, and the listeners redraw once it settles, whether it loaded or failed back to its stand-in.
+ */
+export function trackTextureJob(job: Promise<unknown>) {
+  const tracked: Promise<void> = job.then(() => undefined, () => undefined)
+    .then(() => { listeners.forEach(listener => listener()); })
+    .finally(() => { pending.delete(tracked); });
+  pending.add(tracked);
+}
 /** Called whenever scanned maps replace a fallback, e.g. to redraw an on-demand canvas. */
 export function onSurfaceTexturesLoaded(listener: () => void) {
   listeners.add(listener);
