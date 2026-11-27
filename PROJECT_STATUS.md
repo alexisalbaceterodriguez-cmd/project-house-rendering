@@ -19,7 +19,9 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
   - Bajó el cambio a noche del ejemplo a 84 ms.
   - Pero las luces con intensidad 0 también cuestan en cada píxel. El montaje de día de 6 copias en alta subió de ~1920 a ~2400 ms.
   - En CI, con WebGL por software, «aplica cuatro texturas…» pasó de 28,8 s a 55,4 s, la prueba HDRI de 16,3 s a 25,8 s, y la exportación PNG de `product.e2e.ts:85` agotó su tiempo ([run 45967564344](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45967564344), failure).
+  - El reintento de ese run pasó (attempt 2): el tiempo agotado era en parte inestable, pero la ralentización de casi el doble se repitió en todas las pruebas con render.
   - Se mantiene el diseño anterior: luces de noche montadas solo de noche y un recompilado único al cambiar de preset. Un comentario en `Scene3D.tsx` explica por qué.
+- **Publicado:** reversión `3563b90`. CI: [Test and build 45969598200](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45969598200), completed/success, job 140406489253 (405 unitarias, build y 42 E2E).
 - **Sin cambios:** carga en frío de producción con lienzo en ~470 ms y 4–5 tareas largas (~510–575 ms). Reabrir el 3D: 0 ms de tareas largas.
 - **Siguiente tarea exacta:** oscurecer el cielo nocturno del visor (ventana y fondo) para que coincida con el crepúsculo de Cycles, comparando con `scripts/accessory-compare.mjs` el visor y el PNG con la misma cámara. Opcional después: precompilar en segundo plano (`compileAsync`) la variante nocturna, para ocultar el recompilado de ~1 s sin añadir luces de día.
 
