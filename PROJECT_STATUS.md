@@ -3,7 +3,21 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, paquete de despacho y estudio)
+## Último cambio publicado (27/11/2026, paquete de cocina y lavandería)
+
+- **`0057597`:** siete objetos paramétricos nuevos. Comparten geometría entre el visor y el GLB de Cycles.
+  - De sobremesa (`TABLETOP_KINDS`): microondas (puerta de cristal oscuro, ventana, asa, panel con pantalla y mando), tostadora de dos ranuras y batidora amasadora con cabezal, bol de acero torneado y batidor.
+  - De suelo: botellero de madera con celdas y botellas tumbadas, carrito de cocina de tres bandejas con ruedas, tarros y paños.
+  - Sin apoyo encima (`NO_SUPPORT`): tabla de planchar con patas cruzadas en X y tendedero plegable en A con ropa colgada.
+- **Integración:** tipos, validación JSON, catálogo (Cocina; tabla y tendedero en Baño, junto a la lavadora), catálogo de productos y símbolos del plano. La batidora usa 0,24 × 0,36 m (más profunda que ancha) para que el bol quepa en el fondo.
+- **Tests:** la tabla de `furniture-parts.test.ts` cubre los siete con dos tamaños cada uno (315/315).
+- **Revisión visual:** escena en blanco de 6 × 4 m solo en WebGL (motor local inactivo), vista frontal y lateral; los siete se leen correctamente.
+- **Validación local:** unitarias 466/466, build y smoke 8/8.
+- **CI:** [Test and build 45985085987](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45985085987), SHA `0057597`, completed/success (unitarias, build y E2E completa).
+- **Límites:** no se ha comparado con Cycles. Las celdas del botellero tienen botellas lisas sin etiqueta y la ropa del tendedero son paneles planos.
+- **Siguiente tarea exacta:** comparar los paquetes de ocio/infantil, despacho y cocina/lavandería en Cycles con la misma cámara (`scripts/accessory-compare.mjs` con el motor activo). Después, una función de edición o una textura de continentes para el globo.
+
+## Cambio publicado el 27/11/2026 (paquete de despacho y estudio)
 
 - **`8f75fbe`:** siete objetos paramétricos nuevos. Comparten geometría entre el visor y el GLB de Cycles.
   - De suelo: archivador metálico de tres cajones (zócalo, tiradores, portaetiquetas), cajonera con ruedas (cajón de lápices, estándar y de carpetas) y pizarra blanca con caballete de trípode (patas con la inclinación resuelta para alcanzar `h`).
@@ -14,8 +28,6 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - **Validación local:** unitarias 452/452, build y smoke 8/8.
 - **CI:** [Test and build 45982780869](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45982780869), SHA `8f75fbe`, completed/success (unitarias, build y E2E completa).
 - **Límites:** no se ha comparado con Cycles. El globo no tiene continentes (color liso) y las cajas archivadoras son bloques escalonados sin hueco interior.
-- **Siguiente tarea exacta:** comparar los paquetes de ocio/infantil y de despacho en Cycles con la misma cámara (`scripts/accessory-compare.mjs` con el motor activo). Después, una función de edición o una textura de continentes para el globo.
-
 ## Cambio publicado el 27/11/2026 (paquete de ocio e infantil)
 
 - **`67a4b4b`:** ocho objetos paramétricos nuevos. Comparten geometría entre el visor y el GLB de Cycles.
