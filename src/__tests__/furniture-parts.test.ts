@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, supportTop, supportUnder, placedElevation, tabletopSpot, restHeight, softRest, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { uprightPianoParts, guitarStandParts, floorSpeakerParts, beanbagParts, magazineRackParts, toyBoxParts, playTentParts, kidsTableParts, blanketLadderParts, floorMirrorParts, nestingTablesParts, FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, supportTop, supportUnder, placedElevation, tabletopSpot, restHeight, softRest, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -118,6 +118,17 @@ const builders={
   pendant:[pendantParts,[[.42,.42,.8],[.25,.25,.5],[.6,.6,1.2]]],
   mirror:[mirrorParts,[[.6,.03,.9],[.5,.025,1.6],[1.2,.04,.8]]],
   artwork:[artworkParts,[[.7,.03,.9],[.4,.025,.5],[1.4,.035,1]]],
+  'upright-piano':[uprightPianoParts,[[1.5,.6,1.25],[1.4,.55,1.1],[1.55,.62,1.3]]],
+  'guitar-stand':[guitarStandParts,[[.4,.35,1.05],[.36,.32,.95],[.45,.4,1.1]]],
+  'floor-speaker':[floorSpeakerParts,[[.22,.3,1],[.2,.26,.9],[.28,.35,1.1]]],
+  beanbag:[beanbagParts,[[.8,.8,.85],[.7,.7,.75],[.9,.85,.95]]],
+  'magazine-rack':[magazineRackParts,[[.4,.3,.45],[.35,.25,.35],[.5,.32,.5]]],
+  'toy-box':[toyBoxParts,[[.8,.45,.5],[.6,.4,.45],[1,.5,.55]]],
+  'play-tent':[playTentParts,[[1.2,1.2,1.6],[1,1,1.4],[1.4,1.3,1.8]]],
+  'kids-table':[kidsTableParts,[[1,.8,.55],[.8,.7,.5],[1.2,.9,.6]]],
+  'blanket-ladder':[blanketLadderParts,[[.5,.42,1.7],[.45,.38,1.5]]],
+  'floor-mirror':[floorMirrorParts,[[.6,.22,1.7],[.5,.2,1.5]]],
+  'nesting-tables':[nestingTablesParts,[[.75,.5,.5],[.65,.45,.45]]],
 } as const;
 
 describe('parametric furniture', () => {

@@ -1198,7 +1198,7 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
 export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer','decor-tray','table-setting','wine-set','coffee-machine','dish-rack','herb-pots']);
 // Wall-only or soft items that never carry a tabletop object.
-const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase','arc-lamp','leaning-art','blanket-ladder','folding-screen','wall-coat-rack','bar-cart','office-chair','floor-mirror','record-console']);
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase','arc-lamp','leaning-art','blanket-ladder','folding-screen','wall-coat-rack','bar-cart','office-chair','floor-mirror','record-console','guitar-stand','floor-speaker','beanbag','magazine-rack','play-tent','kids-table']);
 /** Flat floor coverings: lie on the floor finish, never collide with furniture and cast no contact shadow. */
 export const FLOOR_COVER_KINDS:ReadonlySet<string>=new Set(['rug','doormat','bath-mat']);
 
@@ -2255,5 +2255,225 @@ export function recordConsoleParts(w:number,d:number,h:number):FurniturePart[]{
   );
   const armLen=Math.hypot(tx+tw/2-.05-(px+disc*.3),td/2-.07),armA=Math.atan2(td/2-.07,tx+tw/2-.05-(px+disc*.3));
   parts.push(...turnY([part('Brazo',[armLen,.006,.006],-armLen/2,top+plinth+.02,0,{color:'#c9ccd0',material:'metal',bevel:0})],armA,[tx+tw/2-.05,-td/2+.07]));
+  return parts;
+}
+
+/**
+ * Upright piano inside `w × d × h` (front +z, back to the wall): a lacquered case in the item
+ * colour with full-depth lower cheeks under the keyboard and shallower upper cheeks, a lid at `h`,
+ * 52 white and 36 black keys on the key bed, a music desk with a score, a knee board and three
+ * brass pedals.
+ */
+export function uprightPianoParts(w:number,d:number,h:number):FurniturePart[]{
+  const lacquer={color:'item',material:'gloss'} as const,side=.045,inner=w-2*side-.004,back=-d/2,upperD=Math.min(.34,d*.58),front=back+upperD;
+  const kb=Math.min(.68,h*.55),bed=.05,lid=.03,keyY=kb+bed,keyD=d/2-.015-(front-.03);
+  const parts:FurniturePart[]=[];
+  for(const s of [-1,1]){
+    const x=s*(w/2-side/2),n=s<0?'izquierdo':'derecho';
+    parts.push(part(`Costado inferior ${n}`,[side,keyY+.03,d],x,0,0,{...lacquer,bevel:.006}));
+    parts.push(part(`Costado superior ${n}`,[side,h-lid-keyY-.03,upperD],x,keyY+.03,back+upperD/2,{...lacquer,bevel:.006}));
+  }
+  parts.push(
+    part('Tapa',[w,lid,upperD+.02],0,h-lid,back+(upperD+.02)/2,{...lacquer,bevel:.006}),
+    part('Trasera',[inner,h-lid,.02],0,0,back+.013,{color:'#2a2622',bevel:.002}),
+    part('Panel superior',[inner,h-lid-(keyY+.075),.02],0,keyY+.075,front-.02,{...lacquer,bevel:.004}),
+    part('Lecho del teclado',[inner,bed,keyD],0,kb,front-.03+keyD/2,{...lacquer,bevel:.004}),
+    part('Panel inferior',[inner,kb-.05,.02],0,.05,front-.05,{...lacquer,bevel:.004}),
+    part('Zócalo',[inner,.05,.04],0,0,front-.05,{...lacquer,bevel:.004}),
+  );
+  // Keyboard: 52 white keys from A0 between two end blocks, black keys after C, D, F, G and A.
+  const block=.05,kw=inner-2*block-.008,keyL=Math.min(.15,keyD-.02),keyZ=front-.03+keyD-.01-keyL/2,ww=kw/52,whiteH=.022;
+  for(const s of [-1,1])parts.push(part(`Tope ${s<0?'izquierdo':'derecho'}`,[block,.07,keyL+.02],s*(inner/2-.002-block/2),keyY,keyZ-.01,{...lacquer,bevel:.004}));
+  const letters='ABCDEFG';
+  for(let i=0;i<52;i++){
+    const x=-kw/2+(i+.5)*ww;
+    parts.push(part(`Tecla blanca ${i+1}`,[ww-.0012,whiteH,keyL],x,keyY,keyZ,{color:'#f3efe4',material:'gloss',bevel:.001}));
+    if(i<51&&'CDFGA'.includes(letters[i%7]))parts.push(part(`Tecla negra ${i+1}`,[ww*.56,.012,keyL*.62],x+ww/2,keyY+whiteH,keyZ-keyL*.18,{color:'#151414',material:'gloss',bevel:.001}));
+  }
+  // Music desk on the upper panel, with an open score resting on it.
+  const deskY=keyY+.16,deskW=Math.min(.7,inner*.5),score=Math.min(.3,h-lid-deskY-.04);
+  parts.push(part('Atril',[deskW,.018,.05],0,deskY,front-.01+.025,{...lacquer,bevel:.003}));
+  if(score>.05)parts.push(part('Partitura',[Math.min(.44,deskW*.9),score,.006],0,deskY+.018,front-.01+.008,{color:'#f1ebdd',bevel:0}));
+  for(const [i,x] of [[1,-.07],[2,0],[3,.07]] as const)parts.push(part(`Pedal ${i}`,[.035,.012,.09],x,.045,front-.04+.045,{color:'#b08d57',material:'metal',bevel:.004}));
+  return parts;
+}
+
+/**
+ * Acoustic guitar upright on a floor stand inside `w × d × h` (front +z): the body as two bouts
+ * filling the width, a sound hole and bridge, the neck with its fingerboard and headstock up to `h`,
+ * six strings and tuning pegs, and a tripod stand with a padded cradle and a neck yoke.
+ */
+export function guitarStandParts(w:number,d:number,h:number):FurniturePart[]{
+  const dark={color:'#2b2a28'} as const,bodyT=Math.min(.1,d*.3),zc=d/2-.07-bodyT/2,yb=.08,lower=w,upper=w*.76,face=zc+bodyT/2;
+  const waist=yb+lower*.56,bodyTop=waist+upper,head=Math.min(.17,(h-bodyTop)*.35),neckY=bodyTop-.02,neckL=h-head-neckY,neckZ=face-.013-.004;
+  const grain={color:'item',surface:'woodgrain'} as const,rosewood={color:'#3a2a20'} as const;
+  const parts:FurniturePart[]=[
+    turnedFront('Caja inferior',DISC,[lower,lower,bodyT],0,yb,zc,grain),
+    turnedFront('Caja superior',DISC,[upper,upper,bodyT],0,waist,zc,grain),
+    turnedFront('Roseta',ROD,[upper*.5,upper*.5,.003],0,waist+upper*.04,face-.0015,{color:'#7a5a3c'}),
+    turnedFront('Boca',ROD,[upper*.42,upper*.42,.004],0,waist+upper*.08,face-.001,{color:'#14110e'}),
+    part('Puente',[lower*.4,.028,.012],0,yb+lower*.3,face+.002,{...rosewood,bevel:.004}),
+    part('Mástil',[.055,neckL,.026],0,neckY,neckZ,{color:'#a87a4c',bevel:.008}),
+    part('Diapasón',[.05,neckL-.02,.008],0,neckY+.02,neckZ+.013+.004,{...rosewood,bevel:.002}),
+    part('Pala',[.075,head,.018],0,h-head,neckZ-.002,{...rosewood,bevel:.006}),
+  ];
+  const stringY=yb+lower*.3+.005;
+  for(let i=0;i<6;i++)parts.push(turned(`Cuerda ${i+1}`,ROD,[.0012,h-head-stringY-.005,.0012],(i-2.5)*.0072,stringY,neckZ+.013+.012,{color:'#d8d4cc',material:'metal'}));
+  for(let i=0;i<6;i++)parts.push(turnedFront(`Clavija ${i+1}`,KNOB,[.014,.014,.012],(i%2?1:-1)*.024,h-head*.85+Math.floor(i/2)*head*.27,neckZ+.009+.001,{color:'#c9ccd0',material:'metal'}));
+  // Stand: a post behind the guitar on three legs, a cradle under the body and a yoke under the neck.
+  const postZ=zc-bodyT/2-.03,postTop=neckY+neckL*.55;
+  parts.push(turned('Poste del soporte',ROD,[.018,postTop-.01,.018],0,.01,postZ,dark));
+  const yokeBack=postZ-.01,yokeFront=neckZ-.014;
+  parts.push(part('Horquilla',[.09,.02,yokeFront-yokeBack],0,postTop,(yokeBack+yokeFront)/2,{...dark,bevel:.006}));
+  parts.push(turned('Base del poste',ROD,[.05,.03,.05],0,0,postZ,dark));
+  parts.push(part('Cuna',[w*.7,.03,.06],0,yb-.03,zc,{...dark,bevel:.012}));
+  for(const s of [-1,1])parts.push(turned(`Brazo de la cuna ${s<0?'izquierdo':'derecho'}`,ROD,[.016,yb-.03-.01,.016],s*w*.3,.01,zc,dark));
+  // The right leg sits 1 mm higher so the three bottoms never share a plane where they meet at the post.
+  // The right leg is also 1 mm narrower: mirrored, it would otherwise share its side planes with the left one.
+  for(const [name,tx,tz,y0,t] of [['Pata trasera',0,-d/2+.02,0,.022],['Pata izquierda',-w*.36,d/2-.025,0,.022],['Pata derecha',w*.36,d/2-.025,.001,.021]] as const){
+    const len=Math.hypot(tx,tz-postZ);
+    parts.push(...turnY([part(name,[len,.02,t],len/2,y0,0,{...dark,bevel:.006})],Math.atan2(-(tz-postZ),tx),[0,postZ]));
+  }
+  return parts;
+}
+
+/**
+ * Floor-standing tower speaker inside `w × d × h` (front +z): a woodgrain cabinet on a plinth and
+ * spikes, a front baffle in the item colour with two woofers (cone, rim and dust cap), a tweeter
+ * near the top and a bass port.
+ */
+export function floorSpeakerParts(w:number,d:number,h:number):FurniturePart[]{
+  const plinth=.025,foot=.015,cabW=w-.03,cabD=d-.05,y0=plinth+foot,baffle=cabD/2,dark={color:'#161616'} as const,rim={color:'#9a9893',material:'metal'} as const;
+  const parts:FurniturePart[]=[
+    part('Zócalo',[w,plinth,d],0,0,0,{color:'#1d1c1b',bevel:.004}),
+    ...[-1,1].flatMap(sx=>[-1,1].map(sz=>turned(`Pie ${sx<0?'izq':'der'} ${sz<0?'atrás':'delante'}`,TAPER,[.02,foot,.02],sx*(cabW/2-.03),plinth,sz*(cabD/2-.03),rim))),
+    part('Caja',[cabW,h-y0,cabD],0,y0,0,{color:'wood',surface:'woodgrain',bevel:.008}),
+    part('Frontal',[cabW-.012,h-y0-.02,.01],0,y0+.01,baffle+.005,{color:'item',bevel:.004}),
+  ];
+  const z=baffle+.01,woof=Math.min(cabW*.74,.17),tw=Math.min(.035,cabW*.25),top=h-.07-tw;
+  parts.push(
+    turnedFront('Aro del tweeter',ROD,[tw*1.9,tw*1.9,.004],0,top-tw*.45,z,rim),
+    turnedFront('Tweeter',BALL,[tw,tw,.012],0,top,z+.002,dark),
+  );
+  for(const i of [1,2]){
+    const y=top-.06-i*(woof+.03);
+    parts.push(
+      turnedFront(`Aro del woofer ${i}`,ROD,[woof*1.06,woof*1.06,.004],0,y-woof*.03,z,rim),
+      turnedFront(`Cono ${i}`,DISC,[woof,woof,.012],0,y,z+.002,dark),
+      turnedFront(`Tapa del cono ${i}`,BALL,[woof*.3,woof*.3,.014],0,y+woof*.35,z+.006,{color:'#2a2a2a'}),
+    );
+  }
+  parts.push(turnedFront('Puerto de graves',ROD,[.05,.05,.004],0,y0+.08,z,{color:'#050505'}));
+  return parts;
+}
+
+// One pear: a wide slumped base narrowing to a rounded crown, like a filled bag that has settled.
+const BEANBAG:Profile=[[0,0],[.82,0],[.95,.05],[1,.17],[.97,.31],[.86,.46],[.69,.61],[.52,.75],[.37,.87],[.2,.96],[0,1]];
+/** Pear beanbag inside `w × d × h`: one settled textile body rising to `h`, the seat hollow pressed into its front and a carry loop on the crown. */
+export function beanbagParts(w:number,d:number,h:number):FurniturePart[]{
+  const fabric={color:'item',surface:'textile'} as const;
+  return [
+    turned('Cuerpo',BEANBAG,[w,h,d],0,0,0,fabric),
+    // The sitter's weight pushes a soft roll forward over the lower front.
+    turned('Asiento',BALL,[w*.66,h*.3,d*.42],0,h*.14,d*.2,fabric),
+    part('Asa',[.1,.016,.02],0,h-.03,-.012,{color:'#4a4239',bevel:.006}),
+  ];
+}
+
+/**
+ * Wooden magazine rack inside `w × d × h`: two end panels in the item colour, a base, a central
+ * divider, low front and back rails, and magazines leaning in both bays.
+ */
+export function magazineRackParts(w:number,d:number,h:number):FurniturePart[]{
+  const panel=.018,grain={color:'item',surface:'woodgrain'} as const,innerW=w-2*panel-.004,base=.06;
+  const parts:FurniturePart[]=[
+    ...[-1,1].map(s=>part(`Costado ${s<0?'izquierdo':'derecho'}`,[panel,h,d],s*(w/2-panel/2),0,0,{...grain,bevel:.006})),
+    part('Fondo',[innerW,.015,d-.02],0,base,0,{...grain,bevel:.002}),
+    part('Separador',[innerW,h*.82-base-.015,.012],0,base+.015,0,{...grain,bevel:.003}),
+    ...[-1,1].map(s=>part(`Barra ${s<0?'trasera':'delantera'}`,[innerW,.03,.012],0,h*.42,s*(d/2-.012),{...grain,bevel:.004})),
+  ];
+  const mag=Math.min(.3,h*.62),mw=Math.min(.21,innerW*.85),y=base+.015+.005,colors=['#c4572f','#e9e4da','#2f3a40','#b9a07a','#5e6b78','#d7cfbf'];
+  for(const s of [-1,1])for(let i=0;i<3;i++){
+    const z=s*(.006+.012+i*.014),lean=s*(.05+i*.06);
+    parts.push(...tiltX([part(`Revista ${s<0?'trasera':'delantera'} ${i+1}`,[mw-i*.015,mag-i*.03,.007],(i-1)*.012,y,z,{color:colors[(i+(s<0?3:0))%colors.length],bevel:.001})],lean,[y,z]));
+  }
+  return parts;
+}
+
+/**
+ * Children's toy chest inside `w × d × h`: a painted box in the item colour on four turned feet,
+ * a contrasting band, painted stars, a woodgrain lid at `h` and rope handles on both ends.
+ */
+export function toyBoxParts(w:number,d:number,h:number):FurniturePart[]{
+  const lid=.035,foot=.03,bodyH=h-lid-foot;
+  const parts:FurniturePart[]=[
+    ...[-1,1].flatMap(sx=>[-1,1].map(sz=>turned(`Pie ${sx<0?'izq':'der'} ${sz<0?'atrás':'delante'}`,BALL,[.045,foot+.004,.045],sx*(w/2-.06),0,sz*(d/2-.06),{color:'wood'}))),
+    part('Cuerpo',[w-.02,bodyH,d-.02],0,foot,0,{color:'item',bevel:.012}),
+    part('Cenefa',[w-.016,.05,d-.016],0,foot+bodyH*.62,0,{color:'#e8c25a',bevel:.006}),
+    part('Tapa',[w,lid,d],0,h-lid,0,{color:'wood',surface:'woodgrain',bevel:.01}),
+    ...[-1,1].map(s=>part(`Asa ${s<0?'izquierda':'derecha'}`,[.008,.03,.12],s*(w/2-.006),foot+bodyH*.72,0,{color:'#cdb894',surface:'textile',bevel:.003})),
+  ];
+  for(const [i,x,y] of [[1,-.22,.3],[2,0,.22],[3,.22,.34]] as const)parts.push(turnedFront(`Estrella ${i}`,DISC,[.06,.06,.004],x*(w-.02),foot+bodyH*y,d/2-.01-.001,{color:'#f4f1e8'}));
+  return parts;
+}
+
+const TIPI:Profile=[[0,0],[1,0],[.05,1],[0,1]];
+/**
+ * Children's teepee on a round play mat inside `w × d × h` (entrance +z): a textile cone in the
+ * item colour, four wooden poles crossing above the apex up to `h`, a darker entrance panel with
+ * two ties, and floor cushions inside.
+ */
+export function playTentParts(w:number,d:number,h:number):FurniturePart[]{
+  const R=Math.min(w,d)*.43,Hc=h*.82,pole=.025,parts:FurniturePart[]=[
+    turned('Alfombra',DISC,[w,.012,d],0,0,0,{color:'#d9cdb8',surface:'textile'}),
+    turned('Lona',TIPI,[2*R,Hc,2*R],0,.012,0,{color:'item',surface:'textile'}),
+  ];
+  // Poles from the mat to past the apex. The top grows linearly with the rod's length, so one trial gives the exact length.
+  for(let i=0;i<4;i++){
+    const a=Math.PI/4+i*Math.PI/2,bx=R*.98*Math.cos(a),bz=R*.98*Math.sin(a),by=.02,cy=.012+Hc*.97;
+    const len=Math.hypot(bx,cy-by,bz),v:Vec3=[-bx/len,(cy-by)/len,-bz/len];
+    const rod=(L:number):FurniturePart=>({...turned(`Palo ${i+1}`,ROD,[pole,L,pole],0,0,0,{color:'wood'}),position:[bx+v[0]*L/2,by+v[1]*L/2,bz+v[2]*L/2],rotation:[Math.atan2(v[2],v[1]),0,Math.asin(-v[0])]});
+    const trial=len*1.1,top=partsBounds([rod(trial)])[1][1];
+    parts.push(rod(trial+(h-top)/v[1]));
+  }
+  const doorH=Hc*.5,r=(y:number)=>R*(1-.95*y/Hc),zb=R+.005,angle=-Math.atan((R-r(doorH))/doorH),slant=Math.hypot(doorH,R-r(doorH));
+  // The opening narrows upwards in three steps so it reads as a triangle of shadow; narrow, it hugs the curved canvas.
+  const step=slant/3;
+  parts.push(...tiltX([0,1,2].map(k=>part(`Entrada ${k+1}`,[R*(.5-k*.16),step+(k<2?.002:0),.006+k*.001],0,.03+k*step,zb,{color:'#3a332c',surface:'textile',bevel:0})),angle,[.03,zb]));
+  for(const s of [-1,1])parts.push(...tiltX([part(`Lazo ${s<0?'izquierdo':'derecho'}`,[.02,.12,.012],s*R*.3,.03+step*.4,zb+.006,{color:'#c4572f',bevel:.003})],angle,[.03,zb]));
+  parts.push(
+    part('Cojín 1',[R*.7,.1,R*.55],-R*.18,.012,-R*.2,{color:'#8c9b8a',surface:'textile',bevel:.03,crown:{axis:'y',amount:.02}}),
+    part('Cojín 2',[R*.5,.08,R*.45],R*.25,.013,R*.1,{color:'#e8c25a',surface:'textile',bevel:.025,crown:{axis:'y',amount:.015}}),
+  );
+  return parts;
+}
+
+/**
+ * Children's table with two chairs inside `w × d × h` (chairs on −z and +z): a woodgrain table top
+ * the full width on turned legs and an apron, small chairs in the item colour whose backs reach `h`,
+ * and a sketchbook with a crayon cup on the table.
+ */
+export function kidsTableParts(w:number,d:number,h:number):FurniturePart[]{
+  const top=h*.9,tt=.025,tableD=Math.min(d*.6,d-.3),legT=.04,wood={color:'wood'} as const,grain={color:'wood',surface:'woodgrain'} as const;
+  const parts:FurniturePart[]=[
+    part('Tablero',[w,tt,tableD],0,top-tt,0,{...grain,bevel:.012}),
+    ...[-1,1].flatMap(sx=>[-1,1].map(sz=>turned(`Pata ${sx<0?'izq':'der'} ${sz<0?'atrás':'delante'}`,TAPER,[legT,top-tt,legT],sx*(w/2-.06),0,sz*(tableD/2-.06),wood))),
+    ...[-1,1].map(s=>part(`Faldón ${s<0?'trasero':'delantero'}`,[w-.16,.05,.018],0,top-tt-.05,s*(tableD/2-.06),{...grain,bevel:.003})),
+  ];
+  const cw=Math.min(.34,w*.4),cd=Math.min(.32,(d-tableD)/2+.15),seat=Math.min(.3,h*.56),leg=.028,cz=-d/2+.01+cd/2;
+  const chair=(n:string):FurniturePart[]=>[
+    ...[-1,1].flatMap(sx=>[-1,1].map(sz=>turned(`Pata silla ${n} ${sx<0?'izq':'der'} ${sz<0?'atrás':'delante'}`,ROD,[leg,seat-.02,leg],sx*(cw/2-.03),0,cz+sz*(cd/2-.03),wood))),
+    part(`Asiento ${n}`,[cw,.02,cd],0,seat-.02,cz,{color:'item',bevel:.008}),
+    ...[-1,1].map(sx=>turned(`Poste ${n} ${sx<0?'izq':'der'}`,ROD,[leg,h-seat,leg],sx*(cw/2-.03),seat,cz-cd/2+.03,wood)),
+    part(`Respaldo ${n}`,[cw-.02,.1,.018],0,h-.1,cz-cd/2+.03,{color:'item',bevel:.006}),
+  ];
+  parts.push(...chair('trasera'),...turnY(chair('delantera'),Math.PI,[0,0]));
+  parts.push(
+    part('Cuaderno',[.21,.008,.15],-w*.15,top,.02,{color:'#f1ebdd',bevel:.001}),
+  );
+  // Crayons in a cup, kept under the chair backs.
+  const crayon=Math.min(.07,h-top-.008);
+  parts.push(turned('Bote de ceras',ROD,[.06,crayon*.7,.06],w*.22,top,-.04,{color:'#5e6b78'}));
+  for(const [i,x,z,color] of [[1,-.012,0,'#c4572f'],[2,.01,.008,'#e8c25a'],[3,0,-.012,'#4f7a5a']] as const)parts.push(turned(`Cera ${i}`,ROD,[.009,crayon-.004*i,.009],w*.22+x,top+.004,-.04+z,{color}));
   return parts;
 }
