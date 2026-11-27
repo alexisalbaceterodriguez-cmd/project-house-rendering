@@ -20,6 +20,7 @@ import { heightToNormal, onSurfaceTexturesLoaded, surfaceMaps, type SurfaceKind 
 import { latheGeometry, physicalBox, type Crown, type Profile } from '../lib/boxGeometry';
 import { arcLampParts, arcLampBulb, leaningArtParts, blanketLadderParts, foldingScreenParts, wallCoatRackParts, barCartParts, officeChairParts, floorMirrorParts, recordConsoleParts, rotateEuler, bedParts, chairParts, bookshelfParts, deskParts, fridgeParts, islandParts, kitchenParts, lampParts, moduleHangHeight, moduleParts, armchairParts, sideboardParts, coffeeTableParts, tvUnitParts, tvParts, pendantParts, pendantShadeHeight, mirrorParts, artworkParts, furnitureElevation, benchParts, sideTableParts, coatRackParts, bathtubParts, dresserParts, shoeCabinetParts, wallShelfParts, towelRailParts, radiatorParts, washerParts, cribParts, barStoolParts, tableLampParts, tableLampShadeHeight, vaseParts, bookStackParts, placedElevation, cornerSofaParts, cornerSofaLeftParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, cuttingBoardParts, kettleParts, utensilJarParts, umbrellaStandParts, doormatParts, soapDispenserParts, toothbrushCupParts, bathMatParts, towelStackParts, deskLampParts, laptopParts, wastebasketParts, deskOrganizerParts, blanketBasketParts, clothesRailParts, floorVaseParts, decorTrayParts, floorCushionParts, nestingTablesParts, tableSettingParts, wineSetParts, coffeeMachineParts, dishRackParts, herbPotsParts, FLOOR_COVER_KINDS, candleParts, candleFlames, photoFrameParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, nightstandParts, plantPotParts, plantSoilHeight, showerParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts, type FurniturePart } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
+import { nightSkyTexture } from '../lib/nightSky';
 const SurfaceContext=createContext<string|undefined>(undefined);
 /** Redraw the on-demand canvas when scanned surface maps replace their procedural fallback. */
 function SurfaceRefresh(){const invalidate=useThree(state=>state.invalidate);useEffect(()=>onSurfaceTexturesLoaded(invalidate),[invalidate]);return null;}
@@ -313,6 +314,25 @@ function Plant({item,wood}:{item:Furniture;wood:string}){
     {foliage.leaves.map((g,i)=><mesh key={i} castShadow receiveShadow geometry={g}><meshStandardMaterial name="atelier:leaf" color={tones[i]} roughness={.55} side={THREE.DoubleSide}/></mesh>)}
   </>;
 }
+/**
+ * Night ceiling over the walls' footprint, shown only while the camera is below it: Cycles adds the
+ * same slab (add_ceiling), and without it the dusk sky would show above the walls. Not exported
+ * (Cycles builds its own) and not pickable.
+ */
+function NightCeiling({walls,height}:{walls:Wall[];height:number}){
+  const ref=useRef<THREE.Mesh>(null);
+  const box=useMemo(()=>{
+    const xs=walls.flatMap(w=>[w.a.x-w.thickness/2,w.b.x-w.thickness/2,w.a.x+w.thickness/2,w.b.x+w.thickness/2]);
+    const ys=walls.flatMap(w=>[w.a.y-w.thickness/2,w.b.y-w.thickness/2,w.a.y+w.thickness/2,w.b.y+w.thickness/2]);
+    return xs.length?{x0:Math.min(...xs),x1:Math.max(...xs),y0:Math.min(...ys),y1:Math.max(...ys)}:null;
+  },[walls]);
+  useFrame(({camera})=>{if(ref.current)ref.current.visible=camera.position.y<height-.02;});
+  if(!box)return null;
+  return <mesh ref={ref} raycast={()=>{}} userData={{renderExclude:true}} position={[(box.x0+box.x1)/2,height+.1,(box.y0+box.y1)/2]}>
+    <boxGeometry args={[box.x1-box.x0,.2,box.y1-box.y0]}/><meshStandardMaterial color="#d6d4cc" emissive="#5a554c" roughness={.92}/>
+  </mesh>;
+}
+
 // A lamp's bulb: a faint fill by day, switched on at night (Cycles places its own light there, renderPackage.interiorLights).
 function LampLight({position,night,day=.13,distance,down=false}:{position:[number,number,number];night:boolean;day?:number;distance:number;down?:boolean}){
   // An opaque dome (arc lamp) sends its light down: a spot cone, so the wall above it stays dark as in Cycles.
@@ -625,7 +645,8 @@ export default function Scene3D({canvasRef,topView=false,active=true}:{canvasRef
     <Canvas frameloop={active?"demand":"never"} shadows dpr={viewerDpr(high)} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
       <SurfaceRefresh/>
       <ResumeOnShow active={active}/>
-      <color attach="background" args={[studio?(render.studio??defaultStudio).background:'#f4f3ef']}/>
+      {/* At night the windows (and the mirror) show a dusk sky as in Cycles, not the editor's light backdrop. */}
+      {render.lighting==='night'&&!studio?<primitive key="night-sky" attach="background" object={nightSkyTexture()}/>:<color key="backdrop" attach="background" args={[studio?(render.studio??defaultStudio).background:'#f4f3ef']}/>}
       {studio?<StudioLights project={project} subject={subject} high={high}/>:<>
       <ambientLight intensity={render.lighting==='night'?.08:.35}/>
       <hemisphereLight intensity={render.lighting==='night'?.12:.4} groundColor="#ccc8bd" color="#e7f1ff"/>
@@ -648,6 +669,7 @@ export default function Scene3D({canvasRef,topView=false,active=true}:{canvasRef
       {!subject&&<>
       {project.rooms.map(room=><FloorSurface key={room.id} room={room}/>)}
       <group userData={{atelierId:'slab',atelierType:'slab'}}><Box position={[project.width/2,-.065,project.depth/2]} size={[project.width,.10,project.depth]} color="#d4c7b5"/></group>
+      {render.lighting==='night'&&!studio&&!subject&&wallsVisible&&!cutaway&&<NightCeiling walls={project.walls} height={project.wallHeight}/>}
       {wallsVisible&&project.walls.map(w=><WallModel key={w.id} wall={w} openings={project.openings.filter(o=>o.wallId===w.id)} wallHeight={project.wallHeight} color={project.palette.walls} cutaway={cutaway} selected={selection?.type==='wall'&&selection.id===w.id}/>)}
       </>}
       {(subject?[subject]:project.furniture).map(item=><ObjectModel key={item.id} item={item} elevation={item.module?0:placedElevation(item,project.furniture,project.wallHeight)} wood={project.palette.wood} night={render.lighting==='night'} selected={selection?.type==='furniture'&&selection.id===item.id}/>)}

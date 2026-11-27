@@ -2,14 +2,15 @@
  * Renders each scene written by scripts/accessory-scene.ts in the WebGL viewer and in Cycles with
  * the same camera: loads the project, exports the render package from the editor, posts it to the
  * local engine (python -m atelier_engine) and saves <name>-webgl.png / <name>-cycles.png.
- * Usage: node scripts/accessory-compare.mjs <scenes.json> <outDir> [baseUrl]
- * Needs the dev server (npm run dev -- --port 4173) and the engine running.
+ * Usage: node scripts/accessory-compare.mjs <scenes.json> <outDir> [baseUrl] [--webgl-only]
+ * Needs the dev server (npm run dev -- --port 4173) and, unless --webgl-only, the engine running.
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { chromium } from '@playwright/test';
 
-const [scenesPath,outDir,base='http://127.0.0.1:4173']=process.argv.slice(2);
+const args=process.argv.slice(2),webglOnly=args.includes('--webgl-only');
+const [scenesPath,outDir,base='http://127.0.0.1:4173']=args.filter(arg=>arg!=='--webgl-only');
 const engine='http://127.0.0.1:8765';
 const scenes=JSON.parse(await readFile(scenesPath,'utf8'));
 
@@ -46,6 +47,7 @@ for(const scene of scenes){
   const files=unzip(zip);
   await writeFile(join(outDir,`${scene.name}-webgl.png`),files['preview.png']);
   await writeFile(join(outDir,`${scene.name}.scene.json`),files['scene.json']);
+  if(webglOnly){console.log(scene.name,'webgl ok');continue;}
 
   const posted=await fetch(`${engine}/renders`,{method:'POST',headers:{'content-type':'application/zip'},body:zip});
   const job=await posted.json();if(!posted.ok)throw new Error(JSON.stringify(job));
