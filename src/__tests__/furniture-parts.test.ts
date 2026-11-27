@@ -10,6 +10,29 @@ const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size
   return others.reduce((area,x)=>area*Math.max(0,Math.min(a.position[x]+a.size[x]/2,b.position[x]+b.size[x]/2)-Math.max(a.position[x]-a.size[x]/2,b.position[x]-b.size[x]/2)),1);
 };
 
+type Part={position:number[];size:number[];lathe?:readonly (readonly number[])[];axis?:string;rotation?:readonly number[];name:string};
+/**
+ * Flat end caps of an unrotated turned part as faces { axis, plane, dir, lo, hi } (lo/hi on the
+ * other two axes), using the square inscribed in the cap so rounded edges do not count as overlap.
+ */
+const capFaces=(p:Part)=>{
+  if(!p.lathe||p.rotation?.some(r=>Math.abs(r)>1e-9))return [];
+  const axis=p.axis==='z'?2:1,others=[0,1,2].filter(x=>x!==axis);
+  return ([[0,-1],[1,1]] as const).flatMap(([end,dir])=>{
+    const r=Math.max(0,...p.lathe!.filter(([,y])=>y===end).map(([r])=>r));
+    if(r<=0)return [];
+    const half=others.map(x=>p.size[x]/2*r*Math.SQRT1_2);
+    return [{axis,plane:p.position[axis]+dir*p.size[axis]/2,dir,lo:others.map((x,i)=>p.position[x]-half[i]),hi:others.map((x,i)=>p.position[x]+half[i])}];
+  });
+};
+/** Shared area between a lathe cap and a same-facing face of an unrotated box on the same plane. */
+const capOverlap=(cap:ReturnType<typeof capFaces>[number],box:Part)=>{
+  if(box.rotation?.some(r=>Math.abs(r)>1e-9))return 0;
+  if(Math.abs(box.position[cap.axis]+cap.dir*box.size[cap.axis]/2-cap.plane)>1e-6)return 0;
+  if(cap.axis===1&&cap.dir<0&&Math.abs(cap.plane)<1e-9)return 0; // undersides resting on the floor are hidden by it
+  return [0,1,2].filter(x=>x!==cap.axis).reduce((area,x,i)=>area*Math.max(0,Math.min(cap.hi[i],box.position[x]+box.size[x]/2)-Math.max(cap.lo[i],box.position[x]-box.size[x]/2)),1);
+};
+
 describe('sofaParts', () => {
   for(const [w,d] of [[2.1,.9],[1.6,.85],[3,1]] as const)it(`fits exactly the ${w} × ${d} m footprint`, () => {
     const parts=sofaParts(w,d),[min,max]=partsBounds(parts);
@@ -161,6 +184,9 @@ describe('parametric furniture', () => {
     const boxes=parts.filter(p=>!p.lathe);
     for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)for(let a=0;a<3;a++)
       expect(overlapArea(boxes[i],boxes[j],a),`${boxes[i].name} / ${boxes[j].name} axis ${a}`).toBeLessThan(1e-9);
+    // The flat ends of turned parts must not lie on a box face either (Cycles shows those as z-fighting).
+    for(const p of parts)for(const cap of capFaces(p as Part))for(const b of boxes)
+      expect(capOverlap(cap,b as Part),`${p.name} / ${b.name}`).toBeLessThan(1e-9);
     // Turned parts fill their size exactly: the profile spans radius 1 and heights 0 to 1.
     for(const p of parts.filter(p=>p.lathe)){
       expect(Math.max(...p.lathe!.map(([r])=>r)),p.name).toBe(1);

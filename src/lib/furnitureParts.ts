@@ -2442,7 +2442,7 @@ export function playTentParts(w:number,d:number,h:number):FurniturePart[]{
   parts.push(...tiltX([0,1,2].map(k=>part(`Entrada ${k+1}`,[R*(.5-k*.16),step+(k<2?.002:0),.006+k*.001],0,.03+k*step,zb,{color:'#3a332c',surface:'textile',bevel:0})),angle,[.03,zb]));
   for(const s of [-1,1])parts.push(...tiltX([part(`Lazo ${s<0?'izquierdo':'derecho'}`,[.02,.12,.012],s*R*.3,.03+step*.4,zb+.006,{color:'#c4572f',bevel:.003})],angle,[.03,zb]));
   parts.push(
-    part('Cojín 1',[R*.7,.1,R*.55],-R*.18,.012,-R*.2,{color:'#8c9b8a',surface:'textile',bevel:.03,crown:{axis:'y',amount:.02}}),
+    part('Cojín 1',[R*.7,.1,R*.55],-R*.18,.014,-R*.2,{color:'#8c9b8a',surface:'textile',bevel:.03,crown:{axis:'y',amount:.02}}),
     part('Cojín 2',[R*.5,.08,R*.45],R*.25,.013,R*.1,{color:'#e8c25a',surface:'textile',bevel:.025,crown:{axis:'y',amount:.015}}),
   );
   return parts;
@@ -2464,7 +2464,7 @@ export function kidsTableParts(w:number,d:number,h:number):FurniturePart[]{
   const chair=(n:string):FurniturePart[]=>[
     ...[-1,1].flatMap(sx=>[-1,1].map(sz=>turned(`Pata silla ${n} ${sx<0?'izq':'der'} ${sz<0?'atrás':'delante'}`,ROD,[leg,seat-.02,leg],sx*(cw/2-.03),0,cz+sz*(cd/2-.03),wood))),
     part(`Asiento ${n}`,[cw,.02,cd],0,seat-.02,cz,{color:'item',bevel:.008}),
-    ...[-1,1].map(sx=>turned(`Poste ${n} ${sx<0?'izq':'der'}`,ROD,[leg,h-seat,leg],sx*(cw/2-.03),seat,cz-cd/2+.03,wood)),
+    ...[-1,1].map(sx=>turned(`Poste ${n} ${sx<0?'izq':'der'}`,ROD,[leg,h-seat-.002,leg],sx*(cw/2-.03),seat,cz-cd/2+.03,wood)),
     part(`Respaldo ${n}`,[cw-.02,.1,.018],0,h-.1,cz-cd/2+.03,{color:'item',bevel:.006}),
   ];
   parts.push(...chair('trasera'),...turnY(chair('delantera'),Math.PI,[0,0]));
@@ -2759,7 +2759,8 @@ export function ironingBoardParts(w:number,d:number,h:number):FurniturePart[]{
   const L=Math.hypot(xf+xt,yt),az=Math.atan2(xf+xt,yt),lift=t/2*Math.sin(az);
   const parts:FurniturePart[]=[
     part('Tabla',[w-nose/2,board,d],-nose/4,h-board,0,{color:'item',surface:'textile',bevel:.008}),
-    turned('Punta',ROD,[nose,board,d],w/2-nose/2,h-board,0,{color:'item',surface:'textile'}),
+    // 1 mm inside the board's top and bottom so the overlapping faces are not coplanar (Cycles showed the ellipse through the cover).
+    turned('Punta',ROD,[nose,board-.002,d],w/2-nose/2,h-board+.001,0,{color:'item',surface:'textile'}),
   ];
   for(const [n,s] of [['A',1],['B',-1]] as const){
     for(const side of [-1,1])parts.push({name:`Pata ${n} ${side<0?'trasera':'delantera'}`,size:[t,L,t],position:[s*(xf-xt)/2,yt/2+lift,side*zz],rotation:[0,0,s*az],...steel,bevel:.006});
