@@ -1196,9 +1196,9 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 }
 
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
-export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer','decor-tray','table-setting','wine-set','coffee-machine','dish-rack','herb-pots']);
+export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer','decor-tray','table-setting','wine-set','coffee-machine','dish-rack','herb-pots','printer','desktop-monitor','desk-globe','file-boxes']);
 // Wall-only or soft items that never carry a tabletop object.
-const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase','arc-lamp','leaning-art','blanket-ladder','folding-screen','wall-coat-rack','bar-cart','office-chair','floor-mirror','record-console','guitar-stand','floor-speaker','beanbag','magazine-rack','play-tent','kids-table']);
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase','arc-lamp','leaning-art','blanket-ladder','folding-screen','wall-coat-rack','bar-cart','office-chair','floor-mirror','record-console','guitar-stand','floor-speaker','beanbag','magazine-rack','play-tent','kids-table','whiteboard-easel']);
 /** Flat floor coverings: lie on the floor finish, never collide with furniture and cast no contact shadow. */
 export const FLOOR_COVER_KINDS:ReadonlySet<string>=new Set(['rug','doormat','bath-mat']);
 
@@ -2475,5 +2475,150 @@ export function kidsTableParts(w:number,d:number,h:number):FurniturePart[]{
   const crayon=Math.min(.07,h-top-.008);
   parts.push(turned('Bote de ceras',ROD,[.06,crayon*.7,.06],w*.22,top,-.04,{color:'#5e6b78'}));
   for(const [i,x,z,color] of [[1,-.012,0,'#c4572f'],[2,.01,.008,'#e8c25a'],[3,0,-.012,'#4f7a5a']] as const)parts.push(turned(`Cera ${i}`,ROD,[.009,crayon-.004*i,.009],w*.22+x,top+.004,-.04+z,{color}));
+  return parts;
+}
+
+/**
+ * Three-drawer steel filing cabinet inside `w × d × h`: a recessed dark plinth, a powder-coated
+ * carcass in the item colour and three equal drawers, each with a bar pull and a label holder.
+ */
+export function filingCabinetParts(w:number,d:number,h:number):FurniturePart[]{
+  const plinth=Math.min(.03,h*.05),front=d/2-.02,fh=(h-plinth-.03)/3,steel={color:'item',material:'metal'} as const;
+  const parts:FurniturePart[]=[
+    part('Zócalo',[w-.03,plinth,d-.06],0,0,-.02,{color:'#2b2d30',bevel:.002}),
+    part('Cuerpo',[w,h-plinth,d-.02],0,plinth,-.01,{...steel,bevel:.004}),
+  ];
+  for(let i=0;i<3;i++){
+    const y0=plinth+.01+i*fh;
+    parts.push(part(`Cajón ${i+1}`,[w-.024,fh-.008,.012],0,y0,front+.006,{...steel,bevel:.003}));
+    parts.push(part(`Tirador ${i+1}`,[w*.4,.018,.008],0,y0+fh*.58,front+.016,{color:'#c9ccd0',material:'metal',bevel:.003}));
+    parts.push(part(`Portaetiquetas ${i+1}`,[w*.22,Math.min(.035,fh*.12),.003],0,y0+fh*.76,front+.0135,{color:'#f2f0ea',bevel:0}));
+  }
+  return parts;
+}
+
+/**
+ * Mobile pedestal inside `w × d × h`: a carcass in the item colour on four castors, with a shallow
+ * pencil drawer, a standard drawer and a deep file drawer, each with a slim metal pull.
+ */
+export function mobilePedestalParts(w:number,d:number,h:number):FurniturePart[]{
+  const c=Math.min(.05,h*.1),front=d/2-.03,usable=h-c-.02;
+  const parts:FurniturePart[]=[part('Cuerpo',[w,h-c,d-.03],0,c,-.015,{color:'item',bevel:.004})];
+  for(const s of [-1,1])for(const t of [-1,1])
+    parts.push(turned(`Rueda ${s<0?'izquierda':'derecha'} ${t<0?'trasera':'delantera'}`,BALL,[.045,c,.045],s*(w/2-.045),0,t*(d/2-.06),{color:'#2b2d30'}));
+  let y=c+.01;
+  for(const [i,share] of [[1,.22],[2,.3],[3,.48]] as const){
+    const fh=usable*share;
+    parts.push(part(`Cajón ${i}`,[w-.02,fh-.006,.014],0,y,front+.007,{color:'item',bevel:.003}));
+    parts.push(part(`Tirador ${i}`,[w*.5,.012,.012],0,y+fh-.036,front+.02,{color:'#b9bcc0',material:'metal',bevel:.004}));
+    y+=fh;
+  }
+  return parts;
+}
+
+/**
+ * Whiteboard on a tripod easel inside `w × d × h` (front +z): two front legs leaning back carry a
+ * framed white board and a marker tray; a single rear leg leans forward to meet them at the top.
+ */
+export function whiteboardEaselParts(w:number,d:number,h:number):FurniturePart[]{
+  const t=.03,apex=-d*.05,wood={color:'wood',surface:'woodgrain',bevel:.004} as const;
+  // A leg is a box of length L turned by `a` around x, standing on the floor with its foot at z = `foot`:
+  // its bounds are L·cos a + t·sin|a| tall and L·sin|a| + t·cos a deep.
+  const leg=(name:string,x:number,a:number,foot:number,inward:1|-1):FurniturePart=>{
+    const L=(h-t*Math.sin(Math.abs(a)))/Math.cos(a),zHalf=L/2*Math.sin(Math.abs(a))+t/2*Math.cos(a);
+    return {name,size:[t,L,t],position:[x,h/2,foot-inward*zHalf],rotation:[a,0,0],...wood};
+  };
+  const front=-Math.atan((d/2-apex-t)/h),back=Math.atan((d/2+apex-t)/h);
+  const parts:FurniturePart[]=[
+    leg('Pata delantera izquierda',-(w/2-.08),front,d/2,1),
+    leg('Pata delantera derecha',w/2-.08+.0005,front,d/2,1),
+    leg('Pata trasera',0,back,-d/2,-1),
+  ];
+  // Board parts ride on the front legs' plane: `along` is the height of their centre, `off` how far in front of the legs' axis.
+  const [,yc,zc]=parts[0].position;
+  const onFront=(name:string,size:Vec3,along:number,off:number,rest:Omit<FurniturePart,'name'|'size'|'position'|'rotation'>):FurniturePart=>{
+    const s=(along-yc)/Math.cos(front);
+    return {name,size,position:[0,yc+s*Math.cos(front)-off*Math.sin(front),zc+s*Math.sin(front)+off*Math.cos(front)],rotation:[front,0,0],...rest};
+  };
+  const bh=Math.min(.9,h*.48),bc=h*.62,off=t/2+.012,low=bc-bh/2;
+  parts.push(onFront('Marco',[w,bh,.024],bc,off,{color:'#c9ccd0',material:'metal',bevel:.006}));
+  parts.push(onFront('Pizarra',[w-.04,bh-.04,.003],bc,off+.0135,{color:'#f6f6f3',material:'gloss',bevel:0}));
+  parts.push(onFront('Bandeja de rotuladores',[w*.8,.016,.05],low-.02,off+.025,{color:'#c9ccd0',material:'metal',bevel:.004}));
+  parts.push(onFront('Rotulador',[.12,.014,.014],low-.004,off+.05,{color:'#2f5f9a',bevel:.004}));
+  parts.push(onFront('Borrador',[.11,.03,.045],low+.003,off+.032,{color:'#3a3d42',bevel:.006}));
+  return parts;
+}
+
+/**
+ * Multifunction printer inside `w × d × h`: a body in the item colour with a scanner lid on top,
+ * a dark output slot with a tray and a printed sheet, a control panel with a glossy screen and a
+ * paper cassette below.
+ */
+export function printerParts(w:number,d:number,h:number):FurniturePart[]{
+  const body=h*.8,front=d/2-.02;
+  return [
+    part('Cuerpo',[w,body,d-.02],0,0,-.01,{color:'item',bevel:.006}),
+    part('Tapa del escáner',[w-.01,h-body,d-.03],0,body,-.015,{color:'item',bevel:.006}),
+    part('Salida de papel',[w*.7,h*.12,.004],0,h*.34,front+.002,{color:'#1d1f22',bevel:0}),
+    part('Bandeja de salida',[w*.66,.006,.02],0,h*.38,front+.009,{color:'#3a3d42',bevel:.002}),
+    part('Hoja impresa',[w*.42,.003,.016],0,h*.38+.006,front+.009,{color:'#f6f5f0',bevel:0}),
+    part('Panel de control',[w*.32,h*.14,.01],w*.3,h*.49,front+.005,{color:'#26282b',bevel:.003}),
+    part('Pantalla',[w*.12,h*.08,.002],w*.24,h*.52,front+.011,{color:'#101418',material:'gloss',bevel:0}),
+    part('Botón de encendido',[.012,.012,.004],w*.4,h*.54,front+.012,{color:'#5fa0d8',bevel:.002}),
+    part('Bandeja de papel',[w*.86,h*.22,.008],0,h*.06,front+.004,{color:'item',bevel:.003}),
+    part('Asa de la bandeja',[w*.24,h*.04,.003],0,h*.2,front+.0095,{color:'#2b2d30',bevel:0}),
+  ];
+}
+
+/**
+ * Desktop computer set inside `w × d × h` (front +z): a slim monitor of width `w` on a column and
+ * flat foot at the back, with a keyboard and a mouse in front of it.
+ */
+export function desktopMonitorParts(w:number,d:number,h:number):FurniturePart[]{
+  const ph=Math.min(h*.78,w*.6),bw=Math.min(.24,w*.4),bd=Math.min(.16,d*.36),kw=Math.min(.44,w*.72),kd=Math.min(.14,d*.3),kz=d/2-kd/2-.03;
+  const alu={color:'item',material:'metal'} as const;
+  return [
+    part('Base del soporte',[bw,.012,bd],0,0,-d/2+bd/2,{...alu,bevel:.004}),
+    part('Columna',[.05,h-ph*.45-.012,.025],0,.012,-d/2+.0125,{...alu,bevel:.006}),
+    part('Monitor',[w,ph,.022],0,h-ph,-d/2+.041,{color:'#1d1f22',bevel:.004}),
+    part('Pantalla',[w-.016,ph-.03,.002],0,h-ph+.018,-d/2+.053,{color:'#0d0f12',material:'gloss',bevel:0}),
+    part('Teclado',[kw,.012,kd],-w*.06,0,kz,{...alu,bevel:.003}),
+    part('Teclas',[kw-.02,.004,kd-.02],-w*.06,.012,kz,{color:'#2b2d30',bevel:.001}),
+    turned('Ratón',BALL,[.06,.034,.1],w/2-.04,0,kz,{color:'item',material:'gloss'}),
+  ];
+}
+
+/** Smooth sphere (lathe profile, 17 points) for the globe, finer than BALL so its highlight stays round. */
+const SPHERE:Profile=[[0,0],[.195,.01],[.383,.038],[.556,.084],[.707,.146],[.831,.222],[.924,.309],[.981,.402],[1,.5],[.981,.598],[.924,.691],[.831,.778],[.707,.854],[.556,.916],[.383,.962],[.195,.99],[0,1]];
+/** Thin ring (lathe profile): a short tube whose wall is 7 % of its radius. */
+const GLOBE_RING:Profile=[[.93,0],[1,0],[1,1],[.93,1],[.93,0]];
+/**
+ * Desk globe inside `w × d × h`: a turned wooden foot and stem holding a brass meridian ring of
+ * diameter `w` that reaches `h`, around a globe in the item colour.
+ */
+export function deskGlobeParts(w:number,d:number,h:number):FurniturePart[]{
+  const foot=Math.min(.025,h*.06),yc=h-w/2,globe=w*.86,stem=Math.max(.01,yc-w/2-foot),base=Math.min(w*.55,d);
+  return [
+    turned('Peana',DISC,[base,foot,base],0,0,0,{color:'wood',surface:'woodgrain'}),
+    turned('Vástago',TAPER,[.03,stem+.004,.03],0,foot,0,{color:'wood',surface:'woodgrain'}),
+    turnedFront('Meridiano',GLOBE_RING,[w,w,Math.min(.012,d)],0,yc-w/2,0,{color:'#b08a4a',material:'metal'}),
+    turned('Globo',SPHERE,[globe,globe,globe],0,yc-globe/2,0,{color:'item',material:'gloss'}),
+  ];
+}
+
+/**
+ * Three magazine files side by side inside `w × d × h`, each cut in two steps (tall at the back,
+ * low at the front) with papers showing above the low step and a white label on its front edge;
+ * colours alternate item, oat and slate.
+ */
+export function fileBoxesParts(w:number,d:number,h:number):FurniturePart[]{
+  const gap=.004,fw=(w-2*gap)/3,back=d*.55,lowD=d-back-.002,parts:FurniturePart[]=[];
+  for(const [i,color] of [[0,'item'],[1,'#d8cfbf'],[2,'#5e6b78']] as const){
+    const x=-w/2+fw/2+i*(fw+gap);
+    parts.push(part(`Revistero ${i+1} trasero`,[fw,h,back],x,0,-d/2+back/2,{color,bevel:.003}));
+    parts.push(part(`Revistero ${i+1} delantero`,[fw,h*.42,lowD],x,0,-d/2+back+lowD/2,{color,bevel:.003}));
+    parts.push(part(`Etiqueta ${i+1}`,[fw*.6,h*.12,.002],x,h*.16,d/2-.001,{color:'#f4f1e8',bevel:0}));
+    parts.push(part(`Papeles ${i+1}`,[fw-.012,h*.08,lowD*.7],x,h*.42,-d/2+back+lowD*.38,{color:'#f6f5f0',bevel:0}));
+  }
   return parts;
 }
