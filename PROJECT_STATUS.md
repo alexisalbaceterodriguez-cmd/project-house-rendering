@@ -3,7 +3,24 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, paquete de cocina y lavandería)
+## Último cambio publicado (27/11/2026, comparación en Cycles de los tres últimos paquetes)
+
+- **Comparación:** los paquetes de ocio/infantil, despacho y cocina/lavandería se renderizaron en WebGL y en Cycles con la misma cámara (`scripts/accessory-compare.mjs`, escena en blanco de 6 × 4 m, iluminación de tarde). Formas, proporciones y materiales coinciden. Los azules salen algo más grises en Cycles por la luz cálida de la tarde; es iluminación, no geometría.
+- **`78f3264`:** corrige caras coplanarias entre tornos y cajas, visibles como z-fighting en Cycles.
+  - Tabla de planchar: la elipse de la punta se veía a través de la funda. Ahora la punta queda 1 mm dentro de la tabla por arriba y por abajo.
+  - Postes de las sillas de la mesa infantil: 2 mm más cortos.
+  - Cojín de la tienda de juegos: elevado 2 mm.
+  - Comprobado en un primer plano en Cycles: la elipse ha desaparecido.
+- **Test nuevo:** `furniture-parts.test.ts` comprueba en todos los constructores que ninguna tapa plana de un torno sin rotar se solapa en el mismo plano con una cara de caja. Quedan excluidas las cajas rotadas y las bases apoyadas en el suelo (y = 0).
+- **Validación local:** unitarias 466/466, build y smoke 8/8.
+- **CI:** [Test and build 45993285302](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45993285302), SHA `78f3264`.
+  - Conclusión final: completed/success en el intento 2.
+  - El intento 1 falló en E2E: `product.e2e.ts:85`, por timeout de 15 s esperando la descarga del PNG con tres GLB. No toca el código cambiado.
+  - `studio-reference` pasó al reintento.
+  - Si se repite, conviene ampliar ese timeout.
+- **Siguiente tarea exacta:** una función de edición, o una textura de continentes para el globo terráqueo (ahora es de color liso).
+
+## Cambio publicado el 27/11/2026 (paquete de cocina y lavandería)
 
 - **`0057597`:** siete objetos paramétricos nuevos. Comparten geometría entre el visor y el GLB de Cycles.
   - De sobremesa (`TABLETOP_KINDS`): microondas (puerta de cristal oscuro, ventana, asa, panel con pantalla y mando), tostadora de dos ranuras y batidora amasadora con cabezal, bol de acero torneado y batidor.
@@ -14,7 +31,7 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
 - **Revisión visual:** escena en blanco de 6 × 4 m solo en WebGL (motor local inactivo), vista frontal y lateral; los siete se leen correctamente.
 - **Validación local:** unitarias 466/466, build y smoke 8/8.
 - **CI:** [Test and build 45985085987](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45985085987), SHA `0057597`, completed/success (unitarias, build y E2E completa).
-- **Límites:** no se ha comparado con Cycles. Las celdas del botellero tienen botellas lisas sin etiqueta y la ropa del tendedero son paneles planos.
+- **Límites:** comparado después con Cycles (ver arriba). Las celdas del botellero tienen botellas lisas sin etiqueta y la ropa del tendedero son paneles planos.
 - **Siguiente tarea exacta:** comparar los paquetes de ocio/infantil, despacho y cocina/lavandería en Cycles con la misma cámara (`scripts/accessory-compare.mjs` con el motor activo). Después, una función de edición o una textura de continentes para el globo.
 
 ## Cambio publicado el 27/11/2026 (paquete de despacho y estudio)
