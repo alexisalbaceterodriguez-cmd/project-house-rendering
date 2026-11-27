@@ -2145,7 +2145,7 @@ export function barCartParts(w:number,d:number,h:number):FurniturePart[]{
     parts.push(turnedFront(`Rueda ${sx<0?'izq':'der'} ${sz<0?'atrás':'delante'}`,DISC,[wheel,wheel,.022],sx*ux,0,sz*(d/2-.012),{color:'#2b2a28'}));
   }
   parts.push(turned('Asa',ROD,[tube,2*uz,tube],-ux,handleY-uz,0,{...brass,rotation:[Math.PI/2,0,0]}));
-  for(const [name,y,color,material] of [['superior',top,'#1f2224','glass'],['inferior',low,'wood',undefined]] as const){
+  for(const [name,y,color,material] of [['superior',top,'#9aa29f','glass'],['inferior',low,'wood',undefined]] as const){
     parts.push(part(`Bandeja ${name}`,[frameW-tube,tray,d-tube],0,y,0,{color,material,surface:color==='wood'?'woodgrain':undefined,bevel:.002}));
     for(const s of [-1,1]){
       parts.push(part(`Borde ${name} ${s<0?'trasero':'delantero'}`,[frameW,rim,tube*.6],0,y,s*uz,{...brass,bevel:.002}));

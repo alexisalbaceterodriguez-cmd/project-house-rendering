@@ -1,6 +1,6 @@
 import type { Point, Project } from '../types';
 import { roomVertices } from './topology';
-import { candleFlames, furnitureElevation, pendantShadeHeight, placedElevation, tableLampShadeHeight } from './furnitureParts';
+import { arcLampBulb, candleFlames, furnitureElevation, pendantShadeHeight, placedElevation, tableLampShadeHeight } from './furnitureParts';
 
 /**
  * Render package (`atelier-render-package` v1): the contract between the editor and
@@ -99,7 +99,7 @@ export const MAX_INTERIOR_LIGHTS=64;
 export function interiorLights(project:Project){
   // Floor lamps light from under the shade's top; pendants from inside their bell (furnitureElevation);
   // table lamps from inside their shade, on top of the furniture they stand on (placedElevation);
-  // every candle from its own flame, a small warm source (about 1900 K) rotated with the tray.
+  // arc lamps from the bulb under their dome; every candle from its own flame, a small warm source (about 1900 K) rotated with the tray.
   const lampY=(f:Project['furniture'][number])=>f.kind==='pendant'?furnitureElevation(f,project.wallHeight)+pendantShadeHeight(f.w,f.h)*.35
     :f.kind==='table-lamp'?placedElevation(f,project.furniture,project.wallHeight)+f.h-tableLampShadeHeight(f.h)*.55:Math.max(.3,f.h-.15);
   const SOURCES:Record<string,{power:number;temperature:number;radius:number}>={lamp:{power:60,temperature:2700,radius:.06},pendant:{power:60,temperature:2700,radius:.06},'table-lamp':{power:35,temperature:2700,radius:.04}};
@@ -109,6 +109,11 @@ export function interiorLights(project:Project){
       // Scene3D turns the item by -rotation about +y: local (x,z) → world (x·cos−z·sin, x·sin+z·cos).
       const a=f.rotation*Math.PI/180,c=Math.cos(a),s=Math.sin(a),y0=placedElevation(f,project.furniture,project.wallHeight);
       return candleFlames(f.w,f.d,f.h).map(([x,y,z],i)=>({id:`${f.id}:llama-${i+1}`,position:vec([f.x+x*c-z*s,y0+y,f.y+x*s+z*c]),...flame}));
+    }
+    if(f.kind==='arc-lamp'){
+      // The bulb hangs under the dome at the far end of the arc, not over the item's centre.
+      const a=f.rotation*Math.PI/180,c=Math.cos(a),s=Math.sin(a),[x,y,z]=arcLampBulb(f.w,f.d,f.h);
+      return [{id:f.id,position:vec([f.x+x*c-z*s,y,f.y+x*s+z*c]),...SOURCES.lamp}];
     }
     return f.kind in SOURCES?[{id:f.id,position:vec([f.x,lampY(f),f.y]),...SOURCES[f.kind]}]:[];
   }).sort((a,b)=>b.power-a.power);

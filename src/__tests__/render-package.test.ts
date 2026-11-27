@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { demoProject } from '../data/defaultProject';
 import { assemblePackage, buildManifest, interiorLights, MAX_INTERIOR_LIGHTS, crc32, LIT_ROOM_WATTS_PER_M2, mainWindow, packageKey, pointInPolygon, sha256Hex, storedZip, windowlessRooms, type PackageCamera } from '../lib/renderPackage';
 import { Vector3 } from 'three';
-import { candleFlames } from '../lib/furnitureParts';
+import { arcLampBulb, candleFlames } from '../lib/furnitureParts';
 
 const camera:PackageCamera={position:[3.4,1.5,4.8],target:[1.6,1.1,1.2],fovY:55};
 const geometry={sha256:'a'.repeat(64),bytes:10};
@@ -100,6 +100,18 @@ describe('render package', () => {
     for(const light of lights){expect(light.temperature).toBeLessThan(2700);expect(light.power).toBeLessThan(5);}
     const day=buildManifest(p,camera,{preset:'afternoon',quality:'draft',width:960,height:540},geometry,'hash');
     expect(day.lighting.interior).toEqual([]);
+  });
+
+  it('lights the arc lamp from the bulb under its dome, turned with the item', () => {
+    const p=structuredClone(demoProject);
+    p.furniture.push({id:'arc',kind:'arc-lamp',name:'Lámpara de arco',x:.4,y:2,w:1.6,d:.42,h:2,rotation:270,color:'#2f2e2c'});
+    const light=interiorLights(p).find(l=>l.id==='arc');
+    const [lx,ly,lz]=arcLampBulb(1.6,.42,2);
+    const v=new Vector3(lx,ly,lz).applyAxisAngle(new Vector3(0,1,0),-270*Math.PI/180);
+    expect(light?.position[0]).toBeCloseTo(.4+v.x,3);
+    expect(light?.position[1]).toBeCloseTo(ly,3);
+    expect(light?.position[2]).toBeCloseTo(2+v.z,3);
+    expect(light?.power).toBe(60);
   });
 
   it('keeps the strongest night lights within the contract cap', () => {

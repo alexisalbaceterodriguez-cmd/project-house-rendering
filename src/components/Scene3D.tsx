@@ -7,7 +7,7 @@ import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.j
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { floors } from '../data/catalog';
 import { clamp, wallLength, wallParts, wallProjection } from '../lib/geometry';
-import { roomLabelPoint,roomVertices } from '../lib/topology';
+import { roomArea,roomLabelPoint,roomVertices } from '../lib/topology';
 import { getModelAsset } from '../lib/assets';
 import { useEditor, useEditorPick } from '../store';
 import type { Furniture, Opening, Project, Wall } from '../types';
@@ -29,6 +29,8 @@ function textureProps(kind:SurfaceKind){const {map,normalMap,roughnessMap,metaln
 // window glass or door leaves after the scene is exported to glTF.
 // `surface` adds metre-scaled image maps (textile weave, wood grain) that also travel in the render GLB.
 // `bevel` rounds edges inside the same outer size (see EDGE_RADIUS); `crown` domes a cushion face. The GLB carries the same mesh.
+// At night a lit shade glows warm (≈2700 K), as Cycles makes it emissive (make_glowing_shade).
+const SHADE_GLOW={emissive:'#ffc98a',emissiveIntensity:1.4} as const;
 const FLAME_GLOW='#ffb04a';
 type Look={color:string;material?:'matte'|'glass'|'metal'|'mirror'|'gloss';opacity?:number;finishId?:string;role?:string;surface?:Extract<SurfaceKind,'textile'|'woodgrain'>};
 type Shape={size:readonly [number,number,number];bevel?:number;crown?:Crown;lathe?:Profile;axis?:'z';rotation?:readonly [number,number,number]};
@@ -42,9 +44,10 @@ const shapeGeometry=({size,bevel=0,crown,lathe,axis,rotation}:Shape)=>{
 function LookMesh({geometry,position,thickness,look:{color,material='matte',opacity=1,finishId,role,surface}}:{geometry:THREE.BufferGeometry;position?:[number,number,number];thickness:number;look:Look}){
   const inherited=useContext(SurfaceContext);const id=finishId??inherited;
   const high=useEditor(state=>state.project.render?.quality==='high');
+  const night=useEditor(state=>state.project.render?.lighting==='night');
   if(role==='flame')return <mesh position={position}><primitive object={geometry} attach="geometry"/><meshStandardMaterial name="atelier:flame" color={color} emissive={FLAME_GLOW} emissiveIntensity={1.6} roughness={1}/></mesh>;
   return <mesh castShadow={material!=='glass'&&role!=='sheer'} receiveShadow position={position}>
-    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={thickness}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity} depthWrite={opacity>=1}/>}
+    <primitive object={geometry} attach="geometry"/>{id&&material==='matte'&&opacity===1?<Suspense fallback={<meshStandardMaterial color={color}/>}><PbrSurface id={id} color={color}/></Suspense>:material==='glass'?<meshPhysicalMaterial name="atelier:glass" color={color} roughness={.08} {...physicalProperties({finish:'glass',color},high)} thickness={thickness}/>:surface&&material==='matte'&&opacity===1?<meshStandardMaterial name={`atelier:${surface}`} color={color} roughness={1} metalness={0} {...textureProps(surface)}/>:material==='mirror'||material==='gloss'?<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='mirror'?.02:.06} metalness={material==='mirror'?1:0} envMapIntensity={material==='mirror'?1.6:1.2}/>:<meshStandardMaterial name={role?`atelier:${role}`:undefined} color={color} roughness={material==='metal'?.28:.8} metalness={material==='metal'?.7:0} envMapIntensity={material==='metal'?2.2:1} transparent={opacity<1} opacity={opacity} depthWrite={opacity>=1} {...(night&&role==='lampshade'?SHADE_GLOW:{})}/>}
   </mesh>;
 }
 // Part builders return fresh arrays on every call: compare tuples and profiles by value.
@@ -310,6 +313,13 @@ function Plant({item,wood}:{item:Furniture;wood:string}){
     {foliage.leaves.map((g,i)=><mesh key={i} castShadow receiveShadow geometry={g}><meshStandardMaterial name="atelier:leaf" color={tones[i]} roughness={.55} side={THREE.DoubleSide}/></mesh>)}
   </>;
 }
+// A lamp's bulb: a faint fill by day, switched on at night (Cycles places its own light there, renderPackage.interiorLights).
+function LampLight({position,night,day=.13,distance,down=false}:{position:[number,number,number];night:boolean;day?:number;distance:number;down?:boolean}){
+  // An opaque dome (arc lamp) sends its light down: a spot cone, so the wall above it stays dark as in Cycles.
+  const target=useMemo(()=>new THREE.Object3D(),[]);
+  if(night&&down)return <><primitive object={target} position={[position[0],position[1]-1,position[2]]}/><spotLight position={position} target={target} intensity={4.5} angle={1.05} penumbra={.85} color="#ffd9a8" distance={distance*2.4}/></>;
+  return <pointLight position={position} intensity={night?2.2:day} color={night?'#ffd9a8':'#fff2d3'} distance={night?distance*2.4:distance}/>;
+}
 function FurnitureShape({item,wood,night,selected}:{item:Furniture;wood:string;night:boolean;selected:boolean}){
   if(item.module)return <ModuleModel item={item} wood={wood}/>;
   const {w,d,h}=item;
@@ -324,7 +334,7 @@ function FurnitureShape({item,wood,night,selected}:{item:Furniture;wood:string;n
     case 'coffee-table':return <Parts parts={coffeeTableParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv-unit':return <Parts parts={tvUnitParts(w,d,h)} item={item} wood={wood}/>;
     case 'tv':return <Parts parts={tvParts(w,d,h)} item={item} wood={wood}/>;
-    case 'table-lamp':return <><Parts parts={tableLampParts(w,d,h)} item={item} wood={wood}/><pointLight position={[0,h-tableLampShadeHeight(h)*.55,0]} intensity={.08} color="#fff2d3" distance={1.6}/></>;
+    case 'table-lamp':return <><Parts parts={tableLampParts(w,d,h)} item={item} wood={wood}/><LampLight position={[0,h-tableLampShadeHeight(h)*.55,0]} night={night} day={.08} distance={1.6}/></>;
     case 'corner-sofa':return <Parts parts={cornerSofaParts(w,d,h)} item={item} wood={wood}/>;
     case 'corner-sofa-left':return <Parts parts={cornerSofaLeftParts(w,d,h)} item={item} wood={wood}/>;
     case 'vase':return <Parts parts={vaseParts(w,d,h)} item={item} wood={wood}/>;
@@ -350,7 +360,7 @@ function FurnitureShape({item,wood,night,selected}:{item:Furniture;wood:string;n
     case 'desk-organizer':return <Parts parts={deskOrganizerParts(w,d,h)} item={item} wood={wood}/>;
     case 'blanket-basket':return <Parts parts={blanketBasketParts(w,d,h)} item={item} wood={wood}/>;
     case 'clothes-rail':return <Parts parts={clothesRailParts(w,d,h)} item={item} wood={wood}/>;
-    case 'arc-lamp':return <><Parts parts={arcLampParts(w,d,h)} item={item} wood={wood}/><pointLight position={arcLampBulb(w,d,h)} intensity={.13} color="#fff2d3" distance={2.2}/></>;
+    case 'arc-lamp':return <><Parts parts={arcLampParts(w,d,h)} item={item} wood={wood}/><LampLight position={arcLampBulb(w,d,h)} night={night} distance={2.2} down/></>;
     case 'leaning-art':return <Parts parts={leaningArtParts(w,d,h)} item={item} wood={wood}/>;
     case 'blanket-ladder':return <Parts parts={blanketLadderParts(w,d,h)} item={item} wood={wood}/>;
     case 'folding-screen':return <Parts parts={foldingScreenParts(w,d,h)} item={item} wood={wood}/>;
@@ -395,7 +405,7 @@ function FurnitureShape({item,wood,night,selected}:{item:Furniture;wood:string;n
     case 'bathtub':return <Parts parts={bathtubParts(w,d,h)} item={item} wood={wood}/>;
     case 'mirror':return <Mirror item={item} wood={wood}/>;
     case 'artwork':return <Parts parts={artworkParts(w,d,h)} item={item} wood={wood}/>;
-    case 'pendant':return <><Parts parts={pendantParts(w,d,h)} item={item} wood={wood}/><pointLight position={[0,pendantShadeHeight(w,h)*.35,0]} intensity={.13} color="#fff2d3" distance={2.4}/></>;
+    case 'pendant':return <><Parts parts={pendantParts(w,d,h)} item={item} wood={wood}/><LampLight position={[0,pendantShadeHeight(w,h)*.35,0]} night={night} distance={2.4}/></>;
     case 'bookshelf':return <Parts parts={bookshelfParts(w,d,h)} item={item} wood={wood}/>;
     case 'island':return <Parts parts={islandParts(w,d,h)} item={item} wood={wood}/>;
     case 'chair':return <Parts parts={chairParts(w,d,h)} item={item} wood={wood}/>;
@@ -406,7 +416,7 @@ function FurnitureShape({item,wood,night,selected}:{item:Furniture;wood:string;n
     case 'toilet':return <Parts parts={toiletParts(w,d,h)} item={item} wood={wood}/>;
     case 'shower':return <Parts parts={showerParts(w,d,h)} item={item} wood={wood}/>;
     case 'plant':return <Plant item={item} wood={wood}/>;
-    case 'lamp':return <><Parts parts={lampParts(w,d,h)} item={item} wood={wood}/><pointLight position={[0,h-.15,0]} intensity={.13} color="#fff2d3" distance={2}/></>;
+    case 'lamp':return <><Parts parts={lampParts(w,d,h)} item={item} wood={wood}/><LampLight position={[0,h-.15,0]} night={night} distance={2}/></>;
     case 'rug':return item.materialId?<Box position={[0,.014,0]} size={[w,.028,d]} color={item.color}/>:<WovenRug item={item}/>;
     case 'model':return <ModelShape item={item} selected={selected}/>;
   }
@@ -622,7 +632,8 @@ export default function Scene3D({canvasRef,topView=false,active=true}:{canvasRef
       {/* Image-based light: metals need something to reflect, or they render almost black. */}
       <ErrorBoundary fallback={null}><Suspense fallback={null}><Environment files={ENVIRONMENT_FILE} environmentIntensity={render.lighting==='night'?.08:.28}/></Suspense></ErrorBoundary>
       <directionalLight castShadow position={[-5,13,7]} intensity={render.lighting==='night'?.2:2.3} color={render.lighting==='night'?'#a8bfff':'#fff5e8'} shadow-mapSize-width={high?2048:1024} shadow-mapSize-height={high?2048:1024} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} shadow-bias={-.0001}/>
-      {render.lighting==='night'&&<pointLight position={[project.width/2,2.3,project.depth/2]} intensity={35} color="#ffd6a3" decay={2}/>}
+      {/* Night: one ceiling light per room, as Cycles lights every room (roomLights), not one lamp for the whole house. */}
+      {render.lighting==='night'&&project.rooms.map(room=>{const p=roomLabelPoint(room);return <pointLight key={room.id} position={[p.x,project.wallHeight-.25,p.y]} intensity={clamp(.55*roomArea(room),3,12)} color="#ffd6a3" decay={2}/>;})}
       </>}
       <InteractionQuality high={high}/>
       <CameraRig project={project} top={!cameraLocked&&topView}/>
