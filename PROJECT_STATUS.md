@@ -3,7 +3,22 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, continentes en el globo terráqueo)
+## Último cambio publicado (27/11/2026, edición de muebles con el teclado)
+
+- **`503543a`:** edición con el teclado del mueble seleccionado o del grupo (Mayús+clic en el plano o «Seleccionar todos los objetos»).
+  - Flechas: mueven 1 cm (10 cm con Mayús) en bloque. El movimiento se acorta para que ningún centro salga del plano, sin deformar el grupo. Mantener la flecha pulsada es un solo paso de deshacer (la primera pulsación registra historial; las repeticiones `e.repeat` lo amplían).
+  - `R` / `Mayús+R`: giro de 90° horario / antihorario. Un mueble gira en su sitio; un grupo gira alrededor del centro de sus posiciones (la mesa conserva sus sillas). Ángulo normalizado a 0–360°.
+  - `Ctrl/⌘+D`: duplica la selección 25 cm más allá (acortado en el borde como bloque), con nombres «(copia)», y selecciona las copias.
+  - No actúa con un campo de texto enfocado, con Alt ni en el paseo 3D con el puntero bloqueado.
+- **Implementación:** `src/lib/keyboardEdit.ts` (`nudgeFurniture`, `rotateFurniture`, `duplicateFurniture`), conectado al manejador global de teclado de `src/App.tsx`. Guía rápida y MANUAL.md §«Moverse por las vistas» actualizados.
+- **Tests:** `keyboard-edit.test.ts` (5): movimiento en bloque, borde del plano, giro en su sitio y normalización, giro del grupo en el sentido del plano (cuatro giros vuelven al origen) y duplicado válido con ids nuevos.
+- **Comprobado en la aplicación real** (pane de 1024 px): mesa del comedor movida, girada y duplicada; mesa + dos sillas movidas 10 pasos con una flecha mantenida (un solo deshacer las devuelve) y giradas en bloque, con plano y 3D coincidentes.
+- **Validación local:** `tsc -b`, build y smoke 8/8.
+- **CI:** [Test and build 45999279009](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45999279009), SHA `503543a`, completed/success; despliegue de Pages 46000307505 success.
+- **Límites:** el giro es siempre de 90° (los ángulos finos siguen en el campo Rotación, paso 15°); el giro de grupo usa el centro de las posiciones, no de las huellas; no hay copiar/pegar entre proyectos ni teclado para muros, huecos o estancias.
+- **Siguiente tarea exacta:** el siguiente paquete de objetos, o alinear/distribuir varios muebles seleccionados desde el panel.
+
+## Cambio publicado el 27/11/2026 (continentes en el globo terráqueo)
 
 - **`5b34491`:** el globo terráqueo tiene continentes.
   - Mapa equirectangular hecho a partir de una máscara de tierra de Natural Earth 1:50m (dominio público). La máscara es `public/materials/surfaces/globe-land.png`, de 1024 × 512 px, generada con `scripts/derive_globe_mask.py`.
@@ -21,7 +36,7 @@ Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de refe
   - Mares interiores como el Caspio salen como tierra, porque la máscara no incluye lagos.
   - Sin relieve, fronteras ni rótulos.
   - El eje es vertical, sin la inclinación de 23,4° de un globo real.
-- **Siguiente tarea exacta:** una función de edición del editor, o el siguiente paquete de objetos.
+- **Siguiente tarea:** resuelta con la edición por teclado (arriba).
 
 ## Cambio publicado el 27/11/2026 (comparación en Cycles de los tres últimos paquetes)
 
