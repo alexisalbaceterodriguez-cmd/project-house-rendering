@@ -3,7 +3,27 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, comparación en Cycles de los tres últimos paquetes)
+## Último cambio publicado (27/11/2026, continentes en el globo terráqueo)
+
+- **`5b34491`:** el globo terráqueo tiene continentes.
+  - Mapa equirectangular hecho a partir de una máscara de tierra de Natural Earth 1:50m (dominio público). La máscara es `public/materials/surfaces/globe-land.png`, de 1024 × 512 px, generada con `scripts/derive_globe_mask.py`.
+  - Océanos en el color del objeto, con retícula cada 30°; tierra en tonos de pergamino, con costa más oscura y hielo hacia los polos.
+  - Europa y África miran al frente (`FRONT_LONGITUDE` = 15°).
+- **Implementación:** `src/lib/globeTexture.ts`; la pieza `Globo` usa `role:'globe'` y el material `atelier:globe`, con base blanca y el mapa como color.
+  - El mapa sigue las UV del torno (fila 0 al sur, `flipY = false`) y viaja en el GLB del render.
+  - `trackTextureJob` hace que la exportación del render y la captura PNG esperen a la máscara, igual que a los escaneos de superficie.
+  - Mientras la máscara carga, o si falla, el globo se ve liso como antes.
+- **Tests:** `globe-texture.test.ts` comprueba colores, orientación (sur en la fila 0, longitud frontal en la columna 0), retícula, costa, el rol de la pieza y la presencia de la máscara.
+- **Revisión visual:** primer plano del globo en WebGL y en Cycles con la misma cámara. Ambos muestran el mismo mapa, con el norte arriba, sin espejo y sin costura visible. En Cycles los colores salen algo más cálidos por la luz de tarde.
+- **Validación local:** unitarias 470/470, build y smoke 8/8.
+- **CI:** [Test and build 45998095008](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45998095008), SHA `5b34491`, completed/success.
+- **Límites:**
+  - Mares interiores como el Caspio salen como tierra, porque la máscara no incluye lagos.
+  - Sin relieve, fronteras ni rótulos.
+  - El eje es vertical, sin la inclinación de 23,4° de un globo real.
+- **Siguiente tarea exacta:** una función de edición del editor, o el siguiente paquete de objetos.
+
+## Cambio publicado el 27/11/2026 (comparación en Cycles de los tres últimos paquetes)
 
 - **Comparación:** los paquetes de ocio/infantil, despacho y cocina/lavandería se renderizaron en WebGL y en Cycles con la misma cámara (`scripts/accessory-compare.mjs`, escena en blanco de 6 × 4 m, iluminación de tarde). Formas, proporciones y materiales coinciden. Los azules salen algo más grises en Cycles por la luz cálida de la tarde; es iluminación, no geometría.
 - **`78f3264`:** corrige caras coplanarias entre tornos y cajas, visibles como z-fighting en Cycles.
