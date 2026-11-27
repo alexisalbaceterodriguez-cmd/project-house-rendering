@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { microwaveParts, toasterParts, standMixerParts, wineRackParts, kitchenTrolleyParts, ironingBoardParts, dryingRackParts, filingCabinetParts, mobilePedestalParts, whiteboardEaselParts, printerParts, desktopMonitorParts, deskGlobeParts, fileBoxesParts, uprightPianoParts, guitarStandParts, floorSpeakerParts, beanbagParts, magazineRackParts, toyBoxParts, playTentParts, kidsTableParts, blanketLadderParts, floorMirrorParts, nestingTablesParts, FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, supportTop, supportUnder, placedElevation, tabletopSpot, restHeight, softRest, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
+import { freestandingBathtubParts, pedestalSinkParts, bidetParts, mirrorCabinetParts, toiletShelfParts, bathStoolParts, toiletRollStandParts, microwaveParts, toasterParts, standMixerParts, wineRackParts, kitchenTrolleyParts, ironingBoardParts, dryingRackParts, filingCabinetParts, mobilePedestalParts, whiteboardEaselParts, printerParts, desktopMonitorParts, deskGlobeParts, fileBoxesParts, uprightPianoParts, guitarStandParts, floorSpeakerParts, beanbagParts, magazineRackParts, toyBoxParts, playTentParts, kidsTableParts, blanketLadderParts, floorMirrorParts, nestingTablesParts, FACE_GAP, HANDED_KINDS, handOf, tableLampParts, vaseParts, bookStackParts, fruitBowlParts, tableClockParts, decorBowlParts, shelfBasketParts, throwPillowParts, foldedBlanketParts, bathTrayParts, candleParts, candleFlames, photoFrameParts, supportTop, supportUnder, placedElevation, tabletopSpot, restHeight, softRest, cornerSofaParts, cornerSofaLeftParts, sheerCurtainParts, poufParts, consoleTableParts, curtainParts, extendingTableParts, deskHutchParts, bunkBedParts, laundryBasketParts, floatingNightstandParts, barStoolParts, cribParts, washerParts, dresserParts, radiatorParts, shoeCabinetParts, towelRailParts, wallShelfParts, armchairParts, bathtubParts, benchParts, coatRackParts, sideTableParts, artworkParts, coffeeTableParts, furnitureElevation, mirrorParts, pendantParts, tvParts, tvUnitParts, bedParts, bookshelfParts, chairParts, cushionCount, deskParts, fridgeParts, fronts, islandParts, kitchenParts, lampParts, moduleParts, nightstandParts, partsBounds, plantPotParts, plantSoilHeight, showerParts, sideboardParts, sinkParts, sofaParts, tableParts, toiletParts, wardrobeParts } from '../lib/furnitureParts';
 import { plantGeometry, seedFrom } from '../lib/plantGeometry';
 
 const overlapArea=(a:{position:number[];size:number[]},b:{position:number[];size:number[]},axis:number)=>{
@@ -166,6 +166,13 @@ const builders={
   'kitchen-trolley':[kitchenTrolleyParts,[[.5,.4,.85],[.42,.36,.8]]],
   'ironing-board':[ironingBoardParts,[[1.2,.38,.9],[1.1,.34,.8]]],
   'drying-rack':[dryingRackParts,[[1.1,.55,.95],[.9,.5,.85]]],
+  'freestanding-bathtub':[freestandingBathtubParts,[[1.7,.8,.6],[1.5,.72,.56]]],
+  'pedestal-sink':[pedestalSinkParts,[[.55,.45,1],[.5,.4,.95]]],
+  'bidet':[bidetParts,[[.37,.55,.52],[.36,.5,.5]]],
+  'mirror-cabinet':[mirrorCabinetParts,[[.8,.15,.7],[.4,.13,.6]]],
+  'toilet-shelf':[toiletShelfParts,[[.65,.25,1.7],[.6,.22,1.5]]],
+  'bath-stool':[bathStoolParts,[[.45,.3,.45],[.36,.28,.4]]],
+  'toilet-roll-stand':[toiletRollStandParts,[[.3,.2,.7],[.36,.22,.75]]],
 } as const;
 
 describe('parametric furniture', () => {
@@ -293,6 +300,8 @@ describe('hung furniture', () => {
   it('hangs shelves at 1.2 m, towel rails at 15 cm and radiators at 12 cm, never through the ceiling', () => {
     expect(furnitureElevation({kind:'wall-shelf',h:.32},2.55)).toBeCloseTo(1.2);
     expect(furnitureElevation({kind:'wall-shelf',h:1.6},2.55)).toBe(0);
+    expect(furnitureElevation({kind:'mirror-cabinet',h:.7},2.55)).toBeCloseTo(1.2);
+    expect(furnitureElevation({kind:'mirror-cabinet',h:.7},1.8)).toBeCloseTo(1.1);
     expect(furnitureElevation({kind:'towel-rail',h:1.2},2.55)).toBeCloseTo(.15);
     expect(furnitureElevation({kind:'towel-rail',h:2.5},2.55)).toBeCloseTo(.05);
     expect(furnitureElevation({kind:'radiator',h:.6},2.55)).toBeCloseTo(.12);

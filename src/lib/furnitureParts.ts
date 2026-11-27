@@ -746,6 +746,7 @@ export function furnitureElevation(item:{kind:string;h:number;module?:{family:Mo
     case 'towel-rail':return Math.max(0,Math.min(.15,wallHeight-item.h));
     case 'radiator':return Math.max(0,Math.min(.12,wallHeight-item.h));
     case 'floating-nightstand':return Math.max(0,Math.min(.35,wallHeight-item.h));
+    case 'mirror-cabinet':return Math.max(0,Math.min(1.55-item.h/2,wallHeight-item.h));
     default:return 0;
   }
 }
@@ -1198,7 +1199,7 @@ export function tableLampParts(w:number,d:number,h:number):FurniturePart[]{
 /** Kinds that stand on whatever furniture lies under their centre instead of on the floor. */
 export const TABLETOP_KINDS:ReadonlySet<string>=new Set(['table-lamp','vase','books','fruit-bowl','candles','photo-frame','table-plant','table-clock','decor-bowl','shelf-basket','throw-pillow','folded-blanket','bath-tray','cutting-board','kettle','utensil-jar','soap-dispenser','toothbrush-cup','towel-stack','desk-lamp','laptop','desk-organizer','decor-tray','table-setting','wine-set','coffee-machine','dish-rack','herb-pots','printer','desktop-monitor','desk-globe','file-boxes','microwave','toaster','stand-mixer']);
 // Wall-only or soft items that never carry a tabletop object.
-const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase','arc-lamp','leaning-art','blanket-ladder','folding-screen','wall-coat-rack','bar-cart','office-chair','floor-mirror','record-console','guitar-stand','floor-speaker','beanbag','magazine-rack','play-tent','kids-table','whiteboard-easel','ironing-board','drying-rack']);
+const NO_SUPPORT=new Set(['rug','lamp','pendant','curtain','sheer-curtain','mirror','artwork','tv','towel-rail','radiator','plant','coat-rack','doormat','umbrella-stand','bath-mat','wastebasket','blanket-basket','floor-cushion','clothes-rail','floor-vase','arc-lamp','leaning-art','blanket-ladder','folding-screen','wall-coat-rack','bar-cart','office-chair','floor-mirror','record-console','guitar-stand','floor-speaker','beanbag','magazine-rack','play-tent','kids-table','whiteboard-easel','ironing-board','drying-rack','mirror-cabinet','toilet-roll-stand']);
 /** Flat floor coverings: lie on the floor finish, never collide with furniture and cast no contact shadow. */
 export const FLOOR_COVER_KINDS:ReadonlySet<string>=new Set(['rug','doormat','bath-mat']);
 
@@ -2789,4 +2790,147 @@ export function dryingRackParts(w:number,d:number,h:number):FurniturePart[]{
   parts.push(part('Camiseta',[w*.26,Math.min(.34,h*.36),.004],w*.16,hang-Math.min(.34,h*.36),railZ[4],{color:'#5e7d9a',surface:'textile',bevel:0}));
   for(const [i,dx] of [[1,0],[2,.06]] as const)parts.push(part(`Calcetín ${i}`,[.05,.16,.003+i*.0005],w*.36+dx,hang-.16,railZ[2],{color:'#e8e2d6',surface:'textile',bevel:0}));
   return parts;
+}
+
+/** Freestanding tub shell: outer skin from the floor up to a rolled rim, inner skin back down to the basin floor. */
+const FREE_TUB:Profile=[[0,0],[.84,0],[.9,.05],[.96,.4],[1,.9],[1,1],[.95,1],[.94,.9],[.9,.42],[.84,.2],[.7,.16],[0,.15]];
+/**
+ * Freestanding oval bathtub inside `w × d × h`: one turned ceramic shell whose rim reaches `h`, its
+ * inner floor at 15 % of the height and a chrome drain in the middle. The mixer is a separate item.
+ */
+export function freestandingBathtubParts(w:number,d:number,h:number):FurniturePart[]{
+  return [
+    turned('Bañera',FREE_TUB,[w,h,d],0,0,0,{color:'item',material:'gloss'}),
+    turned('Desagüe',DISC,[.05,.004,.05],0,h*.15-.001,0,{color:METAL,material:'metal'}),
+  ];
+}
+
+/** Pedestal flaring into the floor and under the basin (lathe profile). */
+const PEDESTAL:Profile=[[0,0],[1,0],[.86,.08],[.66,.4],[.7,.85],[.82,1],[0,1]];
+/** Open washbasin bowl: outer skin up to the rim, inner skin down to its floor. */
+const WASHBASIN:Profile=[[0,0],[.68,0],[.86,.22],[.96,.6],[1,.9],[1,1],[.93,1],[.9,.82],[.78,.5],[.52,.36],[0,.34]];
+/** Single-lever mixer body (lathe profile). */
+const MIXER:Profile=[[0,0],[1,0],[1,.03],[.7,.07],[.7,1],[0,1]];
+/**
+ * Mixer standing on a rear deck at `y0` up to `top`, its spout reaching towards +z by `reach`:
+ * the column, a horizontal spout and a downward nozzle.
+ */
+function deckMixer(y0:number,top:number,z:number,reach:number):FurniturePart[]{
+  const metal={color:METAL,material:'metal'} as const;
+  return [
+    turned('Grifo',MIXER,[.04,top-y0,.04],0,y0,z,metal),
+    part('Caño',[.022,.022,reach],0,top-.03,z+reach/2+.01,{...metal,bevel:.008}),
+    part('Boquilla',[.018,.03,.018],0,top-.055,z+reach+.01-.01,{...metal,bevel:.008}),
+  ];
+}
+
+/**
+ * Pedestal washbasin inside `w × d × h` (h = top of the mixer, front +z): a ceramic pedestal, an
+ * open bowl over it with a slim oval tap ledge at the back carrying a single-lever mixer, and a drain.
+ */
+export function pedestalSinkParts(w:number,d:number,h:number):FurniturePart[]{
+  const tap=Math.min(.16,h*.17),rim=h-tap,bowlH=Math.min(.18,rim*.24),bowlD=d*.86,bowlZ=d/2-bowlD/2,bottom=rim-bowlH;
+  const deckD=d*.26,deckZ=-d/2+deckD/2,deckTop=rim+.012,ceramic={color:'item'} as const;
+  return [
+    turned('Pedestal',PEDESTAL,[w*.32,bottom,d*.42],0,0,-d*.12,ceramic),
+    turned('Lavabo',WASHBASIN,[w,bowlH,bowlD],0,bottom,bowlZ,ceramic),
+    turned('Repisa',DISC,[w*.46,.04,deckD],0,deckTop-.04,deckZ,ceramic),
+    turned('Desagüe',DISC,[.04,.004,.04],0,bottom+bowlH*.34-.001,bowlZ,{color:METAL,material:'metal'}),
+    ...deckMixer(deckTop,h,deckZ,Math.min(.13,bowlZ+bowlD*.1-deckZ)),
+  ];
+}
+
+/** Floor-standing bidet bowl: narrow foot, outer skin up to the rim, inner skin down to its floor. */
+const BIDET:Profile=[[0,0],[.62,0],[.64,.03],[.58,.18],[.56,.4],[.66,.6],[.84,.78],[.96,.92],[1,.97],[.97,1],[.88,1],[.84,.9],[.66,.74],[.4,.62],[0,.6]];
+/**
+ * Floor-standing bidet inside `w × d × h` (h = top of the mixer, front +z): a turned ceramic bowl on
+ * a narrow foot, a raised oval deck at the back with a single-lever mixer, and a drain.
+ */
+export function bidetParts(w:number,d:number,h:number):FurniturePart[]{
+  const tap=Math.min(.13,h*.25),rim=h-tap,deckD=d*.24,deckZ=-d/2+deckD/2+.01,deckTop=rim+.012,ceramic={color:'item'} as const;
+  return [
+    turned('Taza',BIDET,[w,rim,d],0,0,0,ceramic),
+    turned('Repisa',DISC,[w*.44,.04,deckD],0,deckTop-.04,deckZ,ceramic),
+    turned('Desagüe',DISC,[.035,.004,.035],0,rim*.6-.001,d*.05,{color:METAL,material:'metal'}),
+    ...deckMixer(deckTop,h,deckZ,Math.min(.1,d*.25)),
+  ];
+}
+
+/**
+ * Wall-hung mirror cabinet inside `w × d × h` (d off the wall): a carcass in the item colour and one
+ * or two doors (two from 50 cm wide) faced with mirror glass, with 3 mm gaps, over a slim LED strip
+ * under the front edge.
+ */
+export function mirrorCabinetParts(w:number,d:number,h:number):FurniturePart[]{
+  const door=.016,glass=.004,body=d-door-glass-.002,strip=.01,n=w<.5?1:2;
+  const parts:FurniturePart[]=[
+    part('Cuerpo',[w,h-strip,body],0,strip,-d/2+body/2,{color:'item',bevel:.003}),
+    part('Tira LED',[w-.06,strip,.02],0,0,-d/2+body-.012,{color:'#fdf6e3',bevel:.002}),
+  ];
+  fronts(w,n).forEach(({x,size},i)=>{
+    const name=n===1?'Puerta':`Puerta ${i+1}`;
+    parts.push(part(name,[size,h-strip-2*HINGE_GAP,door],x,strip+HINGE_GAP,d/2-glass-door/2,{color:'item',bevel:.002}));
+    parts.push(part(`${name} espejo`,[size-.004,h-strip-2*HINGE_GAP-.004,glass],x,strip+HINGE_GAP+.002,d/2-glass/2,{color:'#dfe4e3',material:'mirror',bevel:0}));
+  });
+  return parts;
+}
+
+/**
+ * Over-toilet shelving unit inside `w × d × h`: four slim posts in the item colour with side
+ * stretchers, three wooden shelves in the top part (open below for the cistern), rolled towels on
+ * the middle shelf and a basket on the lowest.
+ */
+export function toiletShelfParts(w:number,d:number,h:number):FurniturePart[]{
+  const post=.025,board=.018,pitch=Math.min(.3,(h-.9)/2),metal={color:'item',material:'metal',bevel:.004} as const;
+  const parts:FurniturePart[]=[];
+  for(const s of [-1,1]){
+    const x=s*(w/2-post/2),side=s<0?'izquierdo':'derecho';
+    for(const t of [-1,1])parts.push(part(`Poste ${side} ${t<0?'trasero':'delantero'}`,[post,h,post],x,0,t*(d/2-post/2),metal));
+    for(const [i,y] of [.1,h-pitch*2-board-.06].entries())parts.push(part(`Travesaño ${side} ${i+1}`,[.018,.018,d-2*post],x,y,0,metal));
+  }
+  const levels=[0,1,2].map(i=>h-board-i*pitch),inner=w-2*post;
+  levels.forEach((y,i)=>parts.push(part(`Balda ${['superior','central','inferior'][i]}`,[inner,board,d-.01],0,y,0,{color:'wood',surface:'woodgrain',bevel:.003})));
+  const roll=Math.min(.1,pitch-board-.04,d*.4),rolls=Math.max(1,Math.min(3,Math.floor(inner/(roll+.02))));
+  for(let i=0;i<rolls;i++)parts.push(turnedFront(`Toalla enrollada ${i+1}`,ROD,[roll,roll,d-.04],-inner/2+.02+roll/2+i*(roll+.015),levels[1]+board,0,{color:i===1?'#c9d3cf':'#ece7dd',surface:'textile'}));
+  const basket=Math.min(.2,pitch-board-.03);
+  parts.push(part('Cesta',[Math.min(.3,inner*.55),basket,d-.06],inner*.15,levels[2]+board,0,{color:'#b9a27f',surface:'textile',bevel:.012}));
+  return parts;
+}
+
+/**
+ * Teak bath stool inside `w × d × h`: slatted seat with 8 mm gaps reaching `h`, four square legs
+ * under two aprons and low side stretchers, all in the item colour with woodgrain.
+ */
+export function bathStoolParts(w:number,d:number,h:number):FurniturePart[]{
+  const slat=.022,gap=.008,leg=.035,n=Math.max(3,Math.round(w/.06)),sw=(w-(n-1)*gap)/n,teak={color:'item',surface:'woodgrain'} as const;
+  const parts:FurniturePart[]=[];
+  for(let i=0;i<n;i++)parts.push(part(`Listón ${i+1}`,[sw,slat,d],-w/2+sw/2+i*(sw+gap),h-slat,0,{...teak,bevel:.004}));
+  const lx=w/2-.02-leg/2,lz=d/2-.02-leg/2;
+  for(const s of [-1,1])for(const t of [-1,1])parts.push(part(`Pata ${s<0?'izquierda':'derecha'} ${t<0?'trasera':'delantera'}`,[leg,h-slat,leg],s*lx,0,t*lz,{...teak,bevel:.004}));
+  for(const t of [-1,1])parts.push(part(`Faldón ${t<0?'trasero':'delantero'}`,[w-.04-2*leg,.04,.03],0,h-slat-.04,t*(d/2-.045),{...teak,bevel:.003}));
+  for(const s of [-1,1])parts.push(part(`Travesaño ${s<0?'izquierdo':'derecho'}`,[.025,.025,d-.04-2*leg],s*lx,Math.min(.1,h*.25),0,{...teak,bevel:.003}));
+  return parts;
+}
+
+/** Toilet roll: paper wound on a hollow core (lathe ring along its axis). */
+const ROLL:Profile=[[.3,0],[1,0],[1,1],[.3,1],[.3,0]];
+/** Brush holder cup with a rolled lip (lathe shell). */
+const BRUSH_CUP:Profile=[[0,0],[.9,0],[.96,.05],[1,.9],[1,1],[.93,1],[.92,.08],[0,.08]];
+/**
+ * Toilet-roll stand with brush inside `w × d × h`: a weighted round base at −x with a pole up to `h`,
+ * a short arm towards +z carrying a roll, and a brush in its cup standing on the floor at +x.
+ */
+export function toiletRollStandParts(w:number,d:number,h:number):FurniturePart[]{
+  const B=Math.min(d,w*.55,.2),cup=Math.min(.11,w-B-.01,d),bx=-w/2+B/2,base=.015,finial=.012,metal={color:'item',material:'metal'} as const;
+  const roll=.12,len=Math.min(.1,d/2-.025),rollY=h*.62,armL=d/2-.009,cupH=Math.min(.14,h*.22),cx=w/2-cup/2,knob=Math.min(.4,h*.55);
+  return [
+    turned('Base',DISC,[B,base,B],bx,0,0,metal),
+    turned('Mástil',ROD,[.022,h-base-finial,.022],bx,base,0,metal),
+    turned('Remate',DISC,[.04,finial,.04],bx,h-finial,0,metal),
+    part('Brazo',[.012,.012,armL],bx,rollY-.006,armL/2,{...metal,bevel:.004}),
+    turnedFront('Rollo',ROLL,[roll,roll,len],bx,rollY-roll/2,d/2-.005-len/2,{color:'#f4f2ec',surface:'textile'}),
+    turned('Escobillero',BRUSH_CUP,[cup,cupH,cup],cx,0,0,metal),
+    turned('Mango de escobilla',ROD,[.012,knob-cupH*.3,.012],cx,cupH*.3,0,{color:'#2b2d30'}),
+    turned('Pomo de escobilla',DISC,[.03,.014,.03],cx,knob,0,{color:'#2b2d30'}),
+  ];
 }
