@@ -3,7 +3,32 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, alinear y distribuir un grupo de muebles)
+## Último cambio publicado (27/11/2026, paquete de baño)
+
+- **`fcaed7c`:** siete piezas paramétricas nuevas en la categoría **Baño**, cada una con símbolo de plano, modelo 3D por partes y entrada del catálogo de productos:
+  - **Bañera exenta** (1,7 × 0,8 × 0,6 m): carcasa ovalada torneada con borde redondeado, fondo interior y desagüe.
+  - **Lavabo de pie** (0,55 × 0,45 × 1 m hasta el grifo): pedestal, cubeta abierta, repisa trasera fina para el grifo monomando y desagüe.
+  - **Bidé** (0,37 × 0,55 × 0,52 m): taza de pie estrecho, repisa con monomando y desagüe.
+  - **Armario con espejo** (0,8 × 0,15 × 0,7 m): una puerta (dos desde 50 cm) con luna de espejo y tira LED inferior. Se cuelga a la altura de los ojos (centro a 1,55 m, sin atravesar el techo).
+  - **Estantería sobre inodoro** (0,65 × 0,25 × 1,7 m): cuatro postes metálicos, tres baldas de madera arriba (hueco libre para la cisterna), toallas enrolladas y cesta.
+  - **Taburete de teca** (0,45 × 0,3 × 0,45 m): asiento de listones con faldones y travesaños.
+  - **Portarrollos con escobillero** (0,3 × 0,2 × 0,7 m): base con mástil, brazo con rollo y escobilla en su vaso.
+- **Espejos:** `Mirror` (Scene3D) añade ahora un reflector en tiempo real sobre **cada** parte con material `mirror`, no solo sobre la «Luna». Las puertas del armario reflejan en el visor como el espejo de pared; en Cycles la luna metálica se traza directamente.
+- **Tests:** tabla de `furniture-parts.test.ts` con dos medidas por pieza (huella exacta, sin caras coplanarias, tapas de torno fuera de caras) y altura de colgado del armario con espejo (1,2 m con techo de 2,55 m; 1,1 m con techo de 1,8 m). En total 329 pruebas.
+- **Comprobado visualmente** en una escena de baño de 6 × 4 m con tres cámaras, visor WebGL frente a Cycles (`scripts/accessory-compare.mjs`). Se corrigieron dos fallos encontrados así:
+  - Las puertas del armario se veían negras sin reflector.
+  - La repisa del grifo se levantaba desde dentro de la cubeta y parecía un segundo cuenco.
+
+  En el plano 2D (1600 px), el armario se dibuja semitransparente para no tapar el lavabo que tiene debajo.
+- **Validación local:** `tsc -b`, unitarias de piezas 329/329, build y smoke 8/8.
+- **CI:** [Test and build 46006402853](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/46006402853), SHA `fcaed7c`, completed/success al primer intento (suite E2E completa incluida); despliegue de Pages 46007460994 success.
+- **Límites:**
+  - La grifería de bañera exenta no se incluye; puede usarse la ducha o un elemento aparte.
+  - El lavabo y el bidé son de una sola pieza cerámica, sin variantes de forma.
+  - La estantería no comprueba la medida del inodoro que tiene debajo.
+- **Siguiente tarea exacta:** el siguiente paquete de objetos (p. ej. dormitorio infantil o terraza/exterior) o una función de edición; si `product.e2e.ts:323` vuelve a fallar por `aria-busy`, ampliar ese tiempo de espera.
+
+## Cambio publicado el 27/11/2026 (alinear y distribuir un grupo de muebles)
 
 - **`0c15aab`:** con dos o más muebles seleccionados (Mayús+clic en el plano o «Seleccionar todos los objetos»), el panel de edición muestra la sección **GRUPO · n MUEBLES** sobre los datos del mueble activo.
   - Seis botones alinean el borde izquierdo, el centro o el borde derecho (y arriba, centro, abajo) de las **huellas giradas** en planta; solo cambia el eje alineado.
