@@ -3,7 +3,29 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, paridad visor/Cycles de complementos)
+## Último cambio publicado (27/11/2026, rendimiento de la iluminación nocturna)
+
+- **Medición** con Playwright Chromium sin interfaz (d3d11), usando `load.cjs`, `open3d.cjs` y `heavy.cjs <copias> <calidad> <día|noche>`. `mount` es el tiempo hasta el primer fotograma tras el cambio. Edición y fotograma están limitados por vsync a unos 33 ms.
+- **Regresión encontrada en `9578c8f`:** al pasar a noche cambiaba el número de luces (luces por recinto, y la lámpara de arco cambiaba su luz puntual por un foco). Three.js recompilaba entonces todos los shaders:
+  - ejemplo en borrador: `mount` de noche de 42 ms (con `dff444e`) a 1079 ms;
+  - 6 copias en borrador: de 1087 a 2331 ms;
+  - 6 copias en alta: de 2545 a 3298 ms.
+- **Corrección:** día y noche montan las mismas luces y solo cambia su intensidad. Las luces de techo por recinto existen siempre, con intensidad 0 de día. `LampLight` mantiene siempre su luz puntual y, en lámparas con cúpula opaca, también el foco con su objetivo. La imagen de noche no cambia, porque las intensidades son las mismas.
+- **Resultados con la corrección** (`mount` / edición, en ms):
+
+  | Escena | Día | Noche |
+  |---|---|---|
+  | Ejemplo, borrador | 29 / 33,1 | 84 / 33,0 |
+  | 6 copias (804 mallas), borrador | ~1080 / 38–46 | 1205 / 37,5 |
+  | 6 copias, alta | ~2400 / 56–60 | 2412 / 58,9 |
+
+  - Carga en frío de producción: lienzo en ~470 ms y 4 tareas largas (~510 ms; antes ~575 ms).
+  - Reabrir el 3D: 0 ms de tareas largas.
+  - **Coste aceptado:** las luces de intensidad 0 hacen los shaders algo más pesados. El montaje de día de 6 copias en alta pasa de ~1920 ms a ~2400 ms. La edición y el fotograma no cambian.
+- **Validación local:** 405 unitarias, build y 8 smoke Playwright. No se volvió a capturar la imagen de noche: por construcción, las intensidades nocturnas son idénticas.
+- **Siguiente tarea exacta:** oscurecer el cielo nocturno del visor (ventana y fondo) para que coincida con el crepúsculo de Cycles, comparando con `scripts/accessory-compare.mjs` el visor y el PNG con la misma cámara.
+
+## Cambio publicado el 27/11/2026 (paridad visor/Cycles de complementos)
 
 - **`9578c8f`:** comparación del visor WebGL y de Cycles con la misma escena y cámara (`scripts/accessory-scene.ts` genera la escena; `scripts/accessory-compare.mjs <escenas.json> <salida>` descarga el paquete desde el editor y lo envía al motor local). Tomas: lámpara de arco de noche, y espejo de pie más carrito de bar de tarde y de noche.
 - **Correcciones:**

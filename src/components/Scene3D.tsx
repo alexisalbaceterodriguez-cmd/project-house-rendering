@@ -314,11 +314,16 @@ function Plant({item,wood}:{item:Furniture;wood:string}){
   </>;
 }
 // A lamp's bulb: a faint fill by day, switched on at night (Cycles places its own light there, renderPackage.interiorLights).
+// Day and night mount the same lights and only change intensities: a different light count would
+// recompile every shader in the scene (≈1 s on the example) when switching the lighting preset.
 function LampLight({position,night,day=.13,distance,down=false}:{position:[number,number,number];night:boolean;day?:number;distance:number;down?:boolean}){
   // An opaque dome (arc lamp) sends its light down: a spot cone, so the wall above it stays dark as in Cycles.
   const target=useMemo(()=>new THREE.Object3D(),[]);
-  if(night&&down)return <><primitive object={target} position={[position[0],position[1]-1,position[2]]}/><spotLight position={position} target={target} intensity={4.5} angle={1.05} penumbra={.85} color="#ffd9a8" distance={distance*2.4}/></>;
-  return <pointLight position={position} intensity={night?2.2:day} color={night?'#ffd9a8':'#fff2d3'} distance={night?distance*2.4:distance}/>;
+  const spot=night&&down;
+  return <>
+    <pointLight position={position} intensity={spot?0:night?2.2:day} color={night?'#ffd9a8':'#fff2d3'} distance={night?distance*2.4:distance}/>
+    {down&&<><primitive object={target} position={[position[0],position[1]-1,position[2]]}/><spotLight position={position} target={target} intensity={spot?4.5:0} angle={1.05} penumbra={.85} color="#ffd9a8" distance={distance*2.4}/></>}
+  </>;
 }
 function FurnitureShape({item,wood,night,selected}:{item:Furniture;wood:string;night:boolean;selected:boolean}){
   if(item.module)return <ModuleModel item={item} wood={wood}/>;
@@ -633,7 +638,7 @@ export default function Scene3D({canvasRef,topView=false,active=true}:{canvasRef
       <ErrorBoundary fallback={null}><Suspense fallback={null}><Environment files={ENVIRONMENT_FILE} environmentIntensity={render.lighting==='night'?.08:.28}/></Suspense></ErrorBoundary>
       <directionalLight castShadow position={[-5,13,7]} intensity={render.lighting==='night'?.2:2.3} color={render.lighting==='night'?'#a8bfff':'#fff5e8'} shadow-mapSize-width={high?2048:1024} shadow-mapSize-height={high?2048:1024} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} shadow-bias={-.0001}/>
       {/* Night: one ceiling light per room, as Cycles lights every room (roomLights), not one lamp for the whole house. */}
-      {render.lighting==='night'&&project.rooms.map(room=>{const p=roomLabelPoint(room);return <pointLight key={room.id} position={[p.x,project.wallHeight-.25,p.y]} intensity={clamp(.55*roomArea(room),3,12)} color="#ffd6a3" decay={2}/>;})}
+      {project.rooms.map(room=>{const p=roomLabelPoint(room);return <pointLight key={room.id} position={[p.x,project.wallHeight-.25,p.y]} intensity={render.lighting==='night'?clamp(.55*roomArea(room),3,12):0} color="#ffd6a3" decay={2}/>;})}
       </>}
       <InteractionQuality high={high}/>
       <CameraRig project={project} top={!cameraLocked&&topView}/>
