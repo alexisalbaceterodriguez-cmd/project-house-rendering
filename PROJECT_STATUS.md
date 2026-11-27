@@ -3,7 +3,21 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026, edición de muebles con el teclado)
+## Último cambio publicado (27/11/2026, alinear y distribuir un grupo de muebles)
+
+- **`0c15aab`:** con dos o más muebles seleccionados (Mayús+clic en el plano o «Seleccionar todos los objetos»), el panel de edición muestra la sección **GRUPO · n MUEBLES** sobre los datos del mueble activo.
+  - Seis botones alinean el borde izquierdo, el centro o el borde derecho (y arriba, centro, abajo) de las **huellas giradas** en planta; solo cambia el eje alineado.
+  - «Repartir en horizontal/vertical» (tres o más; desactivado con dos) deja fijos los extremos y deja huecos iguales entre huellas de distinto tamaño, en el orden actual de sus centros.
+  - Cada clic es un paso de deshacer. Ningún centro sale del plano (mismo límite que los campos X/Y).
+- **Implementación:** `src/lib/groupLayout.ts` (`footprintHalf`, `alignFurniture`, `distributeFurniture`); componente `GroupLayout` en `src/App.tsx`; estilos `.group-layout`/`.group-buttons` en `src/styles.css`; MANUAL.md §«Moverse por las vistas».
+- **Tests:** `group-layout.test.ts` (6): huella girada, alineación izquierda/derecha con un mueble girado 90°, centro y fondo, límite del plano, reparto con anchos distintos y en vertical con huella girada, y mínimo de tres.
+- **Comprobado en la aplicación real** (pane de 1024 px y móvil 375 px): tres sillas alineadas arriba y luego a la izquierda, con dos deshacer que restauran el original; alfombra, cama individual y cama doble repartidas en horizontal con huecos de 1,95 m según los anchos del inspector; ocho botones en una fila sin desbordar a 375 px.
+- **Validación local:** `tsc -b`, unitarias 11/11 (grupo + teclado), build y smoke 8/8.
+- **CI:** [Test and build 46001336951](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/46001336951), SHA `0c15aab`. El primer intento falló en un único E2E de la suite completa (`product.e2e.ts:323`, tres modelos CC: `.scene-wrap` seguía `aria-busy=true` a los 10 s, también en el reintento; la captura muestra la escena ya dibujada). Pasa en local (23 s) y no depende de este cambio; el segundo intento terminó **success**. Queda como posible inestabilidad de tiempo de carga en el runner.
+- **Límites:** no hay alineación a una pared ni a un mueble de referencia (siempre al contorno del grupo); repartir no gira ni cambia el orden; el panel solo aparece con muebles, no con muros ni huecos.
+- **Siguiente tarea exacta:** el siguiente paquete de objetos; si `product.e2e.ts:323` vuelve a fallar por `aria-busy`, ampliar ese tiempo de espera o medir la carga de los tres GLB en el runner.
+
+## Cambio publicado el 27/11/2026 (edición de muebles con el teclado)
 
 - **`503543a`:** edición con el teclado del mueble seleccionado o del grupo (Mayús+clic en el plano o «Seleccionar todos los objetos»).
   - Flechas: mueven 1 cm (10 cm con Mayús) en bloque. El movimiento se acorta para que ningún centro salga del plano, sin deformar el grupo. Mantener la flecha pulsada es un solo paso de deshacer (la primera pulsación registra historial; las repeticiones `e.repeat` lo amplían).
