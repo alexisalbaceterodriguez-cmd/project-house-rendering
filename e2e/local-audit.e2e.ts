@@ -78,7 +78,7 @@ test('renderiza la vivienda y exporta un PNG tras cambiar entre las tres vistas'
   await expect(page.locator('.plan-svg')).toBeVisible();
   await expect(page.locator('.scene-wrap canvas')).toBeVisible();
   await page.getByRole('button', { name: 'Plano 2D', exact: true }).click();
-  await expect(page.locator('.scene-wrap canvas')).toHaveCount(0);
+  await expect(page.locator('.scene-wrap canvas')).toBeHidden();
   await page.getByRole('button', { name: 'Vista 3D', exact: true }).click();
   await expect(page.locator('.scene-wrap canvas')).toBeVisible();
   await expect.poll(() => page.locator('.scene-wrap canvas').evaluate((canvas: HTMLCanvasElement) => {

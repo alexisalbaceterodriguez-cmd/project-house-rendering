@@ -1,4 +1,4 @@
-import { createContext, memo, Suspense, useContext, useEffect, useMemo, useState, type MutableRefObject, type ReactNode } from 'react';
+import { createContext, memo, Suspense, useContext, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { ContactShadows, Environment, Html, OrbitControls, PointerLockControls, SoftShadows, useEnvironment, useGLTF, useProgress } from '@react-three/drei';
@@ -568,21 +568,53 @@ function EnvironmentReady({children}:{children:ReactNode}){useEnvironment({files
  * read the scene is drawn without it.
  */
 function AfterEnvironment({children}:{children:ReactNode}){return <ErrorBoundary fallback={children}><Suspense fallback={null}><EnvironmentReady>{children}</EnvironmentReady></Suspense></ErrorBoundary>;}
-export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefObject<HTMLCanvasElement|null>;topView?:boolean}){
+/**
+ * Mount the scene content hidden and link its shaders in the background (KHR_parallel_shader_compile)
+ * before drawing it: otherwise the first frame blocks the page for most of a second while every
+ * material variant compiles. `after` (capture hooks, one-shot contact shadows) mounts once shown.
+ */
+function WarmShaders({children,after,onReady}:{children:ReactNode;after:ReactNode;onReady:(ready:true)=>void}){
+  const group=useRef<THREE.Group>(null);const {gl,camera,scene,invalidate}=useThree();const [ready,setReady]=useState(false);
+  useEffect(()=>{
+    const content=group.current;let live=true,poll=0;
+    const show=()=>{if(!live)return;live=false;setReady(true);onReady(true);invalidate();};
+    // compile() only starts linking; poll the programs here instead of compileAsync(), whose loop throws
+    // when a material is disposed mid-compile (a scene edit) and then never resolves.
+    const wait=(pending:Set<THREE.Material>)=>{
+      if(!live)return;
+      for(const material of pending){const program=(gl.properties.get(material) as {currentProgram?:{isReady():boolean}}).currentProgram;if(!program||program.isReady())pending.delete(material);}
+      if(pending.size)poll=window.setTimeout(()=>wait(pending),10);else show();
+    };
+    // One frame lets the environment and loaders attach first, so the compiled variants are the ones drawn.
+    const frame=requestAnimationFrame(()=>{try{if(content)wait(gl.compile(content,camera,scene));else show();}catch{show();}});
+    const fallback=window.setTimeout(show,5000);
+    return()=>{live=false;cancelAnimationFrame(frame);window.clearTimeout(poll);window.clearTimeout(fallback);};
+  },[gl,camera,scene,invalidate,onReady]);
+  return <><group ref={group} visible={ready}>{children}</group>{ready&&after}</>;
+}
+/** While the viewer is hidden behind the 2D plan nothing is drawn; redraw the latest state when it is shown. */
+function ResumeOnShow({active}:{active:boolean}){
+  const invalidate=useThree(state=>state.invalidate);
+  useEffect(()=>{if(!active)return;invalidate();const frame=requestAnimationFrame(()=>invalidate());return()=>cancelAnimationFrame(frame);},[active,invalidate]);
+  return null;
+}
+export default function Scene3D({canvasRef,topView=false,active=true}:{canvasRef:MutableRefObject<HTMLCanvasElement|null>;topView?:boolean;active?:boolean}){
+  const [warm,setWarm]=useState(false);
   useTextureLibraryRevision();
   // liveCamera is read on purpose: its first sync (after CameraRig places the camera) re-renders the
   // scene so OrbitControls re-applies its target; without it the first PNG export differs from later ones.
   const {project,selection,setSelection,wallsVisible,cutaway,cameraLocked}=useEditorPick('project','selection','setSelection','wallsVisible','cutaway','cameraLocked','liveCamera');
-  const {active}=useProgress();
+  const {active:loading}=useProgress();
   const render=project.render??{lighting:'day',exposure:1,quality:'draft'};const high=render.quality==='high';
   const studio=render.lighting==='studio',subject=studioSubject(project);
   const center=subject?objectCamera(subject).target:[project.width/2,0,project.depth/2];
   const span=subject?Math.max(subject.w,subject.d,subject.h,2):Math.max(project.width,project.depth);
   const ground=subject?(subject.modelElevation??0)-.012:-.009;
-  return <div className="scene-wrap" aria-busy={active||textureMapsPending((project.materials??[]).flatMap(material=>Object.values(material.maps??{})))}>
+  return <div className="scene-wrap" aria-busy={loading||!warm||textureMapsPending((project.materials??[]).flatMap(material=>Object.values(material.maps??{})))}>
     <div className="scene-title"><span>{subject?'Estudio de producto':'Perspectiva 3D'}</span><strong>{subject?.name??project.name}</strong></div>
-    <Canvas frameloop="demand" shadows dpr={viewerDpr(high)} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
+    <Canvas frameloop={active?"demand":"never"} shadows dpr={viewerDpr(high)} gl={{antialias:true,preserveDrawingBuffer:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:render.exposure}} camera={{position:[11,11,12],fov:42,near:.1,far:1000}} onCreated={({gl})=>{canvasRef.current=gl.domElement;}} onPointerMissed={()=>setSelection(null)}>
       <SurfaceRefresh/>
+      <ResumeOnShow active={active}/>
       <color attach="background" args={[studio?(render.studio??defaultStudio).background:'#f4f3ef']}/>
       {studio?<StudioLights project={project} subject={subject} high={high}/>:<>
       <ambientLight intensity={render.lighting==='night'?.08:.35}/>
@@ -595,7 +627,11 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       <InteractionQuality high={high}/>
       <CameraRig project={project} top={!cameraLocked&&topView}/>
       {render.walk&&!subject?<WalkRig project={project}/>:<OrbitControls makeDefault target={project.render?.camera?.target??[project.width/2,.05,project.depth/2]} enableRotate={!cameraLocked} enableZoom={!cameraLocked} enablePan={!cameraLocked} enableDamping dampingFactor={.08} minDistance={.4} maxDistance={500} maxPolarAngle={Math.PI*.495}/>}
-      <AfterEnvironment>
+      <AfterEnvironment><WarmShaders onReady={setWarm} after={<>
+        {subject&&<group userData={{renderExclude:true}}><ContactShadows key={JSON.stringify([subject.id,subject.w,subject.d,subject.h,subject.x,subject.y,subject.rotation,ground])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={.35} blur={2.5} far={span*2}/></group>}
+        {/* Registered with the scene content, so exports and captures wait until it is mounted and shown. */}
+        <CaptureRig exposure={render.exposure} high={high}/>
+      </>}>
       <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[center[0],subject?ground:-.1,center[2]]} userData={{atelierId:'ground',atelierType:'ground'}}><planeGeometry args={subject?[span*8+50,span*8+50]:[project.width+50,project.depth+50]}/><meshStandardMaterial color={studio?(render.studio??defaultStudio).background:'#ebeae5'} roughness={studio?.85:1}/></mesh>
       {!subject&&<>
       {project.rooms.map(room=><FloorSurface key={room.id} room={room}/>)}
@@ -603,12 +639,8 @@ export default function Scene3D({canvasRef,topView=false}:{canvasRef:MutableRefO
       {wallsVisible&&project.walls.map(w=><WallModel key={w.id} wall={w} openings={project.openings.filter(o=>o.wallId===w.id)} wallHeight={project.wallHeight} color={project.palette.walls} cutaway={cutaway} selected={selection?.type==='wall'&&selection.id===w.id}/>)}
       </>}
       {(subject?[subject]:project.furniture).map(item=><ObjectModel key={item.id} item={item} elevation={item.module?0:placedElevation(item,project.furniture,project.wallHeight)} wood={project.palette.wood} night={render.lighting==='night'} selected={selection?.type==='furniture'&&selection.id===item.id}/>)}
-      {subject?<group userData={{renderExclude:true}}><ContactShadows key={JSON.stringify([subject.id,subject.w,subject.d,subject.h,subject.x,subject.y,subject.rotation,ground])} frames={1} position={[center[0],ground+.001,center[2]]} scale={span*2} opacity={.35} blur={2.5} far={span*2}/></group>
-        :project.furniture.filter(item=>!FLOOR_COVER_KINDS.has(item.kind)&&placedElevation(item,project.furniture,project.wallHeight)<=0&&Math.max(0,item.modelElevation??0)<.45).map(item=><FloorContact key={item.id} item={item}/>)}
-
-      {/* Registered with the scene content, so exports and captures wait until it is mounted. */}
-      <CaptureRig exposure={render.exposure} high={high}/>
-      </AfterEnvironment>
+      {!subject&&project.furniture.filter(item=>!FLOOR_COVER_KINDS.has(item.kind)&&placedElevation(item,project.furniture,project.wallHeight)<=0&&Math.max(0,item.modelElevation??0)<.45).map(item=><FloorContact key={item.id} item={item}/>)}
+      </WarmShaders></AfterEnvironment>
     </Canvas>
     <div className="scene-navigation">{render.walk&&!subject?'WASD para caminar · Esc para liberar el cursor':'Arrastra para orbitar · Rueda para acercar · Mayús + clic para editar un material'}</div>
   </div>;

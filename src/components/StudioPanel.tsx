@@ -175,7 +175,7 @@ export default function StudioPanel({open,onClose}:{open:boolean;onClose:()=>voi
       <label>Calidad<select aria-label="Calidad 3D" value={render.quality} onChange={e=>updateRender({quality:e.target.value as RenderSettings['quality']})}><option value="draft">Rápida</option><option value="high">Alta</option></select></label>
       <button onClick={()=>{setMode('3d');setMessage('Vista 3D abierta. Cierra este panel para ajustar la cámara.');}}>Abrir vista 3D</button>
       {item&&<button onClick={()=>{
-        updateRender({camera:objectCamera(item),walk:false});
+        updateRender({camera:objectCamera(item,project),walk:false});
         setMode('3d');setMessage('Objeto encuadrado. Cierra Estudio para verlo o exportar una imagen.');
       }}>Encuadrar objeto seleccionado</button>}
       {item&&<button onClick={()=>{updateRender({lighting:'studio',quality:'high',studio:{...studio,subjectId:item.id},camera:objectCamera(item),walk:false});setMode('3d');setMessage('Estudio preparado con el objeto seleccionado. Ajusta las luces o cierra el panel para orbitar.');}}>Preparar estudio del objeto seleccionado</button>}

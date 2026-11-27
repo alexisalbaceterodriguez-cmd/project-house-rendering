@@ -356,6 +356,9 @@ export default function App(){
   const [toast,setToast]=useState(''); const [help,setHelp]=useState(false); const [topView,setTopView]=useState(false);
   useEffect(()=>setTopView(false),[project.id]);
   const sceneHost=useRef<HTMLDivElement>(null);
+  // Once opened, the 3D viewer stays mounted (hidden, not drawing) in the 2D plan: reopening it
+  // reuses its WebGL context, compiled shaders and uploaded textures instead of rebuilding them.
+  const sceneOpened=useRef(false);if(mode!=='2d')sceneOpened.current=true;
   const [presenting,setPresenting]=useState(false);
   useEffect(()=>{
     const sync=()=>setPresenting(!!sceneHost.current&&document.fullscreenElement===sceneHost.current);
@@ -476,7 +479,7 @@ export default function App(){
     <div className="workspace"><Sidebar importModel={()=>glbInput.current?.click()} modelUnits={modelUnits} setModelUnits={setModelUnits}/>
       <main className="editor-area"><div className="workspace-intro"><div><span className="eyebrow">TU ESPACIO, A TU MANERA</span><h1>Diseña cada rincón.</h1><p>Da forma a la distribución, elige acabados y vive el espacio en tres dimensiones.</p></div><div className="project-pill"><span className="live-dot"/><span>PROYECTO ACTIVO</span><strong>{(project.width*project.depth).toFixed(0)} m²</strong></div></div>
         <EditorToolbar/>
-        <div className={`editors mode-${mode}`}>{mode!=='3d'&&<Plan2D/>}{mode!=='2d'&&<div className="scene-host" ref={sceneHost}><ErrorBoundary fallback={<div role="alert" className="scene-loading">La vista 3D no pudo iniciarse. El plano y tus datos siguen disponibles. Prueba otro navegador o activa la aceleración gráfica.</div>}><Suspense fallback={<div className="scene-loading">Preparando vista 3D…</div>}><Scene3D canvasRef={canvasRef} topView={topView}/></Suspense></ErrorBoundary><div className="camera-buttons" role="group" aria-label="Controles de cámara">
+        <div className={`editors mode-${mode}`}>{mode!=='3d'&&<Plan2D/>}{sceneOpened.current&&<div className="scene-host" ref={sceneHost} hidden={mode==='2d'}><ErrorBoundary fallback={<div role="alert" className="scene-loading">La vista 3D no pudo iniciarse. El plano y tus datos siguen disponibles. Prueba otro navegador o activa la aceleración gráfica.</div>}><Suspense fallback={<div className="scene-loading">Preparando vista 3D…</div>}><Scene3D canvasRef={canvasRef} topView={topView} active={mode!=='2d'}/></Suspense></ErrorBoundary><div className="camera-buttons" role="group" aria-label="Controles de cámara">
           <button aria-pressed={!topView} className={!topView?'selected':''} onClick={()=>setTopView(false)}><Box size={15}/> Isométrica</button>
           <button aria-pressed={topView} className={topView?'selected':''} onClick={()=>setTopView(true)}><Grid2X2 size={15}/> Cenital</button>
           <button className="present-button" onClick={()=>void togglePresentation()} title={presenting?'Salir de pantalla completa':'Presentar en pantalla completa'} aria-label={presenting?'Salir de pantalla completa':'Presentar en pantalla completa'}>{presenting?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
