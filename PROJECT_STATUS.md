@@ -3,7 +3,21 @@
 Última revisión: 2026-11-27 (Europe/Madrid).
 Repositorio: `alexisalbaceterodriguez-cmd/project-house-rendering`; rama de referencia: `main`.
 
-## Último cambio publicado (27/11/2026)
+## Último cambio publicado (27/11/2026, paridad visor/Cycles de complementos)
+
+- **`9578c8f`:** comparación del visor WebGL y de Cycles con la misma escena y cámara (`scripts/accessory-scene.ts` genera la escena; `scripts/accessory-compare.mjs <escenas.json> <salida>` descarga el paquete desde el editor y lo envía al motor local). Tomas: lámpara de arco de noche, y espejo de pie más carrito de bar de tarde y de noche.
+- **Correcciones:**
+  - La imagen WebGL del paquete se capturaba con los muros recortados del editor (sin ventana ni techo). Ahora se toma con muros completos, como el GLB (`withFullWalls` en `renderExport.ts`).
+  - Cycles no encendía la lámpara de arco de noche. `interiorLights` ahora la coloca en la bombilla bajo la cúpula, girada con el objeto, y tiene test.
+  - De noche, en el visor, la lámpara de arco proyecta un foco hacia abajo y las pantallas `lampshade` emiten luz cálida. Lámparas de pie, de mesa, colgantes y de arco se encienden (`LampLight`).
+  - La noche del visor usa una luz de techo por recinto en lugar de una sola para toda la casa, que dejaba el muro este del salón a oscuras.
+  - La bandeja superior del carrito pasa a vidrio ahumado claro: el tinte `#1f2224` se veía negro con la transmisión de WebGL.
+  - El espejo refleja bien la sala una vez dejan de recortarse los muros.
+- **Validación local:** `render-package` y `furniture-parts` (268/268), build y smoke `cycles-package.e2e.ts`. CI: [Test and build 45964785221](https://github.com/alexisalbaceterodriguez-cmd/project-house-rendering/actions/runs/45964785221), SHA `9578c8f`, completed/success, job 140390774630 (unitarias, motor Python, build y E2E completa).
+- **Límites que siguen:** la noche del visor sigue siendo más clara que la de Cycles y su ventana muestra el cielo de día del entorno. Vasos y licorera se ven algo lechosos en WebGL frente al vidrio trazado de Cycles.
+- **Siguiente tarea exacta:** volver a medir con `load.cjs`/`heavy.cjs` la apertura del 3D y la edición en el ejemplo (las luces de noche por recinto añaden luces puntuales). Después, oscurecer el cielo nocturno del visor para que coincida con el crepúsculo de Cycles.
+
+## Cambio publicado el 27/11/2026 (visor persistente y manual)
 
 - **Publicado en main** el trabajo local del 21/11: `a746acf` (visor 3D persistente, shaders precompilados fuera de pantalla y encuadre de objeto sin muros) y `cb3a614` (manual para principiantes `MANUAL.md` con capturas en `docs/manual/` y scripts que las generan; se quitó del manual la ruta local del equipo). HEAD remoto comprobado antes del push (`bb2e0f7`, sin trabajo concurrente).
 - **Visor 3D persistente:** una vez abierto, el visor sigue montado y oculto (`frameloop="never"`) mientras se ve el plano 2D; al volver reutiliza contexto WebGL, shaders y texturas (`ResumeOnShow` redibuja el último estado). `WarmShaders` monta el contenido invisible y espera a que los programas enlacen en segundo plano (sondeo de `isReady()`, tope de 5 s) antes de mostrarlo; captura PNG y sombras de contacto del estudio se montan después. `aria-busy` del visor incluye este calentamiento.
